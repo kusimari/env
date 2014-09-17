@@ -1,0 +1,96 @@
+;; ELPA PACKAGES
+(require 'package)
+(add-to-list 'package-archives
+             '("melpa" . "http://melpa.milkbox.net/packages/") t)
+;;(when (< emacs-major-version 24)
+  ;; For important compatibility libraries like cl-lib
+  ;;(add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
+
+(package-initialize)
+
+
+(defun install-require (p)
+  (when (not (package-installed-p p))
+    (package-initialize)
+    (package-refresh-contents)
+    (package-install p)))
+;; ELPA PACKAGES - END
+
+
+;; COLORS and VISUALS
+(install-require 'zenburn-theme)
+(load-theme 'zenburn t)
+
+(tool-bar-mode -1)
+
+(setq-default indent-tabs-mode nil)
+(setq-default tab-width 4)
+;; COLORS and VISUALS - END
+
+
+
+;; SHELL PATH FROM SHELL !!
+(install-require 'exec-path-from-shell) ;;   ;; install 'exec-path-from-shell)
+(when (memq window-system '(mac ns))
+  (exec-path-from-shell-initialize))
+;; SHELL PATH FROM SHELL !! - END
+
+
+;; BACK UP SETTINGS
+(setq vc-make-backup-files t)
+
+(setq version-control t     ;; Use version numbers for backups.
+      kept-new-versions 10  ;; Number of newest versions to keep.
+      kept-old-versions 0   ;; Number of oldest versions to keep.
+      delete-old-versions t ;; Don't ask to delete excess backup versions.
+      backup-by-copying t)  ;; Copy all files, don't rename them.
+
+;; Default and per-save backups go here:
+(setq backup-directory-alist '(("" . "~/.emacs.d/backup/per-save")))
+
+(defun force-backup-of-buffer ()
+  ;; Make a special "per session" backup at the first save of each
+  ;; emacs session.
+  (when (not buffer-backed-up)
+    ;; Override the default parameters for per-session backups.
+    (let ((backup-directory-alist '(("" . "~/.emacs.d/backup/per-session")))
+          (kept-new-versions 3))
+      (backup-buffer)))
+  ;; Make a "per save" backup on each save.  The first save results in
+  ;; both a per-session and a per-save backup, to keep the numbering
+  ;; of per-save backups consistent.
+  (let ((buffer-backed-up nil))
+    (backup-buffer)))
+
+(add-hook 'before-save-hook  'force-backup-of-buffer)
+
+;; save tramp to local
+(setq tramp-auto-save-directory "~/.emacs.d/backup/tramp-autosave")
+;; BACK UP SETTINGS - END
+
+
+;; PYTHON
+(add-hook 'python-mode-hook '(lambda () (setq python-indent 4)))
+
+(install-require 'py-autopep8) ;;(require 'py-autopep8)
+(add-hook 'before-save-hook 'py-autopep8-before-save)
+
+(install-require 'virtualenvwrapper) ;;(require 'virtualenvwrapper)
+
+(add-to-list 'package-archives
+             '("elpy" . "http://jorgenschaefer.github.io/packages/"))
+(install-require 'elpy) ;;(require 'elpy)
+(elpy-enable)
+
+(install-require 'nose) ;;(require 'nose)
+(elpy-set-test-runner 'elpy-test-nose-runner)
+
+(install-require 'jedi) ;;(require 'jedi)
+(add-hook 'python-mode-hook 'jedi:setup)
+  ;;(jedi:install-server)
+;; PYTHON - END
+
+
+;; HASKELL
+
+;; HASKELL - END
