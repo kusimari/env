@@ -2,9 +2,9 @@
 (require 'package)
 (add-to-list 'package-archives
              '("melpa" . "http://melpa.milkbox.net/packages/") t)
-;;(when (< emacs-major-version 24)
-  ;; For important compatibility libraries like cl-lib
-  ;;(add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
+(when (< emacs-major-version 24)
+  ;;For important compatibility libraries like cl-lib
+  (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
 
 (package-initialize)
 
@@ -25,6 +25,8 @@
 
 (setq-default indent-tabs-mode nil)
 (setq-default tab-width 4)
+
+(install-require 'sr-speedbar)
 ;; COLORS and VISUALS - END
 
 
@@ -76,21 +78,30 @@
 (add-hook 'before-save-hook 'py-autopep8-before-save)
 
 (install-require 'virtualenvwrapper) ;;(require 'virtualenvwrapper)
+(install-require 'nose) ;;(require 'nose)
+(install-require 'jedi) ;;(require 'jedi)
+(add-hook 'python-mode-hook 'jedi:setup)
+  ;;(jedi:install-server)
 
 (add-to-list 'package-archives
              '("elpy" . "http://jorgenschaefer.github.io/packages/"))
 (install-require 'elpy) ;;(require 'elpy)
-(elpy-enable)
-
-(install-require 'nose) ;;(require 'nose)
-(elpy-set-test-runner 'elpy-test-nose-runner)
-
-(install-require 'jedi) ;;(require 'jedi)
-(add-hook 'python-mode-hook 'jedi:setup)
-  ;;(jedi:install-server)
+(add-hook 'python-mode-hook 'elpy-mode)
+(add-hook 'python-mode-hook 'elpy-start)
+(defun elpy-start ()
+  (elpy-enable)
+  (elpy-use-ipython)
+  (elpy-set-test-runner 'elpy-test-nose-runner))
 ;; PYTHON - END
 
 
 ;; HASKELL
+(install-require 'haskell-mode)
+(add-hook 'haskell-mode-hook 'turn-on-haskell-indentation)
+(eval-after-load "haskell-mode"
+  '(progn
+     (define-key haskell-mode-map (kbd "C-,") 'haskell-move-nested-left)
+     (define-key haskell-mode-map (kbd "C-.") 'haskell-move-nested-right)))
 
+(add-hook 'haskell-mode-hook 'interactive-haskell-mode)
 ;; HASKELL - END
