@@ -16,6 +16,8 @@
     (package-install p)))
 ;; ELPA PACKAGES - END
 
+(install-require 'tramp)
+
 
 ;; COLORS and VISUALS
 (install-require 'zenburn-theme)
@@ -74,6 +76,7 @@
 ;; PYTHON
 (add-hook 'python-mode-hook '(lambda () (setq python-indent 4)))
 
+(install-require 'flymake)
 (install-require 'py-autopep8) ;;(require 'py-autopep8)
 (add-hook 'before-save-hook 'py-autopep8-before-save)
 
@@ -105,3 +108,20 @@
 
 (add-hook 'haskell-mode-hook 'interactive-haskell-mode)
 ;; HASKELL - END
+
+
+;; LaTeX
+(install-require 'auctex)
+(add-hook 'LaTeX-mode-hook 'visual-line-mode)
+(add-hook 'LaTeX-mode-hook 'flyspell-mode)
+(add-hook 'LaTeX-mode-hook 'LaTeX-math-mode)
+(add-hook 'LaTeX-mode-hook 'turn-on-reftex)
+(setq reftex-plug-into-AUCTeX t)
+;; LaTeX - END
+
+
+;; SCALA
+;;(install-require 'scala-mode2)
+(install-require 'ensime)
+(add-hook 'scala-mode-hook 'ensime-scala-mode-hook)
+;; SCALA - END
