@@ -2,6 +2,7 @@
 personal environment files
 
 shell with solarized dark
-tmux
-emacs with zenburn
 
+tmux
+
+emacs with zenburn
