@@ -20,17 +20,29 @@
 
 
 ;; COLORS and VISUALS
+(setq inhibit-startup-screen t) ;; no startup or splash
+
 (install-require 'zenburn-theme)
 (load-theme 'zenburn t)
+(global-hl-line-mode +1)
 
 (tool-bar-mode -1)
+(menu-bar-mode -1)
 
 (setq-default indent-tabs-mode nil)
 (setq-default tab-width 4)
 
-(install-require 'sr-speedbar)
+(global-linum-mode 1)
+(setq linum-format "%3d ")
+(setq column-number-mode t)
 ;; COLORS and VISUALS - END
 
+
+;; DIRECTORY
+;;(install-require 'sr-speedbar)
+(install-require 'neotree)
+(global-set-key (kbd "C-c C-n") 'neotree-toggle) ;; to close need to move out of neo buffer
+;; DIRECTORY - END
 
 
 ;; SHELL PATH FROM SHELL !!
@@ -74,27 +86,27 @@
 
 
 ;; PYTHON
-(add-hook 'python-mode-hook '(lambda () (setq python-indent 4)))
+;; (add-hook 'python-mode-hook '(lambda () (setq python-indent 4)))
 
-(install-require 'flymake)
-(install-require 'py-autopep8) ;;(require 'py-autopep8)
-(add-hook 'before-save-hook 'py-autopep8-before-save)
+;; (install-require 'flymake)
+;; (install-require 'py-autopep8) ;;(require 'py-autopep8)
+;; (add-hook 'before-save-hook 'py-autopep8-before-save)
 
-(install-require 'virtualenvwrapper) ;;(require 'virtualenvwrapper)
-(install-require 'nose) ;;(require 'nose)
-(install-require 'jedi) ;;(require 'jedi)
-(add-hook 'python-mode-hook 'jedi:setup)
-  ;;(jedi:install-server)
+;; (install-require 'virtualenvwrapper) ;;(require 'virtualenvwrapper)
+;; (install-require 'nose) ;;(require 'nose)
+;; (install-require 'jedi) ;;(require 'jedi)
+;; (add-hook 'python-mode-hook 'jedi:setup)
+;;   ;;(jedi:install-server)
 
-(add-to-list 'package-archives
-             '("elpy" . "http://jorgenschaefer.github.io/packages/"))
-(install-require 'elpy) ;;(require 'elpy)
-(add-hook 'python-mode-hook 'elpy-mode)
-(add-hook 'python-mode-hook 'elpy-start)
-(defun elpy-start ()
-  (elpy-enable)
-  (elpy-use-ipython)
-  (elpy-set-test-runner 'elpy-test-nose-runner))
+;; (add-to-list 'package-archives
+;;              '("elpy" . "http://jorgenschaefer.github.io/packages/"))
+;; (install-require 'elpy) ;;(require 'elpy)
+;; (add-hook 'python-mode-hook 'elpy-mode)
+;; (add-hook 'python-mode-hook 'elpy-start)
+;; (defun elpy-start ()
+;;   (elpy-enable)
+;;   (elpy-use-ipython)
+;;   (elpy-set-test-runner 'elpy-test-nose-runner))
 ;; PYTHON - END
 
 
@@ -122,6 +134,7 @@
 
 ;; SCALA
 ;;(install-require 'scala-mode2)
+;;(install-require 'sbt-mode)
 (install-require 'ensime)
 (add-hook 'scala-mode-hook 'ensime-scala-mode-hook)
 ;; SCALA - END
