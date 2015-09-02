@@ -22,7 +22,7 @@
 ;; COLORS and VISUALS
 (setq inhibit-startup-screen t) ;; no startup or splash
 
-(install-require 'zenburn-emacs)
+(install-require 'zenburn-theme)
 (load-theme 'zenburn t)
 (global-hl-line-mode +1)
 
