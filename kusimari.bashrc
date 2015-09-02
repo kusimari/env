@@ -1,3 +1,5 @@
+export TERM=xterm-256color
+
 PATH=/usr/local/opt/coreutils/libexec/gnubin:$PATH
 PATH=/usr/local/bin:$PATH
 PATH=~/bin:~/.cabal/bin:$PATH
