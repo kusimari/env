@@ -22,9 +22,9 @@
 ;; COLORS and VISUALS
 (setq inhibit-startup-screen t) ;; no startup or splash
 
+(global-hl-line-mode +1)
 (install-require 'zenburn-theme)
 (load-theme 'zenburn t)
-(global-hl-line-mode +1)
 
 (tool-bar-mode -1)
 (menu-bar-mode -1)
