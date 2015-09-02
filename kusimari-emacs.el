@@ -23,7 +23,7 @@
 (setq inhibit-startup-screen t) ;; no startup or splash
 
 (global-hl-line-mode +1)
-(install-require 'zenburn-theme)
+(install-require 'zenburn-emacs)
 (load-theme 'zenburn t)
 
 (tool-bar-mode -1)
