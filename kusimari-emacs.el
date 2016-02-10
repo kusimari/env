@@ -25,7 +25,7 @@
 (global-hl-line-mode 1)
 (install-require 'zenburn-theme)
 (install-require 'color-theme-solarized)
-(load-theme 'solarized-light t)
+(load-theme 'zenburn t)
 (global-hl-line-mode 1)
 ;;(custom-set-faces `(highlight ((t (:background , "yellow")))))
 
@@ -87,29 +87,52 @@
 (setq tramp-auto-save-directory "~/.emacs.d/backup/tramp-autosave")
 ;; BACK UP SETTINGS - END
 
+;; CODE STUFF
+(install-require 'flymake)
+(install-require 'flymake-cursor)
+(custom-set-faces
+ '(flymake-errline ((((class color)) (:underline "red"))))
+ '(flymake-warnline ((((class color)) (:underline "yellow")))))
+
+;; CODE STUFF - END
 
 ;; PYTHON
-;; (add-hook 'python-mode-hook '(lambda () (setq python-indent 4)))
+;;(install-require 'virtualenvwrapper)
+
+;;(install-require 'company)
+;;(install-require 'company-jedi)
+
+(add-to-list 'package-archives
+             '("elpy" . "http://jorgenschaefer.github.io/packages/"))
+(install-require 'elpy)
+
+(defun my-elpy-enable ()
+  (interactive)
+  (setq elpy-rpc-backend "jedi")
+  (elpy-enable)
+  (when (executable-find "ipython")
+    (elpy-use-ipython))
+  (setq elpy-modules '(elpy-module-sane-defaults
+                       elpy-module-company
+                       elpy-module-eldoc
+                       elpy-module-highlight-indentation
+                       elpy-module-pyvenv
+                       elpy-module-yasnippet)))
+
+;;(add-hook 'python-mode-hook '(lambda () (setq python-indent 4)))
 
 ;; (install-require 'flymake)
 ;; (install-require 'py-autopep8) ;;(require 'py-autopep8)
 ;; (add-hook 'before-save-hook 'py-autopep8-before-save)
 
-;; (install-require 'virtualenvwrapper) ;;(require 'virtualenvwrapper)
-;; (install-require 'nose) ;;(require 'nose)
-;; (install-require 'jedi) ;;(require 'jedi)
-;; (add-hook 'python-mode-hook 'jedi:setup)
-;;   ;;(jedi:install-server)
+;;(require 'virtualenvwrapper)
+;;(install-require 'nose)
 
-;; (add-to-list 'package-archives
-;;              '("elpy" . "http://jorgenschaefer.github.io/packages/"))
-;; (install-require 'elpy) ;;(require 'elpy)
+;;(install-require 'jedi)
+;;(add-hook 'python-mode-hook 'jedi:setup)
+;;(jedi:install-server)
+
 ;; (add-hook 'python-mode-hook 'elpy-mode)
-;; (add-hook 'python-mode-hook 'elpy-start)
-;; (defun elpy-start ()
-;;   (elpy-enable)
-;;   (elpy-use-ipython)
-;;   (elpy-set-test-runner 'elpy-test-nose-runner))
 ;; PYTHON - END
 
 
@@ -141,3 +164,21 @@
 (install-require 'ensime)
 (add-hook 'scala-mode-hook 'ensime-scala-mode-hook)
 ;; SCALA - END
+
+;; JAVA
+(install-require 'emacs-eclim)
+(require 'eclimd)
+(global-eclim-mode)
+(custom-set-variables
+ '(eclim-eclipse-dirs '("~/eclipse/active"))
+ '(eclim-executable "~/eclipse/active/eclim"))
+
+(setq help-at-pt-display-when-idle t)
+(setq help-at-pt-timer-delay 0.1)
+(help-at-pt-set-timer)
+
+(install-require 'auto-complete)
+(ac-config-default)
+(require 'ac-emacs-eclim-source)
+(ac-emacs-eclim-config)
+;; JAVA - END
