@@ -25,7 +25,7 @@
 (global-hl-line-mode 1)
 (install-require 'zenburn-theme)
 (install-require 'color-theme-solarized)
-(load-theme 'solarized-light t)
+(load-theme 'zenburn t)
 (global-hl-line-mode 1)
 ;;(custom-set-faces `(highlight ((t (:background , "yellow")))))
 
