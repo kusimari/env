@@ -34,7 +34,6 @@
 
 (global-hl-line-mode 1)
 (install-require 'zenburn-theme)
-(install-require 'color-theme-solarized)
 (load-theme 'zenburn t)
 (global-hl-line-mode 1)
 ;;(custom-set-faces `(highlight ((t (:background , "yellow")))))
@@ -51,10 +50,21 @@
 ;; COLORS and VISUALS - END
 
 
-;; DIRECTORY
+;; HELM, DIRECTORY and PROJECTS
 ;;(install-require 'sr-speedbar)
+(install-require 'async)
+(install-require 'helm)
+(global-set-key (kbd "M-x") 'helm-M-x)
+(global-set-key (kbd "C-x b") 'helm-mini)
+(global-set-key (kbd "C-x C-f") 'helm-find-files)
+(setq helm-split-window-in-side-p           t
+      helm-autoresize-max-height            20
+      helm-autoresize-min-height            5)
+;; (helm-autoresize-mode 1) ; does not work need to figure out
+
 (install-require 'neotree)
 (global-set-key (kbd "C-c C-n") 'neotree-toggle) ;; to close need to move out of neo buffer
+(setq neo-smart-open t)
 ;; DIRECTORY - END
 
 
@@ -107,10 +117,6 @@
 ;; CODE STUFF - END
 
 ;; PYTHON
-;;(install-require 'virtualenvwrapper)
-
-;;(install-require 'company)
-;;(install-require 'company-jedi)
 
 (add-to-list 'package-archives
              '("elpy" . "http://jorgenschaefer.github.io/packages/"))
@@ -129,19 +135,18 @@
                        elpy-module-pyvenv
                        elpy-module-yasnippet)))
 
-;;(add-hook 'python-mode-hook '(lambda () (setq python-indent 4)))
+;;(install-require 'virtualenvwrapper)
+;;(install-require 'company)
+;;(install-require 'company-jedi)
 
-;; (install-require 'flymake)
+;;(add-hook 'python-mode-hook '(lambda () (setq python-indent 4)))
 ;; (install-require 'py-autopep8) ;;(require 'py-autopep8)
 ;; (add-hook 'before-save-hook 'py-autopep8-before-save)
-
 ;;(require 'virtualenvwrapper)
 ;;(install-require 'nose)
-
 ;;(install-require 'jedi)
 ;;(add-hook 'python-mode-hook 'jedi:setup)
 ;;(jedi:install-server)
-
 ;; (add-hook 'python-mode-hook 'elpy-mode)
 ;; PYTHON - END
 
@@ -192,3 +197,9 @@
 (require 'ac-emacs-eclim-source)
 (ac-emacs-eclim-config)
 ;; JAVA - END
+
+
+;; Markdown
+(install-require 'markdown-mode)
+(add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
+;; Markdown
