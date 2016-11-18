@@ -54,12 +54,17 @@
 ;;(install-require 'sr-speedbar)
 (install-require 'async)
 (install-require 'helm)
+(install-require 'projectile)
+(install-require 'helm-projectile)
 (global-set-key (kbd "M-x") 'helm-M-x)
 (global-set-key (kbd "C-x b") 'helm-mini)
 (global-set-key (kbd "C-x C-f") 'helm-find-files)
 (setq helm-split-window-in-side-p           t
       helm-autoresize-max-height            20
       helm-autoresize-min-height            5)
+(projectile-global-mode)
+(setq projectile-completion-system 'helm)
+(helm-projectile-on)
 ;; (helm-autoresize-mode 1) ; does not work need to figure out
 
 (install-require 'neotree)
