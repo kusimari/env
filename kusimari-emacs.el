@@ -18,6 +18,16 @@
 
 (install-require 'tramp)
 
+;; MOUSE
+(defun my-bell-function ()
+  (unless (memq this-command
+                '(scroll-up-line scroll-down-line))
+    (ding)))
+(setq ring-bell-function 'my-bell-function)
+
+(xterm-mouse-mode t)
+(global-set-key (kbd "<mouse-4>") 'scroll-down-line)
+(global-set-key (kbd "<mouse-5>") 'scroll-up-line)
 
 ;; COLORS and VISUALS
 (setq inhibit-startup-screen t) ;; no startup or splash
