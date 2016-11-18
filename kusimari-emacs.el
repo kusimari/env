@@ -24,8 +24,8 @@
 
 (global-hl-line-mode 1)
 (install-require 'zenburn-theme)
-(install-require 'color-theme-solarized)
-(load-theme 'solarized-light t)
+(install-require 'solarized-theme)
+(load-theme 'zenburn t)
 (global-hl-line-mode 1)
 ;;(custom-set-faces `(highlight ((t (:background , "yellow")))))
 
@@ -141,3 +141,8 @@
 (install-require 'ensime)
 (add-hook 'scala-mode-hook 'ensime-scala-mode-hook)
 ;; SCALA - END
+
+;; Markdown
+(install-require 'markdown-mode)
+(add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
+;; Markdown
