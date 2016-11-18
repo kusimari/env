@@ -24,7 +24,6 @@
 
 (global-hl-line-mode 1)
 (install-require 'zenburn-theme)
-(install-require 'solarized-theme)
 (load-theme 'zenburn t)
 (global-hl-line-mode 1)
 ;;(custom-set-faces `(highlight ((t (:background , "yellow")))))
@@ -41,10 +40,21 @@
 ;; COLORS and VISUALS - END
 
 
-;; DIRECTORY
+;; HELM, DIRECTORY and PROJECTS
 ;;(install-require 'sr-speedbar)
+(install-require 'async)
+(install-require 'helm)
+(global-set-key (kbd "M-x") 'helm-M-x)
+(global-set-key (kbd "C-x b") 'helm-mini)
+(global-set-key (kbd "C-x C-f") 'helm-find-files)
+(setq helm-split-window-in-side-p           t
+      helm-autoresize-max-height            20
+      helm-autoresize-min-height            5)
+;; (helm-autoresize-mode 1) ; does not work need to figure out
+
 (install-require 'neotree)
 (global-set-key (kbd "C-c C-n") 'neotree-toggle) ;; to close need to move out of neo buffer
+(setq neo-smart-open t)
 ;; DIRECTORY - END
 
 
