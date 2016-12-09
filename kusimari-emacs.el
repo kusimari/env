@@ -13,12 +13,13 @@
   (when (not (package-installed-p p))
     (package-initialize)
     (package-refresh-contents)
-    (package-install p)))
+    (package-install p))
+  (require p))
 ;; ELPA PACKAGES - END
 
 (install-require 'tramp)
 
-;; MOUSE
+;; MOUSE && SCROLL
 (defun my-bell-function ()
   (unless (memq this-command
                 '(scroll-up-line scroll-down-line))
@@ -28,6 +29,7 @@
 (xterm-mouse-mode t)
 (global-set-key (kbd "<mouse-4>") 'scroll-down-line)
 (global-set-key (kbd "<mouse-5>") 'scroll-up-line)
+;; MOUSE && SCROLL - END
 
 ;; COLORS and VISUALS
 (setq inhibit-startup-screen t) ;; no startup or splash
@@ -54,17 +56,21 @@
 ;;(install-require 'sr-speedbar)
 (install-require 'async)
 (install-require 'helm)
+(require 'helm-config)
 (install-require 'projectile)
 (install-require 'helm-projectile)
 (global-set-key (kbd "M-x") 'helm-M-x)
 (global-set-key (kbd "C-x b") 'helm-mini)
 (global-set-key (kbd "C-x C-f") 'helm-find-files)
+(global-set-key (kbd "C-c h") 'helm-command-prefix)
 (setq helm-split-window-in-side-p           t
-      helm-autoresize-max-height            20
-      helm-autoresize-min-height            5)
+      helm-autoresize-max-height            25
+      helm-autoresize-min-height            10)
+(helm-autoresize-mode 1)
 (projectile-global-mode)
 (setq projectile-completion-system 'helm)
 (helm-projectile-on)
+(helm-mode 1)
 ;; (helm-autoresize-mode 1) ; does not work need to figure out
 
 (install-require 'neotree)
@@ -113,12 +119,8 @@
 ;; BACK UP SETTINGS - END
 
 ;; CODE STUFF
-(install-require 'flymake)
-(install-require 'flymake-cursor)
-(custom-set-faces
- '(flymake-errline ((((class color)) (:underline "red"))))
- '(flymake-warnline ((((class color)) (:underline "yellow")))))
-
+(install-require 'flycheck)
+(global-flycheck-mode)
 ;; CODE STUFF - END
 
 ;; PYTHON
@@ -133,6 +135,9 @@
   (elpy-enable)
   (when (executable-find "ipython")
     (elpy-use-ipython))
+  (when (require 'flycheck nil t)
+    (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
+    (add-hook 'elpy-mode-hook 'flycheck-mode))
   (setq elpy-modules '(elpy-module-sane-defaults
                        elpy-module-company
                        elpy-module-eldoc
