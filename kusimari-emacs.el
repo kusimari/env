@@ -34,11 +34,15 @@
 ;; COLORS and VISUALS
 (setq inhibit-startup-screen t) ;; no startup or splash
 
-(global-hl-line-mode 1)
 (install-require 'zenburn-theme)
 (load-theme 'zenburn t)
 (global-hl-line-mode 1)
-;;(custom-set-faces `(highlight ((t (:background , "yellow")))))
+(setq flycheck-highlighting-mode 'lines)
+(zenburn-with-color-variables
+  (custom-theme-set-faces
+   'zenburn
+   `(hl-line ((t (:background ,zenburn-bg+1 :foreground nil))))
+   `(flycheck-error ((t :background ,zenburn-red-4 :foreground nil)))))
 
 (tool-bar-mode -1)
 (menu-bar-mode -1)
@@ -51,6 +55,12 @@
 (setq column-number-mode t)
 ;; COLORS and VISUALS - END
 
+;; EDITING
+(install-require 'iedit)
+(global-set-key (kbd "C-c k i") 'iedit-mode)
+(global-set-key (kbd "C-c k /") 'comment-dwim)
+;; EDITING - END
+
 
 ;; HELM, DIRECTORY and PROJECTS
 ;;(install-require 'sr-speedbar)
@@ -59,22 +69,32 @@
 (require 'helm-config)
 (install-require 'projectile)
 (install-require 'helm-projectile)
-(global-set-key (kbd "M-x") 'helm-M-x)
-(global-set-key (kbd "C-x b") 'helm-mini)
-(global-set-key (kbd "C-x C-f") 'helm-find-files)
-(global-set-key (kbd "C-c h") 'helm-command-prefix)
+(install-require 'helm-descbinds)
+(install-require 'helm-ls-git)
+
 (setq helm-split-window-in-side-p           t
       helm-autoresize-max-height            25
       helm-autoresize-min-height            10)
 (helm-autoresize-mode 1)
+(helm-mode 1)
+(helm-descbinds-mode)  ;; C-c C-h
+(global-set-key (kbd "M-x") 'helm-M-x)
+(global-set-key (kbd "C-x b") 'helm-mini)
+(global-set-key (kbd "C-x C-f") 'helm-find-files)
+(global-set-key (kbd "C-c h") 'helm-command-prefix)
+(global-set-key (kbd "C-c h SPC") 'helm-all-mark-rings)
+(global-set-key (kbd "C-c h d") 'helm-descbinds)
+(global-set-key (kbd "M-y") 'helm-show-kill-ring)
+(global-set-key (kbd "M-y") 'helm-show-kill-ring)
+
 (projectile-global-mode)
 (setq projectile-completion-system 'helm)
 (helm-projectile-on)
-(helm-mode 1)
+(setq projectile-keymap-prefix (kbd "C-c C-p"))
 ;; (helm-autoresize-mode 1) ; does not work need to figure out
 
 (install-require 'neotree)
-(global-set-key (kbd "C-c C-n") 'neotree-toggle) ;; to close need to move out of neo buffer
+(global-set-key (kbd "C-c k n") 'neotree-toggle) ;; to close need to move out of neo buffer
 (setq neo-smart-open t)
 ;; DIRECTORY - END
 
