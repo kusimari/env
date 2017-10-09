@@ -84,6 +84,7 @@
 (global-set-key (kbd "C-c h") 'helm-command-prefix)
 (global-set-key (kbd "C-c h SPC") 'helm-all-mark-rings)
 (global-set-key (kbd "C-c h d") 'helm-descbinds)
+(global-set-key (kbd "C-c h o") 'helm-occur)
 (global-set-key (kbd "M-y") 'helm-show-kill-ring)
 (global-set-key (kbd "M-y") 'helm-show-kill-ring)
 
@@ -180,6 +181,13 @@
 ;; (add-hook 'python-mode-hook 'elpy-mode)
 ;; PYTHON - END
 
+
+;; JS
+(install-require 'js2-mode)
+(add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
+(add-to-list 'auto-mode-alist '("\\.vue\\'" . js2-mode))
+
+;; JS - END
 
 ;; HASKELL
 (install-require 'haskell-mode)
