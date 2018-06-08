@@ -12,13 +12,32 @@ if [ "$(uname)" == "Darwin" ]; then
 
    MANPATH=/usr/local/opt/coreutils/libexec/gnuman:$MANPATH
 
-   export WORKON_HOME=$HOME/.virtualenvs
-   export VIRTUALENVWRAPPER_PYTHON=$(which python)
-   #/usr/local/bin/python
-   export VIRTUALENVWRAPPER_VIRTUALENV=/usr/local/bin/virtualenv
-   source /usr/local/bin/virtualenvwrapper.sh
+   # export WORKON_HOME=$HOME/.virtualenvs
+   # export VIRTUALENVWRAPPER_PYTHON=$(which python)
+   # #/usr/local/bin/python
+   # export VIRTUALENVWRAPPER_VIRTUALENV=/usr/local/bin/virtualenv
+   # source /usr/local/bin/virtualenvwrapper.sh
 
    if [ -f $(brew --prefix)/etc/bash_completion ]; then
       . $(brew --prefix)/etc/bash_completion
    fi
 fi
+
+function docker_alias() {
+    curr_directory_mountpoint="${1}"
+    work_directory_in_container="${2}"
+    args="${@:3}"
+    cmd="docker run -it --rm"
+    cmd+=" -v $(pwd):${curr_directory_mountpoint}"
+    if [ ! -z "${work_directory_in_container}"]
+    then
+        cmd+=" -w ${work_directory_in_container}"
+    fi
+    cmd+=" ${args}"
+    echo ${cmd}
+    eval ${cmd}
+}
+
+alias python2.7="docker_alias /directory /directory python:2.7 python"
+alias python3="docker_alias /directory /directory python python"
+alias markdown="docker_alias /source '' jagregory/pandoc -f markdown"
