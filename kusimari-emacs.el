@@ -1,12 +1,13 @@
 ;; ELPA PACKAGES
+
 (require 'package)
 (add-to-list 'package-archives
-             '("melpa" . "http://melpa.milkbox.net/packages/") t)
+             '("melpa" . "http://melpa.org/packages/") t)
+
 (when (< emacs-major-version 24)
   ;;For important compatibility libraries like cl-lib
   (add-to-list 'package-archives '("gnu" . "http://elpa.gnu.org/packages/")))
 (package-initialize)
-
 
 (defun install-require (p)
   (when (not (package-installed-p p))
@@ -14,6 +15,50 @@
     (package-refresh-contents)
     (package-install p))
   (require p))
+
+(install-require 'use-package)
+;; ELPA PACKAGES
+
+(defun activate-python ()
+  ;; (add-to-list 'package-archives
+  ;;             '("elpy" . "http://jorgenschaefer.github.io/packages/"))
+  ;; (install-require 'elpy)
+
+
+  ;; (defun my-elpy-enable ()
+  ;;   (interactive)
+  ;;   (setq elpy-rpc-backend "jedi")
+  ;;   (elpy-enable)
+  ;;   (when (executable-find "ipython")
+  ;;     (elpy-use-ipython))
+  ;;   (when (require 'flycheck nil t)
+  ;;     (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
+  ;;     (add-hook 'elpy-mode-hook 'flycheck-mode))
+  ;;   (setq elpy-modules '(elpy-module-sane-defaults
+  ;;                        elpy-module-company
+  ;;                        elpy-module-eldoc
+  ;;                        elpy-module-highlight-indentation
+  ;;                        elpy-module-pyvenv
+  ;;                        elpy-module-yasnippet))))
+  ;; (use-package pyenv-mode
+  ;;:ensure t)
+  ;; (use-package poetry
+  ;;  :ensure t
+  ;;  (add-hook 'elpy-mode-hook 'poetry-tracking-mode))
+  ;; (use-package virtualenvwrapper
+  ;;  :ensure t)
+  (use-package elpy
+    :ensure t
+    :init
+    (setq elpy-rpc-virtualenv-path 'current)
+    (elpy-enable))
+  ;; (use-package company-jedi
+  ;;   :ensure t)
+  ;; (defun my/python-mode-hook ()
+  ;; (add-to-list 'company-backends 'company-jedi))
+  ;; (add-hook 'python-mode-hook 'my/python-mode-hook)
+  )
+(activate-python)
 
 
 (defun activate-mouse-scroll ()
@@ -30,7 +75,7 @@
 
 
 (defun activate-colors-visuals ()
-  (setq inhibit-startup-screen t) ;; no startup or splash
+;41M  (setq inhibit-startup-screen t) ;; no startup or splash
 
   (install-require 'zenburn-theme)
   (load-theme 'zenburn t)
@@ -57,7 +102,10 @@
 (defun activate-general-edit ()
   (install-require 'iedit)
   (global-set-key (kbd "C-c k i") 'iedit-mode)
-  (global-set-key (kbd "C-c k /") 'comment-dwim))
+  (global-set-key (kbd "C-c k /") 'comment-dwim)
+  ;; M-| pbcopy RET to copy to buffer. For tmux https://github.com/ChrisJohnsen/tmux-MacOSX-pasteboard.. and use the right shell  
+  (install-require 'pbcopy)
+  (turn-on-pbcopy))
 (activate-general-edit)
 
 
@@ -66,7 +114,12 @@
   (install-require 'async)
   (install-require 'helm)
   (require 'helm-config)
-  (install-require 'projectile)
+  (use-package projectile :ensure t
+    :init
+    (projectile-mode +1)
+    :bind (:map projectile-mode-map
+                ("s-p" . projectile-command-map)
+                ("C-c C-p" . projectile-command-map)))
   (install-require 'helm-projectile)
   (install-require 'helm-descbinds)
   (install-require 'helm-ls-git)
@@ -87,22 +140,29 @@
   (global-set-key (kbd "M-y") 'helm-show-kill-ring)
   (global-set-key (kbd "M-y") 'helm-show-kill-ring)
 
-  (projectile-global-mode)
-  (setq projectile-completion-system 'helm)
   (helm-projectile-on)
-  (setq projectile-keymap-prefix (kbd "C-c C-p"))
-  ;; (helm-autoresize-mode 1) ; does not work need to figure out
+  (setq projectile-completion-system 'helm)
 
   (install-require 'neotree)
   (global-set-key (kbd "C-c k n") 'neotree-toggle) ;; to close need to move out of neo buffer
   (setq neo-smart-open t))
 (activate-helm)
 
+(defun activate-workspaces ()
+  (use-package perspective
+    :ensure t
+    :config
+    (persp-mode))
+  ;;(desktop-save-mode 1)
+  )
+(activate-workspaces)
+
 
 (defun activate-shell-path-from-shell ()
   (install-require 'exec-path-from-shell)
   (when (memq window-system '(mac ns))
-    (exec-path-from-shell-initialize)))
+    (exec-path-from-shell-initialize))
+  (setq shell-command-switch "-ic"))
 (activate-shell-path-from-shell)
 
 
@@ -148,28 +208,6 @@
 (activate-general-code)
 
 
-(defun activate-python ()
-  (add-to-list 'package-archives
-               '("elpy" . "http://jorgenschaefer.github.io/packages/"))
-  (install-require 'elpy)
-
-  (defun my-elpy-enable ()
-    (interactive)
-    (setq elpy-rpc-backend "jedi")
-    (elpy-enable)
-    (when (executable-find "ipython")
-      (elpy-use-ipython))
-    (when (require 'flycheck nil t)
-      (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
-      (add-hook 'elpy-mode-hook 'flycheck-mode))
-    (setq elpy-modules '(elpy-module-sane-defaults
-                         elpy-module-company
-                         elpy-module-eldoc
-                         elpy-module-highlight-indentation
-                         elpy-module-pyvenv
-                         elpy-module-yasnippet))))
-(activate-python)
-
 
 (defun activate-js ()
   (install-require 'js2-mode)
@@ -205,13 +243,18 @@
 
 (defun activate-haskell ()
   (install-require 'haskell-mode)
+  (require 'haskell-interactive-mode)
+  (require 'haskell-process)
+  (add-to-list 'auto-mode-alist '("\\.hs\\'" . haskell-mode))
+  ;; (custom-set-variables '(haskell-process-type 'stack-ghci))
+  (setq haskell-process-type 'stack-ghci)
+  (custom-set-variables '(haskell-process-path-stack "stack"))
+  (add-hook 'haskell-mode-hook 'interactive-haskell-mode))
   (add-hook 'haskell-mode-hook 'turn-on-haskell-indentation)
   (eval-after-load "haskell-mode"
     '(progn
        (define-key haskell-mode-map (kbd "C-,") 'haskell-move-nested-left)
        (define-key haskell-mode-map (kbd "C-.") 'haskell-move-nested-right)))
-
-  (add-hook 'haskell-mode-hook 'interactive-haskell-mode))
 (activate-haskell)
 
 
@@ -255,3 +298,35 @@
   (install-require 'markdown-mode)
   (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode)))
 (activate-markdown)
+
+(defun activate-rust ()
+  (use-package flycheck :ensure t)
+  (use-package flycheck-rust :ensure t)
+  (use-package company :ensure t)
+  (use-package rust-mode :ensure t
+    :config
+    (setq rust-format-on-save t))
+  
+  (setq racer-rust-src-path
+        (concat (string-trim
+                 (shell-command-to-string "rustc --print sysroot"))
+                "/lib/rustlib/src/rust/library/"))
+  (use-package racer :ensure t
+    :requires flycheck-mode
+    :requires company-mode
+    :requires rust-mode
+
+    :config
+    (progn
+      (add-hook 'rust-mode-hook #'racer-mode)
+      (add-hook 'racer-mode-hook #'eldoc-mode)
+      (add-hook 'racer-mode-hook #'company-mode))
+
+  (add-hook 'flycheck-mode-hook #'flycheck-rust-setup)
+  (local-set-key (kbd "TAB") 'company-indent-or-complete-common)
+  (setq-local company-tooltip-align-annotations t)))
+(activate-rust)
+
+
+(provide 'kusimari-emacs)
+;;kusimari-emacs.el ends here

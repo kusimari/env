@@ -26,18 +26,33 @@ fi
 function docker_alias() {
     curr_directory_mountpoint="${1}"
     work_directory_in_container="${2}"
-    args="${@:3}"
+    pre_image_args="${3}"
+    post_image_args="${@:4}"
     cmd="docker run -it --rm"
     cmd+=" -v $(pwd):${curr_directory_mountpoint}"
-    if [ ! -z "${work_directory_in_container}"]
+    if [ ! -z "${work_directory_in_container}" ]
     then
         cmd+=" -w ${work_directory_in_container}"
     fi
-    cmd+=" ${args}"
-    echo ${cmd}
+    if [ ! -z "${pre_image_args}" ]
+    then
+        cmd+=" ${pre_image_args}"
+    fi
+    cmd+=" ${post_image_args}"
+    # echo ${cmd}
     eval ${cmd}
 }
 
-alias python2.7="docker_alias /directory /directory python:2.7 python"
-alias python3="docker_alias /directory /directory python python"
-alias markdown="docker_alias /source '' jagregory/pandoc -f markdown"
+alias python2.7="docker_alias /home /home '' python:2.7 python"
+alias python3="docker_alias /home /home '' python python"
+alias jupyter="docker_alias /home /home '-p 8888:8888' jupyter/minimal-notebook"
+
+alias pandoc="docker_alias /source '' '' jagregory/pandoc"
+alias markdown="docker_alias /source '' '' jagregory/pandoc -f markdown"
+
+alias stack="docker_alias /home /home '-v ~/.stack:/root/.stack' fpco/stack-build stack"
+
+alias nuclide_remote="docker_alias /home home '-p 9090:9090 -p 9091:22' marcel/nuclide-remote
+
+# alias node="docker_alias /home /home '' '' node node"
+# alias npm="docker_alias /home /home '' '' node npm"
