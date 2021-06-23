@@ -1,5 +1,5 @@
-;; ELPA PACKAGES
 
+;; ELPA PACKAGES
 (require 'package)
 (add-to-list 'package-archives
              '("melpa" . "http://melpa.org/packages/") t)
@@ -19,47 +19,6 @@
 (install-require 'use-package)
 ;; ELPA PACKAGES
 
-(defun activate-python ()
-  ;; (add-to-list 'package-archives
-  ;;             '("elpy" . "http://jorgenschaefer.github.io/packages/"))
-  ;; (install-require 'elpy)
-
-
-  ;; (defun my-elpy-enable ()
-  ;;   (interactive)
-  ;;   (setq elpy-rpc-backend "jedi")
-  ;;   (elpy-enable)
-  ;;   (when (executable-find "ipython")
-  ;;     (elpy-use-ipython))
-  ;;   (when (require 'flycheck nil t)
-  ;;     (setq elpy-modules (delq 'elpy-module-flymake elpy-modules))
-  ;;     (add-hook 'elpy-mode-hook 'flycheck-mode))
-  ;;   (setq elpy-modules '(elpy-module-sane-defaults
-  ;;                        elpy-module-company
-  ;;                        elpy-module-eldoc
-  ;;                        elpy-module-highlight-indentation
-  ;;                        elpy-module-pyvenv
-  ;;                        elpy-module-yasnippet))))
-  ;; (use-package pyenv-mode
-  ;;:ensure t)
-  ;; (use-package poetry
-  ;;  :ensure t
-  ;;  (add-hook 'elpy-mode-hook 'poetry-tracking-mode))
-  ;; (use-package virtualenvwrapper
-  ;;  :ensure t)
-  (use-package elpy
-    :ensure t
-    :init
-    (setq elpy-rpc-virtualenv-path 'current)
-    (elpy-enable))
-  ;; (use-package company-jedi
-  ;;   :ensure t)
-  ;; (defun my/python-mode-hook ()
-  ;; (add-to-list 'company-backends 'company-jedi))
-  ;; (add-hook 'python-mode-hook 'my/python-mode-hook)
-  )
-(activate-python)
-
 
 (defun activate-mouse-scroll ()
   (defun my-bell-function ()
@@ -75,10 +34,11 @@
 
 
 (defun activate-colors-visuals ()
-;41M  (setq inhibit-startup-screen t) ;; no startup or splash
-
-  (install-require 'zenburn-theme)
-  (load-theme 'zenburn t)
+  (setq inhibit-startup-screen t) ;; no startup or splash
+  (use-package zenburn-theme
+    :ensure t
+    :config
+    (load-theme 'zenburn t))
   (global-hl-line-mode 1)
   (setq flycheck-highlighting-mode 'lines)
   (zenburn-with-color-variables
@@ -100,62 +60,46 @@
 
 
 (defun activate-general-edit ()
-  (install-require 'iedit)
-  (global-set-key (kbd "C-c k i") 'iedit-mode)
-  (global-set-key (kbd "C-c k /") 'comment-dwim)
-  ;; M-| pbcopy RET to copy to buffer. For tmux https://github.com/ChrisJohnsen/tmux-MacOSX-pasteboard.. and use the right shell  
+  ;; Some common bindings, not rebinded
+  ;; M-; comment dwim
+  ;; c-M-a, c-M-e navigate to start and end of function
+  ;; c-M-u, c-M-d navigate up or down the stack/list
+  ;; M-| pbcopy RET to copy to buffer. For tmux https://github.com/ChrisJohnsen/tmux-MacOSX-pasteboard.. and use the right shell
   (install-require 'pbcopy)
-  (turn-on-pbcopy))
+  (turn-on-pbcopy)
+  (use-package neotree
+    :ensure t
+    :bind (("C-c N" . neotree-toggle))
+    :config
+    (setq neo-smart-open t)))
 (activate-general-edit)
+    
 
-
-(defun activate-helm ()
-  (install-require 'sr-speedbar)
-  (install-require 'async)
-  (install-require 'helm)
-  (require 'helm-config)
-  (use-package projectile :ensure t
-    :init
-    (projectile-mode +1)
-    :bind (:map projectile-mode-map
-                ("s-p" . projectile-command-map)
-                ("C-c C-p" . projectile-command-map)))
-  (install-require 'helm-projectile)
-  (install-require 'helm-descbinds)
-  (install-require 'helm-ls-git)
-
-  (setq helm-split-window-in-side-p    t
-        helm-autoresize-max-height     25
-        helm-autoresize-min-height     10)
-  (helm-autoresize-mode 1)
-  (helm-mode 1)
-  (helm-descbinds-mode)  ;; C-c C-h
-  (global-set-key (kbd "M-x") 'helm-M-x)
-  (global-set-key (kbd "C-x b") 'helm-mini)
-  (global-set-key (kbd "C-x C-f") 'helm-find-files)
-  (global-set-key (kbd "C-c h") 'helm-command-prefix)
-  (global-set-key (kbd "C-c h SPC") 'helm-all-mark-rings)
-  (global-set-key (kbd "C-c h d") 'helm-descbinds)
-  (global-set-key (kbd "C-c h o") 'helm-occur)
-  (global-set-key (kbd "M-y") 'helm-show-kill-ring)
-  (global-set-key (kbd "M-y") 'helm-show-kill-ring)
-
-  (helm-projectile-on)
-  (setq projectile-completion-system 'helm)
-
-  (install-require 'neotree)
-  (global-set-key (kbd "C-c k n") 'neotree-toggle) ;; to close need to move out of neo buffer
-  (setq neo-smart-open t))
-(activate-helm)
-
-(defun activate-workspaces ()
+(defun activate-ivy ()
+  (use-package counsel
+    :ensure t
+    :bind (("M-x" . counsel-M-x)
+           ("C-x C-f" . counsel-find-file)
+           ("C-x b" . ivy-switch-buffer)
+           ("M-y" . counsel-yank-pop)
+           ("C-s" . swiper-isearch)  ;; M-q for replacing them
+           )
+    :config
+    (setq ivy-use-virtual-buffers t)
+    (setq ivy-count-format "(%d/%d) ")
+    (setq ivy-initial-inputs-alist '())
+    (ivy-mode 1))
+  (use-package counsel-projectile
+    :ensure t
+    :bind (("C-c p" . projectile-command-map))
+    :config
+    (counsel-projectile-mode 1))
   (use-package perspective
     :ensure t
     :config
-    (persp-mode))
+    (persp-mode)))
   ;;(desktop-save-mode 1)
-  )
-(activate-workspaces)
+(activate-ivy)
 
 
 (defun activate-shell-path-from-shell ()
@@ -164,6 +108,15 @@
     (exec-path-from-shell-initialize))
   (setq shell-command-switch "-ic"))
 (activate-shell-path-from-shell)
+
+
+(defun activate-general-code ()
+  (install-require 'flycheck)
+  (global-flycheck-mode)
+  (install-require 'company)
+  (global-company-mode)
+  (install-require 'yasnippet))
+(activate-general-code)
 
 
 (defun activate-backup-settings ()
@@ -199,14 +152,19 @@
 (activate-backup-settings)
 
 
-(defun activate-general-code ()
-  (install-require 'flycheck)
-  (global-flycheck-mode)
-  (install-require 'company)
-  (global-company-mode)
-  (install-require 'yasnippet))
-(activate-general-code)
-
+(defun activate-python ()
+  (use-package elpy
+    :ensure t
+    :init
+    (setq elpy-rpc-virtualenv-path 'current)
+    (elpy-enable))
+  ;; (use-package company-jedi
+  ;;   :ensure t)
+  ;; (defun my/python-mode-hook ()
+  ;; (add-to-list 'company-backends 'company-jedi))
+  ;; (add-hook 'python-mode-hook 'my/python-mode-hook)
+  )
+(activate-python)
 
 
 (defun activate-js ()
@@ -238,7 +196,7 @@
   ;; (add-to-list 'load-path "/usr/local/lib/node_modules/tern/emacs/")
   ;; (autoload 'tern-mode "tern.el" nil t)
   )
-(activate-js)
+;;(activate-js)
 
 
 (defun activate-haskell ()
@@ -255,7 +213,7 @@
     '(progn
        (define-key haskell-mode-map (kbd "C-,") 'haskell-move-nested-left)
        (define-key haskell-mode-map (kbd "C-.") 'haskell-move-nested-right)))
-(activate-haskell)
+;;(activate-haskell)
 
 
 (defun activate-latex ()
@@ -273,7 +231,7 @@
   ;;(install-require 'sbt-mode)
   (install-require 'ensime)
   (add-hook 'scala-mode-hook 'ensime-scala-mode-hook))
-(activate-scala)
+;;(activate-scala)
 
 
 (defun activate-java ()
@@ -297,7 +255,7 @@
 (defun activate-markdown ()
   (install-require 'markdown-mode)
   (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode)))
-(activate-markdown)
+;;(activate-markdown)
 
 (defun activate-rust ()
   (use-package flycheck :ensure t)
@@ -325,7 +283,43 @@
   (add-hook 'flycheck-mode-hook #'flycheck-rust-setup)
   (local-set-key (kbd "TAB") 'company-indent-or-complete-common)
   (setq-local company-tooltip-align-annotations t)))
-(activate-rust)
+;;(activate-rust)
+
+
+(defun activate-helm ()
+  ;;(install-require 'sr-speedbar)
+  (install-require 'async)
+  (use-package helm
+    :ensure t
+    :demand t
+    :init
+    (require 'helm-config)
+    (setq helm-command-prefix-key "C-c h")
+    :config
+    (setq helm-split-window-in-side-p    t
+          helm-autoresize-max-height     25
+          helm-autoresize-min-height     10)
+    (helm-mode 1))
+  ;; (use-package projectile :ensure t
+  ;;   :init
+  ;;   (projectile-mode +1)
+  ;;   :bind (:map projectile-mode-map
+  ;;               ("s-p" . projectile-command-map)
+  ;;               ("C-c C-p" . projectile-command-map)))
+  ;; (use-package helm-projectile)
+  ;; (install-require 'helm-projectile)
+  ;; (install-require 'helm-descbinds)
+  ;; (install-require 'helm-ls-git)
+
+  ;; (helm-autoresize-mode 1)
+  ;; (helm-mode 1)
+  ;; (helm-descbinds-mode)  ;; C-c C-h
+
+  ;; (helm-projectile-on)
+  ;; (setq projectile-completion-system 'helm)
+
+)
+;;(activate-helm)
 
 
 (provide 'kusimari-emacs)
