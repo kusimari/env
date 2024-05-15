@@ -51,4 +51,13 @@
       "workbench.colorTheme" =  "Solarized Dark";
     };
   };
+
+  programs.ssh = {
+    enable = true;
+    matchBlocks = {
+      "github.com" = {
+        identityFile = "~/.ssh/github_id";
+      };
+    };
+  };
 }
