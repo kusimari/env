@@ -13,15 +13,20 @@
 
   inputs = {
     # Package sets
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-23.11-darwin";
+    nixpkgs.url = "github:NixOS/nixpkgs";
     nixpkgs-unstable.url = github:NixOS/nixpkgs/nixpkgs-unstable;
 
     # Environment/system management
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
-    home-manager.url = "github:nix-community/home-manager/release-23.11";
-    home-manager.inputs.nixpkgs.follows = "nixpkgs";    
+    home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs-unstable";
+
+    nix-vscode-extensions = {
+      url = "github:nix-community/nix-vscode-extensions";
+      inputs.nixpkgs.follows = "nixpkgs-unstable";
+    };
   };
 
   outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager, ... }:
@@ -32,7 +37,6 @@
     configuration = { pkgs, ... }: {
       # enable nix in shell
       programs.zsh.enable = true;
-
 
       # add toolbox and brew
       programs.zsh.loginShellInit = ''
@@ -46,8 +50,7 @@
         enable = true;
 	      onActivation.cleanup = "uninstall";
         casks = [
-           "visual-studio-code"
-           "iterm2"
+           "raycast"
         ]; 
       };
 
@@ -77,6 +80,11 @@
     darwinConfigurations.${hostName} = nix-darwin.lib.darwinSystem {
       modules = [ 
         configuration
+        {
+          nixpkgs.overlays = [
+            inputs.nix-vscode-extensions.overlays.default
+          ];
+        }
         home-manager.darwinModules.home-manager {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;

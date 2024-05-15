@@ -5,10 +5,12 @@
   # emacs with zenburn
 
   # changes in each release.
-  home.stateVersion = "23.11";
+  home.stateVersion = "24.05";
 
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
+
+  # https://github.com/nix-community/home-manager/issues/1341#issuecomment-2049723843
 
   home.packages = with pkgs; [
     emacs-nox
@@ -17,13 +19,25 @@
     htop
   ];
 
+  programs.tmux.enable = true;
+  programs.alacritty = {
+    enable = true;
+    settings = {
+      window.decorations = "Buttonless";
+    };
+  };
+
   programs.zsh = {
     enable = true;
     syntaxHighlighting.enable = true;
-
+    sessionVariables = {
+      # https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins/tmux
+      ZSH_TMUX_AUTOSTART = "true";
+      ZSH_TMUX_AUTOCONNECT = "false";
+    };
     oh-my-zsh = {
       enable = true;
-      plugins = [ "direnv" ];
+      plugins = [ "direnv" "tmux" ];
       theme = "robbyrussell";
     };
   };
@@ -34,21 +48,20 @@
     nix-direnv.enable = true;
   };
 
-  # run commands to setup things done with brew etc
-  # no vscode.extensions as that requires install thru nix, but here installed using brew
-  home.activation.install-vscode-extensions = lib.hm.dag.entryAfter ["installPackages"] ''
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-    code --install-extension rust-lang.rust-analyzer
-    code --install-extension ms-python.python 
-    code --install-extension jnoortheen.nix-ide
-  '';
   programs.vscode = {
     enable = true;
+    extensions = with pkgs.open-vsx; [
+      rust-lang.rust-analyzer
+      ms-python.python
+      jnoortheen.nix-ide
+    ] ++ (with pkgs.vscode-marketplace; [
+      ryanolsonx.zenburn
+    ]);
     userSettings = {
       "editor.minimap.autohide" = true;
-      "editor.inlayHints.enabled" = "on";
+      "editor.inlayHints.enabled" = "offUnlessPressed";
 
-      "workbench.colorTheme" =  "Solarized Dark";
+      "workbench.colorTheme" =  "Zenburn";
     };
   };
 
