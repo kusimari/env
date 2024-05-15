@@ -1,8 +1,1 @@
-# env
-personal environment files
-
-shell with solarized dark
-
-tmux
-
-emacs with zenburn
+Follow the rabbit in nix-darwin/flake.nix
