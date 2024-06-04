@@ -15,13 +15,14 @@
     # Package sets
     nixpkgs.url = "github:NixOS/nixpkgs";
     nixpkgs-unstable.url = github:NixOS/nixpkgs/nixpkgs-unstable;
-
-    # Environment/system management
     nix-darwin.url = "github:LnL7/nix-darwin";
     nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
 
+    # home-manager and overlays
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs-unstable";
+
+    alacritty-theme.url = "github:alexghr/alacritty-theme.nix";
 
     nix-vscode-extensions = {
       url = "github:nix-community/nix-vscode-extensions";
@@ -35,10 +36,13 @@
     hostPlatform = "aarch64-darwin";
 
     configuration = { pkgs, ... }: {
-      # enable nix in shell
+      # stuff that nix-darwin init created
       programs.zsh.enable = true;
+      services.nix-daemon.enable = true;
+      nix.settings.experimental-features = "nix-command flakes";
+      system.configurationRevision = self.rev or self.dirtyRev or null;
+      system.stateVersion = 4;
 
-      # add toolbox and brew
       programs.zsh.loginShellInit = ''
         export PATH=$PATH:/Users/${user}/.toolbox/bin
         eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -46,52 +50,35 @@
 
       # Non nixable tools
       nixpkgs.config.allowUnfree = true;
-      homebrew = {
-        enable = true;
-	      onActivation.cleanup = "uninstall";
-        casks = [
-           "raycast"
-        ]; 
-      };
+      homebrew = { enable = true;
+	                 onActivation.cleanup = "uninstall";
+                   casks = [ "raycast"
+                  ];};
 
-      # system wide installations
-      environment.systemPackages = with pkgs; [
-      ];
-
-      # Auto upgrade nix package and the daemon service.
-      services.nix-daemon.enable = true;
-      # Necessary for using flakes on this system.
-      nix.settings.experimental-features = "nix-command flakes";
-      # Set Git commit hash for darwin-version.
-      system.configurationRevision = self.rev or self.dirtyRev or null;
-      # Used for backwards compatibility, please read the changelog before changing.
-      # $ darwin-rebuild changelog
-      system.stateVersion = 4;
+      environment.systemPackages = with pkgs; [];
 
       nixpkgs.hostPlatform = "${hostPlatform}";
 
       # mac specific configs
+      # https://mynixos.com/nix-darwin/option/security.pam.enableSudoTouchIdAuth after system update
+      # reapply nix-darwin configuration
       security.pam.enableSudoTouchIdAuth = true;
     };
-  in
-  {
-    # Build darwin flake using:
-    # $ darwin-rebuild build --flake .#$[hostname]
+  in  {
     darwinConfigurations.${hostName} = nix-darwin.lib.darwinSystem {
       modules = [ 
         configuration
-        {
-          nixpkgs.overlays = [
-            inputs.nix-vscode-extensions.overlays.default
-          ];
-        }
+
+        { nixpkgs.overlays = [ inputs.nix-vscode-extensions.overlays.default
+                               inputs.alacritty-theme.overlays.default
+        ];}
+
         home-manager.darwinModules.home-manager {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
-          users.users.${user} = {
-            name = "${user}";
-            home = "/Users/${user}";
-          };
+          users.users.${user} = { name = "${user}";
+                                  home = "/Users/${user}";
+                                };
           home-manager.users.${user} = import ../home-manager.nix;
         }
       ];

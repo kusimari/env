@@ -1,4 +1,3 @@
-
 ;; ELPA PACKAGES
 (require 'package)
 (add-to-list 'package-archives
@@ -18,6 +17,12 @@
 
 (install-require 'use-package)
 ;; ELPA PACKAGES
+
+
+(defun activate-keys ()
+  ;; (setq x-alt-keysym 'meta) ;; map iterm2 or alacritty keys to send alt on esc
+)
+(activate-keys)
 
 
 (defun activate-mouse-scroll ()
@@ -53,9 +58,9 @@
   (setq-default indent-tabs-mode nil)
   (setq-default tab-width 4)
 
-  (global-linum-mode 1)
-  (setq linum-format "%3d ")
-  (setq column-number-mode t))
+  (global-display-line-numbers-mode t)
+  (setq column-number-mode t)
+)
 (activate-colors-visuals)
 
 
@@ -71,7 +76,9 @@
     :ensure t
     :bind (("C-c N" . neotree-toggle))
     :config
-    (setq neo-smart-open t)))
+    (setq neo-smart-open t))
+  (setq global-auto-revert-model t)
+)
 (activate-general-edit)
     
 
@@ -79,7 +86,7 @@
   (use-package counsel
     :ensure t
     :bind (("M-x" . counsel-M-x)
-           ("C-x C-f" . counsel-find-file)
+           ("C-x C-f" . counsel-file-jump)
            ("C-x b" . ivy-switch-buffer)
            ("M-y" . counsel-yank-pop)
            ("C-s" . swiper-isearch)  ;; M-q for replacing them
@@ -96,9 +103,13 @@
     (counsel-projectile-mode 1))
   (use-package perspective
     :ensure t
-    :config
-    (persp-mode)))
-  ;;(desktop-save-mode 1)
+    :bind
+      ("C-x C-b" . persp-list-buffers)
+    :custom
+      (persp-mode-prefix-key (kbd "C-c M-p"))
+    :init
+      (persp-mode))
+)
 (activate-ivy)
 
 
@@ -108,15 +119,6 @@
     (exec-path-from-shell-initialize))
   (setq shell-command-switch "-ic"))
 (activate-shell-path-from-shell)
-
-
-(defun activate-general-code ()
-  (install-require 'flycheck)
-  (global-flycheck-mode)
-  (install-require 'company)
-  (global-company-mode)
-  (install-require 'yasnippet))
-(activate-general-code)
 
 
 (defun activate-backup-settings ()
@@ -152,18 +154,108 @@
 (activate-backup-settings)
 
 
-(defun activate-python ()
-  (use-package elpy
+(defun activate-general-code ()
+  (use-package flycheck :ensure)
+  (use-package company
+    :ensure
+    :custom
+      (company-idle-delay 0.25))
+  (use-package yasnippet
+    :ensure
+    :config
+      (yas-reload-all)
+      (add-hook 'prog-mode-hook 'yas-minor-mode)
+      (add-hook 'text-mode-hook 'yas-minor-mode))
+  (use-package highlight-indent-guides ;;https://github.com/DarthFennec/highlight-indent-guides
     :ensure t
+    :custom
+      (highlight-indent-guides-method 'character)
+      (highlight-indent-guides-responsive 'stack)
+      (highlight-indent-guides-auto-stack-odd-face-perc 10)
+      (highlight-indent-guides-auto-stack-even-face-perc 20)
+      (highlight-indent-guides-auto-stack-character-face-perc 40)
     :init
-    (setq elpy-rpc-virtualenv-path 'current)
-    (elpy-enable))
+    (progn
+      (add-hook 'prog-mode-hook 'highlight-indent-guides-mode))
+    )
+)
+(activate-general-code)
+
+
+(defun activate-nix ()
+  (use-package nix-mode
+    :ensure
+    :mode ("\\.nix\\'"))
+)
+;; (activate-nix)
+
+
+(defun activate-rust-1 ()
+  (use-package flycheck :ensure t)
+  (use-package flycheck-rust :ensure t)
+  (use-package company :ensure t)
+  (use-package rust-mode :ensure t
+    :config
+    (setq rust-format-on-save t))
+  
+  (setq racer-rust-src-path
+        (concat (string-trim
+                 (shell-command-to-string "rustc --print sysroot"))
+                "/lib/rustlib/src/rust/library/"))
+  (use-package racer :ensure t
+    :requires flycheck-mode
+    :requires company-mode
+    :requires rust-mode
+
+    :config
+    (progn
+      (add-hook 'rust-mode-hook #'racer-mode)
+      (add-hook 'racer-mode-hook #'eldoc-mode)
+      (add-hook 'racer-mode-hook #'company-mode))
+
+  (add-hook 'flycheck-mode-hook #'flycheck-rust-setup)
+  (local-set-key (kbd "TAB") 'company-indent-or-complete-common)
+  (setq-local company-tooltip-align-annotations t))
+)
+
+(defun activate-rust-2 ()
+  (use-package rustic
+    :ensure)
+  (use-package lsp-mode
+    :ensure
+    :commands lsp
+    :custom
+      (lsp-inlay-hint-enable t)
+    :config
+      (add-hook 'lsp-mode-hook 'lsp-ui-mode))
+  (use-package lsp-ui
+    :ensure
+    :commands lsp-ui-mode
+    :custom
+    (lsp-ui-peek-always-show t)
+    (lsp-ui-sideline-show-hover t)
+    (lsp-ui-doc-enable nil))
+)
+
+(defun activate-rust ()
+  (use-package eglot :ensure t)
+)
+(activate-rust)
+
+
+(defun activate-python ()
+  (use-package lsp-jedi :ensure t)
+  ;; (use-package elpy
+  ;;  :ensure t
+  ;;  :init
+  ;;  (setq elpy-rpc-virtualenv-path 'current)
+  ;;  (elpy-enable))
   ;; (use-package company-jedi
   ;;   :ensure t)
   ;; (defun my/python-mode-hook ()
   ;; (add-to-list 'company-backends 'company-jedi))
   ;; (add-hook 'python-mode-hook 'my/python-mode-hook)
-  )
+)
 (activate-python)
 
 
@@ -195,7 +287,7 @@
   (setq js2-strict-missing-semi-warning nil)
   ;; (add-to-list 'load-path "/usr/local/lib/node_modules/tern/emacs/")
   ;; (autoload 'tern-mode "tern.el" nil t)
-  )
+)
 ;;(activate-js)
 
 
@@ -256,34 +348,6 @@
   (install-require 'markdown-mode)
   (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode)))
 ;;(activate-markdown)
-
-(defun activate-rust ()
-  (use-package flycheck :ensure t)
-  (use-package flycheck-rust :ensure t)
-  (use-package company :ensure t)
-  (use-package rust-mode :ensure t
-    :config
-    (setq rust-format-on-save t))
-  
-  (setq racer-rust-src-path
-        (concat (string-trim
-                 (shell-command-to-string "rustc --print sysroot"))
-                "/lib/rustlib/src/rust/library/"))
-  (use-package racer :ensure t
-    :requires flycheck-mode
-    :requires company-mode
-    :requires rust-mode
-
-    :config
-    (progn
-      (add-hook 'rust-mode-hook #'racer-mode)
-      (add-hook 'racer-mode-hook #'eldoc-mode)
-      (add-hook 'racer-mode-hook #'company-mode))
-
-  (add-hook 'flycheck-mode-hook #'flycheck-rust-setup)
-  (local-set-key (kbd "TAB") 'company-indent-or-complete-common)
-  (setq-local company-tooltip-align-annotations t)))
-;;(activate-rust)
 
 
 (defun activate-helm ()

@@ -1,7 +1,6 @@
 { lib, config, pkgs, ... }:
 {
   # shell with solarized dark
-  # tmux
   # emacs with zenburn
 
   # changes in each release.
@@ -13,17 +12,19 @@
   # https://github.com/nix-community/home-manager/issues/1341#issuecomment-2049723843
 
   home.packages = with pkgs; [
-    emacs-nox
     tree
     git
     htop
   ];
 
   programs.tmux.enable = true;
+
   programs.alacritty = {
     enable = true;
+    settings.import = [ pkgs.alacritty-theme.solarized_dark ];
     settings = {
       window.decorations = "Buttonless";
+      window.option_as_alt = "OnlyLeft";
     };
   };
 
@@ -73,4 +74,10 @@
       };
     };
   };
+
+  programs.emacs = {
+    enable = true;
+    package = pkgs.emacs-nox;
+  };
+  home.file.".emacs".source = ./emacs.el;
 }
