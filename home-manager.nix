@@ -1,4 +1,4 @@
-{ lib, config, pkgs, ... }:
+{ config, pkgs, ... }:
 {
   # shell with solarized dark
   # emacs with zenburn
@@ -23,7 +23,7 @@
     enable = true;
     settings.import = [ pkgs.alacritty-theme.solarized_dark ];
     settings = {
-      window.decorations = "Buttonless";
+      window.decorations = "Full";
       window.option_as_alt = "OnlyLeft";
     };
   };
