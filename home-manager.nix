@@ -1,7 +1,6 @@
 { config, pkgs, ... }:
 {
   # shell with solarized dark
-  # emacs with zenburn
 
   # changes in each release.
   home.stateVersion = "24.05";
@@ -80,4 +79,6 @@
     package = pkgs.emacs-nox;
   };
   home.file.".emacs".source = ./emacs.el;
+
+  # dev environment - create flake.nix to get tooling; create .envrc to use flake; direnv allow in the directory
 }

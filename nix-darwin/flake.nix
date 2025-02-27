@@ -52,6 +52,7 @@
       nixpkgs.config.allowUnfree = true;
       homebrew = { enable = true;
 	                 onActivation.cleanup = "uninstall";
+                   onActivation.autoUpdate = true;
                    casks = [ "raycast"
                   ];};
 
