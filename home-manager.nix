@@ -49,6 +49,8 @@
   };
 
   programs.vscode = {
+    # https://github.com/LnL7/nix-darwin/issues/1315
+    # added nix to the "allow full disk access" security list
     enable = true;
     extensions = with pkgs.open-vsx; [
       rust-lang.rust-analyzer
