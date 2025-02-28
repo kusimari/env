@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, nixgl, ... }:
 {
   # shell with solarized dark
 
@@ -7,6 +7,7 @@
 
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
+
 
   # https://github.com/nix-community/home-manager/issues/1341#issuecomment-2049723843
 
@@ -18,6 +19,8 @@
 
   programs.tmux.enable = true;
 
+  # on Ubuntu unfortunately have to run with nixGL
+  # nix run --impure github:nix-community/nixGL -- program
   programs.alacritty = {
     enable = true;
     settings.import = [ pkgs.alacritty-theme.solarized_dark ];
