@@ -48,7 +48,7 @@
     pkgs = nixpkgs.legacyPackages.${system};
 
   in {
-    homeConfigurations."kusimari" = home-manager.lib.homeManagerConfiguration {
+    homeConfigurations."${user}" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
 
         modules = [
@@ -58,8 +58,8 @@
                                   inputs.alacritty-theme.overlays.default ];}
             {
                 
-                home.username = "kusimari";
-                home.homeDirectory = "/home/kusimari";
+                home.username = "${user}";
+                home.homeDirectory = "/home/${user}";
             }
 
             ../home-manager.nix

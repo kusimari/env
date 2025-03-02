@@ -13,7 +13,7 @@
 
   home.packages = with pkgs; [
     tree
-    git
+    git  # todo: set userEmail and userName locally
     htop
   ];
 
