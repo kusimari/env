@@ -1,10 +1,12 @@
 # stuff installed outside nix - brew and toolbox. see their docs, see loginShellInit below
 
 # nix install
-  # curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+  # https://docs.determinate.systems/
+  # gets a determinate pkg for macos installation
 
 # nix setup
-  # nix run nix-darwin -- switch --flake ~/env/nix-darwin
+  # sudo -H nix run nix-darwin -- switch --flake ~/env/nix-darwin
+  #    run darwin as user which is same as user in config-local.nix file 
   # darwin-rebuild switch --flake ~/env/nix-darwin
   # nix flake update
 
@@ -36,9 +38,8 @@
     hostPlatform = "aarch64-darwin";
 
     configuration = { pkgs, ... }: {
-      # stuff that nix-darwin init created
+      nix.enable = false; # determinate needs this
       programs.zsh.enable = true;
-      services.nix-daemon.enable = true;
       nix.settings.experimental-features = "nix-command flakes";
       system.configurationRevision = self.rev or self.dirtyRev or null;
       system.stateVersion = 4;
@@ -48,22 +49,23 @@
         eval "$(/opt/homebrew/bin/brew shellenv)"
       '';
 
-      # Non nixable tools
+      # non nixable tools
       nixpkgs.config.allowUnfree = true;
       homebrew = { enable = true;
+                   user = "${user}";
 	                 onActivation.cleanup = "uninstall";
                    onActivation.autoUpdate = true;
                    casks = [ "raycast"
-                  ];};
+                             "google-chrome"
+                           ];
+                 };
 
       environment.systemPackages = with pkgs; [];
 
       nixpkgs.hostPlatform = "${hostPlatform}";
 
       # mac specific configs
-      # https://mynixos.com/nix-darwin/option/security.pam.enableSudoTouchIdAuth after system update
-      # reapply nix-darwin configuration
-      security.pam.enableSudoTouchIdAuth = true;
+      security.pam.services.sudo_local.touchIdAuth = true;
     };
   in  {
     darwinConfigurations.${hostName} = nix-darwin.lib.darwinSystem {

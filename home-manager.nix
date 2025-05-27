@@ -23,7 +23,7 @@
   # nix run --impure github:nix-community/nixGL -- program
   programs.alacritty = {
     enable = true;
-    settings.import = [ pkgs.alacritty-theme.solarized_dark ];
+    settings.general.import = [ pkgs.alacritty-theme.solarized_dark ];
     settings = {
       window.decorations = "Full";
       window.option_as_alt = "OnlyLeft";
