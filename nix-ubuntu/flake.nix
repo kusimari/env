@@ -42,7 +42,6 @@
       nix.settings.experimental-features = "nix-command flakes";
       nixpkgs.config.allowUnfree = true;
       nix.package = pkgs.nix;
-
     };
 
     pkgs = nixpkgs.legacyPackages.${system};
@@ -54,8 +53,8 @@
         modules = [
             configuration
 
-            {nixpkgs.overlays = [ inputs.nix-vscode-extensions.overlays.default
-                                  inputs.alacritty-theme.overlays.default ];}
+            {nixpkgs.overlays = import ../common-inputs.nix {inputs = inputs;};}
+
             {
                 
                 home.username = "${user}";
