@@ -60,18 +60,19 @@
     # https://github.com/LnL7/nix-darwin/issues/1315
     # added nix to the "allow full disk access" security list
     enable = true;
-    extensions = with pkgs.open-vsx; [
-      rust-lang.rust-analyzer
-      ms-python.python
-      jnoortheen.nix-ide
-    ] ++ (with pkgs.vscode-marketplace; [
-      ryanolsonx.zenburn
-    ]);
-    userSettings = {
-      "editor.minimap.autohide" = true;
-      "editor.inlayHints.enabled" = "offUnlessPressed";
-
-      "workbench.colorTheme" =  "Zenburn";
+    profiles.default = {
+      extensions = with pkgs.open-vsx; [
+        rust-lang.rust-analyzer
+        ms-python.python
+        jnoortheen.nix-ide
+      ] ++ (with pkgs.vscode-marketplace; [
+        ryanolsonx.zenburn
+      ]);
+      userSettings = {
+        "editor.minimap.autohide" = true;
+        "editor.inlayHints.enabled" = "offUnlessPressed";
+        "workbench.colorTheme" =  "Zenburn";
+      };
     };
   };
 
