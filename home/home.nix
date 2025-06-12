@@ -67,6 +67,7 @@
         jnoortheen.nix-ide
       ] ++ (with pkgs.vscode-marketplace; [
         ryanolsonx.zenburn
+        saoudrizwan.claude-dev
       ]);
       userSettings = {
         "editor.minimap.autohide" = true;
