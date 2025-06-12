@@ -21,6 +21,7 @@
 
   # on Ubuntu unfortunately have to run with nixGL
   # nix run --impure github:nix-community/nixGL -- program
+  # but that ain't functional too
   programs.alacritty = {
     enable = true;
     settings.general.import = [ pkgs.alacritty-theme.solarized_dark ];
@@ -83,7 +84,5 @@
     enable = true;
     package = pkgs.emacs-nox;
   };
-  home.file.".emacs".source = ./emacs.el;
-
-  # dev environment - create flake.nix to get tooling; create .envrc to use flake; direnv allow in the directory
+  # home.file.".emacs".source = ./emacs.el;
 }

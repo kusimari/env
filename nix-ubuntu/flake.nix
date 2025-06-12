@@ -62,7 +62,7 @@
                 home.homeDirectory = "/home/${user}";
             }
 
-            ../home-manager.nix
+            ../home/home.nix
         ];
       };
     };

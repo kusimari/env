@@ -82,7 +82,7 @@
           users.users.${user} = { name = "${user}";
                                   home = "/Users/${user}";
                                 };
-          home-manager.users.${user} = import ../home-manager.nix;
+          home-manager.users.${user} = import ../home/home.nix;
         }
       ];
     };
