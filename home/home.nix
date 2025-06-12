@@ -15,6 +15,9 @@
     tree
     git  # todo: set userEmail and userName locally
     htop
+
+    rclone
+    exiftool
   ];
 
   programs.tmux.enable = true;
@@ -44,6 +47,7 @@
       plugins = [ "direnv" "tmux" ];
       theme = "robbyrussell";
     };
+    completionInit = "rclone completion zsh";
   };
 
   programs.direnv = {
