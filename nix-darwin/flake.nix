@@ -72,9 +72,7 @@
       modules = [ 
         configuration
 
-        { nixpkgs.overlays = [ inputs.nix-vscode-extensions.overlays.default
-                               inputs.alacritty-theme.overlays.default
-        ];}
+        {nixpkgs.overlays = import ../common-inputs.nix {inputs = inputs;};}
 
         home-manager.darwinModules.home-manager {
           home-manager.useGlobalPkgs = true;
