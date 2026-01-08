@@ -3,7 +3,7 @@
   # shell with solarized dark
 
   # changes in each release.
-  home.stateVersion = "24.05";
+  home.stateVersion = "25.05";
 
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
@@ -59,7 +59,7 @@
   programs.vscode = {
     # https://github.com/LnL7/nix-darwin/issues/1315
     # added nix to the "allow full disk access" security list
-    enable = true;
+    enable = false;
     profiles.default = {
       extensions = with pkgs.open-vsx; [
         rust-lang.rust-analyzer
@@ -79,9 +79,13 @@
 
   programs.ssh = {
     enable = true;
+    enableDefaultConfig = false;
     matchBlocks = {
       "github.com" = {
         identityFile = "~/.ssh/github_id";
+      };
+      "*" = {
+        identityFile = "~/.ssh/amazon_id_ecdsa";
       };
     };
   };
@@ -90,5 +94,6 @@
     enable = true;
     package = pkgs.emacs-nox;
   };
-  # home.file.".emacs".source = ./emacs.el;
+  # emacs -q -l <el-file> to stop loading and default and use given .emacs file
+  home.file.".emacs".source = ./emacs.el;
 }

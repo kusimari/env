@@ -2,12 +2,12 @@
 
 # nix install
   # https://docs.determinate.systems/
-  # gets a determinate pkg for macos installation
+  # get a determinate pkg for macos installation
 
 # nix setup
+  # run darwin as user which is same as user in config-local.nix file. that's what -H does for sudo
   # sudo -H nix run nix-darwin -- switch --flake ~/env/nix-darwin
-  #    run darwin as user which is same as user in config-local.nix file 
-  # darwin-rebuild switch --flake ~/env/nix-darwin
+  # sudo -H nix run nix-darwin/nix-darwin-25.05#darwin-rebuild -- switch --flake ~/env/nix-darwin
   # nix flake update
 
 {
@@ -16,19 +16,22 @@
   inputs = {
     # Package sets
     nixpkgs.url = "github:NixOS/nixpkgs";
-    nixpkgs-unstable.url = github:NixOS/nixpkgs/nixpkgs-unstable;
-    nix-darwin.url = "github:LnL7/nix-darwin";
-    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+    nix-darwin = {
+      url = "github:LnL7/nix-darwin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     # home-manager and overlays
-    home-manager.url = "github:nix-community/home-manager";
-    home-manager.inputs.nixpkgs.follows = "nixpkgs-unstable";
-
-    alacritty-theme.url = "github:alexghr/alacritty-theme.nix";
-
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    alacritty-theme = {
+      url = "github:alexghr/alacritty-theme.nix";
+    };
     nix-vscode-extensions = {
       url = "github:nix-community/nix-vscode-extensions";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
@@ -38,41 +41,52 @@
     hostPlatform = "aarch64-darwin";
 
     configuration = { pkgs, ... }: {
-      nix.enable = false; # determinate needs this
-      programs.zsh.enable = true;
-      nix.settings.experimental-features = "nix-command flakes";
-      system.configurationRevision = self.rev or self.dirtyRev or null;
-      system.stateVersion = 4;
+      nix = {
+        enable = false; # determinate needs this
+        settings.experimental-features = "nix-command flakes";
+      };
+      system = {
+        configurationRevision = self.rev or self.dirtyRev or null;
+        stateVersion = 4;
+      };
 
-      programs.zsh.loginShellInit = ''
-        export PATH=$PATH:/Users/${user}/.toolbox/bin
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-      '';
+      programs.zsh = {
+        enable = true;
+        loginShellInit = ''
+                export PATH=$PATH:/Users/${user}/.toolbox/bin
+                        eval "$(/opt/homebrew/bin/brew shellenv)"
+        '';
+      };
 
       # non nixable tools
       nixpkgs.config.allowUnfree = true;
-      homebrew = { enable = true;
-                   user = "${user}";
-	                 onActivation.cleanup = "uninstall";
-                   onActivation.autoUpdate = true;
-                   casks = [ "raycast"
-                             "google-chrome"
-                           ];
-                 };
+      nixpkgs.hostPlatform = "${hostPlatform}";
+      
+      homebrew = {
+        enable = true;
+        user = "${user}";
+        onActivation.cleanup = "uninstall";
+        onActivation.autoUpdate = true;
+        casks = [
+          "raycast"
+          "google-chrome"
+          "porting-kit"
+        ];
+      };
 
       environment.systemPackages = with pkgs; [];
 
-      nixpkgs.hostPlatform = "${hostPlatform}";
-
       # mac specific configs
       security.pam.services.sudo_local.touchIdAuth = true;
+
+
     };
   in  {
     darwinConfigurations.${hostName} = nix-darwin.lib.darwinSystem {
       modules = [ 
-        configuration
-
         {nixpkgs.overlays = import ../common-inputs.nix {inputs = inputs;};}
+
+        configuration
 
         home-manager.darwinModules.home-manager {
           home-manager.useGlobalPkgs = true;
