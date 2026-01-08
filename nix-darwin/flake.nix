@@ -37,7 +37,7 @@
 
   outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager, ... }:
   let
-    inherit (import ../config-local.nix) user hostName;
+    inherit (import ../not-in-git/user-host.nix) user hostName;
     hostPlatform = "aarch64-darwin";
 
     configuration = { pkgs, ... }: {

@@ -96,4 +96,5 @@
   };
   # emacs -q -l <el-file> to stop loading and default and use given .emacs file
   home.file.".emacs".source = ./emacs.el;
+
 }
