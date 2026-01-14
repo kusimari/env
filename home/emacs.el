@@ -123,7 +123,7 @@
 (activate-backup-settings)
 
 
-;; minibuffer completion setup - ivy, helm, not tried vertico
+;; minibuffer completion setup - ivy, helm
 (defun activate-ivy ()
   (use-package ivy  ;; replace emacs default ido completion
     :ensure t
@@ -158,8 +158,7 @@
     :init
       (persp-mode))
 )
-(activate-ivy)
-
+;;(activate-ivy)
 
 (defun activate-helm ()
   ;;(install-require 'sr-speedbar)
@@ -195,6 +194,36 @@
 
 )
 ;;(activate-helm)
+
+;; minibuffer completion setup - modern vertico stack
+(defun activate-vertico-minimal ()
+  "Minimal modern completion stack: Vertico + Orderless + Consult"
+
+  ;; Vertico - vertical completion UI
+  (use-package vertico
+    :ensure t
+    :init
+    (vertico-mode 1))
+
+  ;; Orderless - flexible completion matching with space-separated patterns
+  (use-package orderless
+    :ensure t
+    :custom
+    (completion-styles '(orderless basic))
+    (completion-category-defaults nil)
+    (completion-category-overrides '((file (styles partial-completion)))))
+
+  ;; Consult - enhanced commands
+  (use-package consult
+    :ensure t
+    :bind (
+      ;; Project-wide file finding
+      ("C-c f" . consult-find)     ;; find files recursively from current directory
+      ("C-c F" . consult-fd)       ;; same but uses 'fd' if available (faster)
+      )))
+
+(activate-vertico-minimal)
+
 
 
 (defun activate-general-code ()
