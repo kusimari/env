@@ -87,8 +87,6 @@
       modules = [ 
         {nixpkgs.overlays = import ../common-inputs.nix {inputs = inputs;};}
 
-        {nixpkgs.overlays = [inputs.claude-code.overlays.default];}
-
         configuration
 
         home-manager.darwinModules.home-manager {
