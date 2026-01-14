@@ -33,9 +33,10 @@
       url = "github:nix-community/nix-vscode-extensions";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    claude-code.url = "github:sadjow/claude-code-nix";
   };
 
-  outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager, ... }:
+  outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager,  ... }:
   let
     inherit (import ../not-in-git/user-host.nix) user hostName;
     hostPlatform = "aarch64-darwin";
@@ -85,6 +86,8 @@
     darwinConfigurations.${hostName} = nix-darwin.lib.darwinSystem {
       modules = [ 
         {nixpkgs.overlays = import ../common-inputs.nix {inputs = inputs;};}
+
+        {nixpkgs.overlays = [inputs.claude-code.overlays.default];}
 
         configuration
 

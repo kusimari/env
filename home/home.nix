@@ -18,6 +18,8 @@
 
     rclone
     exiftool
+
+    pkgs.claude-code
   ];
 
   programs.tmux.enable = true;
