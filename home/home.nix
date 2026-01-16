@@ -15,6 +15,8 @@
     tree
     git  # todo: set userEmail and userName locally
     htop
+    ripgrep  # also used by emacs consult
+    fd       # also used by emacs consult
 
     rclone
     exiftool

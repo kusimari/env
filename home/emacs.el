@@ -196,14 +196,17 @@
 ;;(activate-helm)
 
 ;; minibuffer completion setup - modern vertico stack
-(defun activate-vertico-minimal ()
-  "Minimal modern completion stack: Vertico + Orderless + Consult"
+(defun activate-vertico ()
+  "Modern completion stack: Vertico + Orderless + Consult + Marginalia"
 
   ;; Vertico - vertical completion UI
   (use-package vertico
     :ensure t
     :init
-    (vertico-mode 1))
+    (vertico-mode 1)
+    :custom
+    (vertico-count 20)  ;; Show more candidates
+    (vertico-resize t)) ;; Resize minibuffer to fit content
 
   ;; Orderless - flexible completion matching with space-separated patterns
   (use-package orderless
@@ -213,17 +216,75 @@
     (completion-category-defaults nil)
     (completion-category-overrides '((file (styles partial-completion)))))
 
+  ;; Marginalia - rich annotations in minibuffer
+  (use-package marginalia
+    :ensure t
+    :bind (:map minibuffer-local-map
+           ("M-A" . marginalia-cycle))  ;; Cycle through different annotation modes
+    :init
+    (marginalia-mode 1))
+
   ;; Consult - enhanced commands
   (use-package consult
     :ensure t
     :bind (
-      ;; Project-wide file finding
-      ("C-c f" . consult-find)     ;; find files recursively from current directory
-      ("C-c F" . consult-fd)       ;; same but uses 'fd' if available (faster)
-      )))
+      ("C-x b" . consult-buffer)          ;; Enhanced buffer switching with recent files
+      ("C-x 4 b" . consult-buffer-other-window) ;; Buffer in other window
+      ("C-x r b" . consult-bookmark)      ;; Browse bookmarks
+      ;; find files/project
+      ("C-c f" . consult-fd)              ;; Find files with fd (faster)
 
-(activate-vertico-minimal)
+      ;; search open buffers
+      ("C-s" . consult-line)              ;; Replace default search (optional - comment out to keep isearch)
+      ("C-c s" . consult-line-multi)      ;; Search across multiple buffers
+      ;; search across project
+      ("C-c g" . consult-ripgrep)         ;; Search content across project
+      ("C-c G" . consult-grep)            ;; Grep search (fallback)
 
+      ;; Navigate by structure
+      ("M-g o" . consult-outline)         ;; Jump to headings/outline
+      ("M-g i" . consult-imenu)           ;; Jump to functions/classes in current file
+      ("M-g l" . consult-goto-line)       ;; Enhanced goto-line
+
+      ;; Enhanced kill ring
+      ("M-y" . consult-yank-pop)          ;; Enhanced yank-pop with search
+
+      ;; History
+      ("C-c h" . consult-history)         ;; Command history
+      )
+    :config
+    ;; Configure preview for search commands
+    (consult-customize
+     consult-ripgrep consult-git-grep consult-grep
+     consult-bookmark consult-recent-file
+     :preview-key '(:debounce 0.4 any))
+
+    ;; Use fd if available for faster file finding
+    (when (executable-find "fd")
+      (setq consult-find-args "fd --color=never --full-path")))
+
+  ;; Embark - contextual actions on completion targets (terminal-friendly keybindings)
+  (use-package embark
+    :ensure t
+    :bind (("C-c a" . embark-act)         ;; Pick an action to perform
+           ("C-c d" . embark-dwim)        ;; Default action (do what I mean)
+           ("C-c B" . embark-bindings))   ;; Show all available actions
+    :init
+    ;; Optionally replace the key help with a completing-read interface
+    (setq prefix-help-command #'embark-prefix-help-command)
+    :config
+    ;; Hide the mode line of the Embark live/completions buffers
+    (add-to-list 'display-buffer-alist
+                 '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+                   nil
+                   (window-parameters (mode-line-format . none)))))
+
+  ;; Embark-Consult - enhanced integration between Embark and Consult
+  (use-package embark-consult
+    :ensure t
+    :hook (embark-collect-mode . consult-preview-at-point-mode))
+)
+(activate-vertico)
 
 
 (defun activate-general-code ()
