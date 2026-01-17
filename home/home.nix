@@ -21,7 +21,8 @@
     rclone
     exiftool
 
-    pkgs.claude-code
+    claude-code
+    gemini-cli-bin
   ];
 
   programs.tmux.enable = true;
