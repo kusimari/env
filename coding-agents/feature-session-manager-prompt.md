@@ -2,6 +2,15 @@
 
 I am usually invoked when the user says "Load the text in feature-session-manager-prompt.md, and follow it to create a new session file for feature '[feature-name]' in location 'location'", follow these instructions:
 
+## 1. Prompt for feature-name and location
+- Prompt to accept feature-name and location if not provided
+
+## 2. Create git branch
+- Check if the git branch name we are working on is the same as feature-name
+- If the branch name and feature-name, then ask the user if they want to create a git branch with feature-name
+- Create the git branch named feature-name based on the above
+- If the branch name is the same as feature-name, then do nothing
+
 ## 1. Create New Session File
 - Use the template below (inline in this file)
 - Create a new session file at the directory 'location' with the file name 'feature-name'.md
