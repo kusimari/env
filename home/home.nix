@@ -25,7 +25,16 @@
     gemini-cli-bin
   ];
 
-  programs.tmux.enable = true;
+  programs.tmux = {
+    enable = true;
+    extraConfig = ''
+      set -g pane-active-border-style fg=yellow
+      set -g pane-border-lines double
+      set -g pane-border-indicators arrows
+      set -g pane-border-status top
+      set -g pane-border-format " #P #{pane_current_path} "
+    '';
+  };
 
   # on Ubuntu unfortunately have to run with nixGL
   # nix run --impure github:nix-community/nixGL -- program
