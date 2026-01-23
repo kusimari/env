@@ -1,13 +1,3 @@
-# stuff installed outside nix - zsh with chsh of user
-
-# nix install
-  # curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
-
-# nix setup
-  # nix run home-manager/master -- init --switch ~/env/nix-ubuntu/
-  # home-manager switch --flake ~/env/nix-ubuntu/
-  # nix flake update
-
 {
   description = "Juice's ubuntu system";
 
@@ -34,7 +24,7 @@
 
   outputs = inputs@{ self, nixpkgs, home-manager, ... }:
   let
-    inherit (import ../config-local.nix) user hostName;
+    inherit (import ../home/user-host.nix) user hostName;
     system = "x86_64-linux";
 
     configuration = { pkgs, ... }: {

@@ -1,15 +1,3 @@
-# stuff installed outside nix - brew and toolbox. see their docs, see loginShellInit below
-
-# nix install
-  # https://docs.determinate.systems/
-  # get a determinate pkg for macos installation
-
-# nix setup
-  # run darwin as user which is same as user in config-local.nix file. that's what -H does for sudo
-  # sudo -H nix run nix-darwin -- switch --flake ~/env/nix-darwin
-  # sudo -H nix run nix-darwin/nix-darwin-25.05#darwin-rebuild -- switch --flake ~/env/nix-darwin
-  # nix flake update
-
 {
   description = "Juice's darwin system";
 
@@ -38,7 +26,7 @@
 
   outputs = inputs@{ self, nixpkgs, nix-darwin, home-manager,  ... }:
   let
-    inherit (import ../not-in-git/user-host.nix) user hostName;
+    inherit (import ../home/user-host.nix) user hostName;
     hostPlatform = "aarch64-darwin";
 
     configuration = { pkgs, ... }: {
