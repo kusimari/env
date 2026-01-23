@@ -1,14 +1,16 @@
 # Feature Session Manager - AI Instructions
 
-I am usually invoked when the user says "Load the text in feature-session-manager-prompt.md, and follow it to create a new session file for feature '[feature-name]' in location 'location'", follow these instructions:
+I am usually invoked when the user says "Load the text in feature-session-creation-prompt.md, and follow it to create a new session file for feature '[feature-name]' in location 'location' from commit-ish 'commit-ish'", follow these instructions:
 
-## 1. Prompt for feature-name and location
-- Prompt to accept feature-name and location if not provided
+## 1. Prompt for feature-name, location, and commit-ish
+- Prompt to accept feature-name, location, and commit-ish if not provided
+- commit-ish can be a branch name (like 'main', 'develop'), commit hash, or tag
 
-## 2. Create git branch
+## 2. Create git branch with worktree
 - Check if the git branch name we are working on is the same as feature-name
-- If the branch name and feature-name, then ask the user if they want to create a git branch with feature-name
-- Create the git branch named feature-name based on the above
+- If the branch name and feature-name are different, show the user the exact git command that will be executed: `git worktree add feature-name feature-name commit-ish`
+- Ask the user to confirm before executing the git command
+- Execute the git worktree command only after user confirmation
 - If the branch name is the same as feature-name, then do nothing
 
 ## 1. Create New Session File

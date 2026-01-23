@@ -23,7 +23,7 @@ A generic wrapper script to start an AI coding agent (such as `gemini` or `claud
 ~/env/coding-agents/session.sh gemini ~/env/coding-agents-aided-features/new-feature.md
 ```
 
-### `feature-session-manager-prompt.md`
+### `feature-session-creation-prompt.md`
 A prompt template used to bootstrap new feature sessions.
 
 **Usage:**
