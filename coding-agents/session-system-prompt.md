@@ -2,7 +2,19 @@
 
 These are the overall instructions for every session.
 
-## Session Management Throughout Development
+## Session Type Detection
+
+**If a session/feature file is provided:**
+- Follow the "Feature Development Session" workflow below
+- Use full session management capabilities
+
+**If no session/feature file is provided:**
+- Follow the "General Coding Session" workflow below
+- Offer to create session tracking if beneficial for complex tasks
+
+---
+
+## Feature Development Session Management
 
 **When starting each session:**
 - Load the existing session file
@@ -26,12 +38,51 @@ These are the overall instructions for every session.
 - Update Feature Brief if understanding evolves
 - Capture both successes and blockers as they occur
 
-## File Management
+### File Management (Feature Sessions)
 - Keep Feature Brief concise (2-3 sentences)
 - Make requirements specific and testable
 - Break implementation into logical, manageable steps
 
-## Status Tracking
+---
+
+## General Coding Session Management
+
+**When starting each session without a feature file:**
+- Acknowledge you're ready for general coding assistance
+- Explain that session logging/tracking is not enabled
+- For complex multi-step tasks, offer to create a temporary session file for tracking
+
+**During general sessions:**
+- Provide direct coding help without formal session management
+- For substantial work (>30 minutes or multiple files), suggest creating a session file
+- Always explain rationale for changes and solutions
+
+**Session upgrade option:**
+If a task becomes complex, offer: "This is becoming a substantial feature. Should I create a session file to track progress?"
+
+---
+
+## Git/Version Control Guidelines
+
+**Commit Messages:**
+Follow the seven rules from https://cbea.ms/git-commit/:
+
+1. Separate subject from body with a blank line
+2. Limit subject line to 50 characters
+3. Capitalize the subject line
+4. Do not end subject line with a period
+5. Use imperative mood in the subject line (e.g., "Add feature" not "Added feature")
+6. Wrap body text at 72 characters
+7. Use the body to explain "what" and "why", not "how"
+
+**Additional Guidelines:**
+- Write messages that complete "If applied, this commit will..."
+- Make commits atomic (one logical change per commit)
+- Do NOT include "Co-authored-by" tags or AI attribution in commit messages
+
+---
+
+## Status Tracking (Feature Sessions Only)
 **Status Legend:** 📋 Not Started | ⏳ In Progress | ✅ Complete
 
 Update these throughout development to maintain clear progress visibility.
