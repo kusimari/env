@@ -1,5 +1,10 @@
 { config, pkgs, nixgl, ... }:
 {
+  # Import custom modules directly
+  imports = [
+    ../gittree/gittree-module.nix
+  ];
+
   # shell with solarized dark
 
   # changes in each release.
@@ -110,5 +115,11 @@
   };
   # emacs -q -l <el-file> to stop loading and default and use given .emacs file
   home.file.".emacs".source = ../emacs/core.el;
+
+  # Terminal Live Git Diff - Enhanced git workflow with lazygit
+  programs.gittree = {
+    enable = true;
+    commandName = "lg";
+  };
 
 }

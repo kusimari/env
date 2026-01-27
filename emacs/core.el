@@ -347,6 +347,17 @@ In both cases, :demand t is set to ensure the package is loaded."
 
 
 ;;; -----------------------------------------------------------------
+;;; SECTION: Git Integration (Lazygit + Magit)
+;;;
+;;; WHY-CORE: Enhanced git workflow with side-by-side diffs and
+;;; seamless magit integration. Loaded from separate core-gittree.el module.
+;;; -----------------------------------------------------------------
+(let ((gittree-path (concat (file-name-directory (or load-file-name buffer-file-name)) "core-gittree.el")))
+  (load-file gittree-path))
+(activate-gittree-integration)
+
+
+;;; -----------------------------------------------------------------
 ;;; SECTION: Project-Specific Module Loader
 ;;;
 ;;; WHY-CORE: This block enables project-specific modularity. It checks

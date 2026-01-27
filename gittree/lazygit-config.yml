@@ -1,0 +1,50 @@
+# Config optimized for branch/commit diffing workflow
+gui:
+  # File tree and diff panel layout
+  sidePanelWidth: 0.25 # Wider file tree for better file navigation
+  showFileTree: true # Essential for file navigation in diff mode
+  # Diff-focused UI
+  showBottomLine: true # Show key bindings
+  showListFooter: true # Show file counts
+  showRandomTip: false # Remove distractions
+  showBranchCommitHash: true # Show commit hashes for reference
+git:
+  # Enhanced side-by-side diff display via delta
+  pagers:
+    - colorArg: always
+      pager: delta --dark --side-by-side --line-numbers --paging=never
+  # Diff context for better comparison visibility
+  diffContextSize: 5 # More context lines around changes
+  # Branch and commit display
+  branchLogCmd: 'git log --graph --color=always --abbrev-commit --decorate --date=relative --pretty=medium {{branchName}} --'
+  # Keep auto-refresh for live updates during diff sessions
+  autoRefresh: true
+  autoFetch: false
+# Key bindings for diff workflow
+keybinding:
+  universal:
+    # Panel navigation (numbers 0-9 work by default)
+    togglePanel: '<tab>' # Switch between file list and diff panel
+    # Diff context control
+    increaseContextInDiffView: '}'
+    decreaseContextInDiffView: '{'
+    # File view toggle
+    nextScreenMode: '+' # Cycle through screen modes (diff -> file content -> etc)
+    prevScreenMode: '_' # Cycle backward through screen modes
+# Custom commands for enhanced workflow
+customCommands:
+  - key: 'V'
+    command: 'cat {{.SelectedFile.Name}}'
+    description: 'View current file content (no diff)'
+    context: 'files'
+    output: terminal
+  - key: 'E'
+    command: 'emacs -q -l "/Users/gorantls/env/feature/terminal-live-git-diff/emacs/core.el" "{{.SelectedFile.Name}}" -eval "(condition-case nil (ediff-revision (buffer-file-name) \"\") (error (magit-diff-buffer-file)))"'
+    description: 'TEMP TEST: Open file with side-by-side git diff'
+    context: 'files'
+    output: terminal
+refresher:
+  refreshInterval: 10 # Auto-refresh every 10 seconds
+# Reduce startup distractions
+disableStartupPopups: true
+confirmOnQuit: false

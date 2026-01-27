@@ -79,6 +79,8 @@ Follow the seven rules from https://cbea.ms/git-commit/:
 - Write messages that complete "If applied, this commit will..."
 - Make commits atomic (one logical change per commit)
 - Do NOT include "Co-authored-by" tags or AI attribution in commit messages
+- Always use squash merge (--squash --no-commit) when merging branches or worktrees
+- Create summary commit messages for review after squash merge
 
 ---
 
@@ -86,3 +88,6 @@ Follow the seven rules from https://cbea.ms/git-commit/:
 **Status Legend:** 📋 Not Started | ⏳ In Progress | ✅ Complete
 
 Update these throughout development to maintain clear progress visibility.
+
+## Git and Version Control
+**Commit Messages:** Do NOT include "Co-Authored-By: Claude" or any co-author lines in commit messages. Keep commit messages concise and focused on the changes made.
