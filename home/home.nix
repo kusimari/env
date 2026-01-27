@@ -27,13 +27,9 @@
 
   programs.tmux = {
     enable = true;
-    extraConfig = ''
-      set -g pane-active-border-style fg=yellow
-      set -g pane-border-lines double
-      set -g pane-border-indicators arrows
-      set -g pane-border-status top
-      set -g pane-border-format " #P #{pane_current_path} "
-    '';
+    # To test config changes without rebuilding:
+    # tmux source-file <tmux.conf-path>
+    extraConfig = builtins.readFile ./tmux.conf;
   };
 
   # on Ubuntu unfortunately have to run with nixGL

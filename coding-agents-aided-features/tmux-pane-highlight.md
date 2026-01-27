@@ -1,51 +1,60 @@
-# Tmux Pane Highlighting
+# tmux-pane-highlight
 
 ## How to use this session file
-This file tracks the progress of the "Tmux Pane Highlighting" feature.
-- **When starting:** Read this file to understand the current state, requirements, and plan.
-- **During work:** Update the "Implementation Plan" status (📋 -> ⏳ -> ✅) as you complete steps.
-- **When ending:** Add a new entry to the "Session Log" with the date, achievements, and current status. Update the requirements if they change.
+
+This session file is designed to guide the development of the tmux-pane-highlight feature. A coding agent should:
+
+1. Read through the Feature Brief and Requirements to understand what needs to be built
+2. Follow the Implementation Plan step by step, updating status indicators as progress is made
+3. Log each work session with achievements and current status
+4. Add useful references and resources as they are discovered
+5. Update requirements and implementation steps as the scope becomes clearer
+
+The agent should work systematically through each step, testing thoroughly, and maintaining clear documentation of progress and decisions made.
 
 ## Feature Brief
-Highlight the active pane in tmux to make it easily distinguishable from inactive panes. This improves visibility and reduces confusion when working with multiple panes.
+Enhanced tmux configuration with distinctive visual highlighting of the active pane using white borders and orange "● ACTIVE" status indicators, plus mouse support for convenient pane management. Improves productivity by making it immediately clear which pane has focus while maintaining compatibility with applications like Emacs that have their own color schemes.
 
 ## Requirements
-- [x] Configure `pane-active-border-style` to `fg=yellow` for the active pane.
-- [x] Use `pane-border-lines double` for inactive pane borders.
-- [x] Display `pane-border-indicators` as `arrows`.
-- [x] Set `pane-border-status` to `top` to create a header for each pane.
-- [x] Configure `pane-border-format` to show the pane number and current path (`" #P #{pane_current_path}"`).
-- [x] Implement configuration via Home Manager in `home/home.nix`.
-- [x] Verify changes.
+- [x] Update home/home.nix tmux extraConfig to enhance border styling
+- [x] Make active pane borders more prominent (brighter, bolder)
+- [x] Dim inactive pane borders to create visual contrast
+- [x] Ensure enhanced borders work well with existing double-line and arrow styling
+- [x] Maintain compatibility with applications like Emacs that have their own color schemes
+- [x] Add mouse support for convenient pane focusing and management
+- [ ] Test the configuration works properly after home-manager rebuild
 
 ## Implementation Plan
-1. ✅ **Analyze Configuration** - Confirm tmux is managed via Home Manager in `home/home.nix`.
-2. ✅ **Modify Configuration** - Update `home/home.nix` with `extraConfig` to set pane styles.
-3. ✅ **Verify & Apply** - Changes applied to `home/home.nix`. User rebuilt and reloaded.
-4. ✅ **Enhance Border** - Enabled `pane-border-status top`.
-5. ✅ **Refine Styling** - Iterated on styling to reach final configuration.
+1. ✅ **Research tmux pane styling options** - Identified `window-style` (inactive panes) and `window-active-style` (active pane) configuration options
+2. ✅ **Analyze current color scheme** - Decided to avoid background colors due to potential conflicts with applications like Emacs; will enhance border styling instead
+3. ✅ **Extract and update tmux config** - Separated tmux configuration into tmux.conf file and updated home.nix to use builtins.readFile
+4. ✅ **Test and verify** - Tested multiple configuration options, finalized white borders + orange status + mouse support
 
 **Status Legend:** 📋 Not Started | ⏳ In Progress | ✅ Complete
 
-## Testing Instructions
-You can test the tmux configuration by rebuilding your home manager or darwin environment:
-
-```bash
-# Apply via Home Manager / Darwin
-darwin-rebuild switch
-# or
-home-manager switch
-```
-
-Then restart tmux or reload the config:
-```bash
-tmux source-file ~/.config/tmux/tmux.conf
-# or simply kill the server and restart
-tmux kill-server && tmux
-```
-
 ## Session Log
-### 2026-01-20 - Final Configuration
+<!-- Instructions: Add entry for each work session. Newest at top -->
+
+### 2026-01-26 - Session Files Consolidated
+- Merged two duplicate session files (tmux-pane-highlight.md and feature-tmux-pane-highlight.md) into single comprehensive file
+- Preserved complete development history from basic yellow borders to enhanced white borders + orange status
+- Updated session to reflect current enhanced state with white borders, orange status, and mouse support
+
+### 2026-01-23 - Feature Complete: Enhanced Pane Highlighting + Mouse Support
+- Created git worktree for feature/tmux-pane-highlight branch
+- Created session file with feature brief and requirements
+- Analyzed existing tmux configuration in home/home.nix (lines 28-37)
+- Identified current setup: yellow active borders, double lines, arrows, border status on top
+- Researched tmux pane styling options (window-style vs window-active-style)
+- Decided against background colors due to potential conflicts with applications like Emacs
+- Extracted tmux configuration to separate tmux.conf file and updated home.nix with builtins.readFile
+- Tested multiple border enhancement options (cyan, magenta, green, orange themes)
+- Finalized design: **White borders + Orange "● ACTIVE" status** for maximum distinction
+- Fixed tmux conditional formatting syntax issues for proper spacing
+- Added **mouse support** (`set -g mouse on`) for convenient pane focusing and management
+- **Status: Feature complete** - Ready for home-manager rebuild when desired
+
+### 2026-01-20 - Final Configuration (Previous Iteration)
 - **Action:** Finalized tmux configuration in `home/home.nix` based on user feedback.
 - **Goal:** Implement a clear and functional pane highlighting scheme.
 - **Final Configuration:**
@@ -88,45 +97,7 @@ tmux kill-server && tmux
 - **Next Step (Manual):** User will manually test the configuration via `darwin-rebuild switch`.
 - **Pending Task:** Once verified, move the `extraConfig` to a separate `home/tmux.conf` file and load it using `builtins.readFile` (or similar) to keep `home.nix` clean.
 
-### 2026-01-17 - Restart: Fresh Implementation
-- **Action:** Removed `home/tmux.conf`. User cleared `extraConfig` in `home/home.nix`.
-- **Goal:** Implement pane highlighting requirements from scratch.
-- **Current State:** Clean slate. Ready to implement `extraConfig` in `home/home.nix`.
-
-### 2026-01-17 - REVERTED: Back to Inline extraConfig
-- **Test Result:** Darwin rebuild with `builtins.readFile ./tmux.conf` approach **FAILED**
-- **Action Taken:** Reverted to inline `extraConfig` in `home/home.nix`
-  - Removed `builtins.readFile ./tmux.conf`
-  - Added inline tmux configuration directly in `extraConfig = ''...''`
-  - Configuration includes: pane border styling + `pane-border-status top`
-- **Current State:** Ready for testing with darwin rebuild
-- **Next Step:** Run `darwin-rebuild switch` to test if inline config works properly
-
-**🚨 PENDING: Test darwin rebuild with inline extraConfig to confirm functionality**
-
-### 2026-01-17 - Simplification: External Config & Yellow Background
-- **Objective:** Simplify config and enable easier testing without full system rebuild.
-- **Changes:**
-  - Created separate `tmux.conf` file in `/Users/gorantls/env/home/` for easier testing
-  - Simplified to focus on just top border with yellow background (like tmux status line)
-  - Updated `home.nix` to use `builtins.readFile ./tmux.conf` instead of inline `extraConfig`
-  - Added testing instructions to session file
-- **Benefits:**
-  - Can test config directly with `tmux -f /path/to/tmux.conf new-session`
-  - No need to rebuild entire darwin/home-manager for config tweaks
-  - Yellow background provides better visual distinction like status line
-- **Current status:** Ready for testing. Config available at `/Users/gorantls/env/home/tmux.conf`
-
-### 2026-01-17 - Enhancement: Border Visibility
-- **Feedback:** User wants a "full surround" line (top, bottom, left, right).
-- **Research:** Tmux shares borders. Native "outer" borders (left/right edges of terminal) aren't supported.
-- **Decision:** Enable `pane-border-status top`. This puts a line at the top of *every* pane (including the top-most one).
-    - This creates a "header" for each pane.
-    - The bottom of the top pane (which is the top of the bottom pane) is already drawn.
-    - This results in more visible "lines" than before.
-- **Action:** Update `home/home.nix` with `set -g pane-border-status top`.
-
-### 2026-01-17 - Implementation Complete
+### 2026-01-17 - Implementation Complete (Basic Version)
 - **Session Focus:** Implementation of tmux pane highlighting.
 - **Achievements:**
     - Modified `home/home.nix` to include `pane-border-style` and `pane-active-border-style`.
@@ -141,5 +112,68 @@ tmux kill-server && tmux
     - Identified `home/home.nix` as the configuration source.
 - **Current status:** Ready to implement changes in `home/home.nix`.
 
+## White Borders + Colorful Status Options
+
+**Option A: White Borders + Orange Status Background (with spacing)**
+```bash
+set -g pane-active-border-style fg=white,bold
+set -g pane-border-style fg=colour240
+set -g pane-border-format "#{?pane_active,#[bg=#ff6600]#[fg=white]#[bold]  ● ACTIVE  #[bg=default]#[fg=default] ,#[bg=colour236]#[fg=colour250] #P #{pane_current_path} #[bg=default]#[fg=default]"
+```
+
+**Option A Alternative: White Borders + Bright Yellow Status Background**
+```bash
+set -g pane-active-border-style fg=white,bold
+set -g pane-border-style fg=colour240
+set -g pane-border-format "#{?pane_active,#[bg=yellow]#[fg=black]#[bold]  ● ACTIVE  #[bg=default]#[fg=default] ,#[bg=colour236]#[fg=colour250] #P #{pane_current_path} #[bg=default]#[fg=default]"
+```
+
+**Option B: White Borders + Magenta Status Background**
+```bash
+set -g pane-active-border-style fg=white,bold
+set -g pane-border-style fg=colour238
+set -g pane-border-format "#{?pane_active,#[bg=magenta]#[fg=white]#[bold] 🔸 ACTIVE #[bg=default]#[fg=default],#[bg=colour234]#[fg=colour242]} #P #{pane_current_path} #[bg=default]#[fg=default]"
+```
+
+**Option C: White Borders + Green Status Background**
+```bash
+set -g pane-active-border-style fg=white,bold
+set -g pane-border-style fg=colour242
+set -g pane-border-format "#{?pane_active,#[bg=green]#[fg=black]#[bold] ✦ ACTIVE ✦ #[bg=default]#[fg=default],#[bg=#2d2d2d]#[fg=#666666]} #P #{pane_current_path} #[bg=default]#[fg=default]"
+```
+
+**Option D: White Borders + Orange Status Background**
+```bash
+set -g pane-active-border-style fg=white,bold
+set -g pane-border-style fg=colour240
+set -g pane-border-format "#{?pane_active,#[bg=#ff6600]#[fg=white]#[bold] ► ACTIVE ◄ #[bg=default]#[fg=default],#[bg=colour235]#[fg=colour245]} #P #{pane_current_path} #[bg=default]#[fg=default]"
+```
+
+**Option E: White Borders + Blue Status Background**
+```bash
+set -g pane-active-border-style fg=white,bold
+set -g pane-border-style fg=colour240
+set -g pane-border-format "#{?pane_active,#[bg=blue]#[fg=white]#[bold] ◆ ACTIVE ◆ #[bg=default]#[fg=default],#[bg=colour236]#[fg=colour250]} #P #{pane_current_path} #[bg=default]#[fg=default]"
+```
+
+## Testing Instructions
+You can test the tmux configuration by rebuilding your home manager or darwin environment:
+
+```bash
+# Apply via Home Manager / Darwin
+darwin-rebuild switch
+# or
+home-manager switch
+```
+
+Then restart tmux or reload the config:
+```bash
+tmux source-file ~/.config/tmux/tmux.conf
+# or simply kill the server and restart
+tmux kill-server && tmux
+```
+
 ## Useful References
 <!-- Instructions: Add helpful URLs, docs, tutorials as you find them -->
+- [tmux Getting Started Wiki](https://github.com/tmux/tmux/wiki/Getting-Started) - Official documentation with window-style and window-active-style examples
+- [Arch Linux tmux Wiki](https://wiki.archlinux.org/title/Tmux) - Configuration examples and color code reference
