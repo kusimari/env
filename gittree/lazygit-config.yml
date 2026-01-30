@@ -1,13 +1,22 @@
-# Config optimized for branch/commit diffing workflow
+# Simplified Three-Panel Interface Configuration
 gui:
-  # File tree and diff panel layout
-  sidePanelWidth: 0.25 # Wider file tree for better file navigation
-  showFileTree: true # Essential for file navigation in diff mode
-  # Diff-focused UI
-  showBottomLine: true # Show key bindings
-  showListFooter: true # Show file counts
-  showRandomTip: false # Remove distractions
-  showBranchCommitHash: true # Show commit hashes for reference
+  # === PANEL LAYOUT  ===
+  # Panel 1: Working Directory Status (left side - 25% width)
+  sidePanelWidth: 0.25 # Clean file navigation panel
+  showFileTree: true # Essential for Panel 1 file navigation
+
+  # Panel 2: Commit Selector integrated into main interface
+  # Panel 3: File Diff Display (right side - 75% width)
+
+  # === STREAMLINED UI ===
+  showBottomLine: true # Key bindings help for three-panel navigation
+  showListFooter: false # Remove clutter - focus on three panels
+  showRandomTip: false # No distractions from core workflow
+  showBranchCommitHash: true # Show commit references for Panel 2
+
+  # === HIDE UNNECESSARY PANELS ===
+  skipRewordInEditorCommand: true # Skip reword prompts
+  skipNoStagedFilesWarning: true # Skip staging warnings
 git:
   # Enhanced side-by-side diff display via delta
   pagers:
@@ -20,29 +29,25 @@ git:
   # Keep auto-refresh for live updates during diff sessions
   autoRefresh: true
   autoFetch: false
-# Key bindings for diff workflow
+# === PANEL NAVIGATION ===
 keybinding:
-  universal:
-    # Panel navigation (numbers 0-9 work by default)
-    togglePanel: '<tab>' # Switch between file list and diff panel
-    # Diff context control
-    increaseContextInDiffView: '}'
-    decreaseContextInDiffView: '{'
-    # File view toggle
-    nextScreenMode: '+' # Cycle through screen modes (diff -> file content -> etc)
-    prevScreenMode: '_' # Cycle backward through screen modes
-# Custom commands for enhanced workflow
+    togglePanel: '<tab>'
+    # Numbers 0-9: Direct panel access (0=status, 1=files, 2=branches, 3=commits, 4=stash)
+
+    # === DIFF CONTROL (Panel 3) ===
+    increaseContextInDiffView: '}' # More context around changes
+    decreaseContextInDiffView: '{' # Less context around changes
+
+# === WORKFLOW COMMANDS ===
 customCommands:
-  - key: 'V'
-    command: 'cat {{.SelectedFile.Name}}'
-    description: 'View current file content (no diff)'
-    context: 'files'
-    output: terminal
+  # === E KEY: FILES PANEL ONLY ===
+  # Compare working directory (editable) vs staged/commit
   - key: 'E'
-    command: 'emacs -q -l "/Users/gorantls/env/feature/terminal-live-git-diff/emacs/core.el" "{{.SelectedFile.Name}}" -eval "(condition-case nil (ediff-revision (buffer-file-name) \"\") (error (magit-diff-buffer-file)))"'
-    description: 'TEMP TEST: Open file with side-by-side git diff'
+    command: 'emacs -eval "(gittree-compare-working \"{{.SelectedFile.Name}}\" \"{{.SelectedCommit.Sha}}\")"'
+    description: 'Edit: working directory (editable) vs commit/staged'
     context: 'files'
     output: terminal
+
 refresher:
   refreshInterval: 10 # Auto-refresh every 10 seconds
 # Reduce startup distractions

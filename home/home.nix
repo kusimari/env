@@ -113,8 +113,13 @@
     enable = true;
     package = pkgs.emacs-nox;
   };
-  # emacs -q -l <el-file> to stop loading and default and use given .emacs file
-  home.file.".emacs".source = ../emacs/core.el;
+  # emacs configuration - create directory with all emacs files and load from there
+  home.file.".emacs".text = ''
+    ;; Load core.el from nix store emacs directory
+    (load-file "~/.config/emacs/core.el")
+  '';
+  
+  home.file.".config/emacs".source = ../emacs;
 
   # Terminal Live Git Diff - Enhanced git workflow with lazygit
   programs.gittree = {
