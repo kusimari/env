@@ -2,7 +2,7 @@
 {
   # Import custom modules directly
   imports = [
-    ../gittree/gittree-module.nix
+    ../../gittree/gittree-module.nix
   ];
 
   # shell with solarized dark
@@ -61,6 +61,12 @@
       ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE = "fg=236";
       ZSH_AUTOSUGGEST_STRATEGY = "(completion history)";
     };
+    initContent = ''
+      # Source pre-nix setup shell initialization
+      if [[ -f ~/.pre-nix-rc ]]; then
+        source ~/.pre-nix-rc
+      fi
+    '';
     oh-my-zsh = {
       enable = true;
       plugins = [ "direnv" "tmux" ];
@@ -104,7 +110,7 @@
         identityFile = "~/.ssh/github_id";
       };
       "*" = {
-        identityFile = "~/.ssh/amazon_id_ecdsa";
+        identityFile = "~/.ssh/workcompany_id_ecdsa";
       };
     };
   };
@@ -118,8 +124,8 @@
     ;; Load core.el from nix store emacs directory
     (load-file "~/.config/emacs/core.el")
   '';
-  
-  home.file.".config/emacs".source = ../emacs;
+
+  home.file.".config/emacs".source = ../../emacs;
 
   # Terminal Live Git Diff - Enhanced git workflow with lazygit
   programs.gittree = {

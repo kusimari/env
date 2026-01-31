@@ -41,10 +41,6 @@
 
       programs.zsh = {
         enable = true;
-        loginShellInit = ''
-                export PATH=$PATH:/Users/${user}/.toolbox/bin
-                        eval "$(/opt/homebrew/bin/brew shellenv)"
-        '';
       };
 
       # non nixable tools
@@ -73,7 +69,7 @@
   in  {
     darwinConfigurations.${hostName} = nix-darwin.lib.darwinSystem {
       modules = [ 
-        {nixpkgs.overlays = import ../common-inputs.nix {inputs = inputs;};}
+        {nixpkgs.overlays = import ../common/common-inputs.nix {inputs = inputs;};}
 
         configuration
 

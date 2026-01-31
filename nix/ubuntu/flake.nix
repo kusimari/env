@@ -43,7 +43,7 @@
         modules = [
             configuration
 
-            {nixpkgs.overlays = import ../common-inputs.nix {inputs = inputs;};}
+            {nixpkgs.overlays = import ../common/common-inputs.nix {inputs = inputs;};}
 
             {
                 
