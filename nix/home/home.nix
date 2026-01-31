@@ -56,9 +56,9 @@
     syntaxHighlighting.enable = true;
     sessionVariables = {
       # https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins/tmux
-      ZSH_TMUX_AUTOSTART = "true";
+      ZSH_TMUX_AUTOSTART = "false";
       ZSH_TMUX_AUTOCONNECT = "false";
-      ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE = "fg=236";
+      ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE = "fg=#666666";
       ZSH_AUTOSUGGEST_STRATEGY = "(completion history)";
     };
     initContent = ''
@@ -112,6 +112,13 @@
       "*" = {
         identityFile = "~/.ssh/workcompany_id_ecdsa";
       };
+    };
+  };
+
+  programs.git = {
+    enable = true;
+    settings.alias = {
+      lg = "log --oneline --graph --all --decorate";
     };
   };
 
