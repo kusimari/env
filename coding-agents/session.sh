@@ -88,7 +88,21 @@ fi
 echo ""
 
 # Handle different agents differently based on their stdin support
-if [[ "$(basename "$AGENT")" == "gemini"* ]]; then
+if [[ "$(basename "$AGENT")" == "kiro-cli" ]]; then
+    # kiro-cli requires manual prompt entry - display prompt and wait for user
+    echo "=== PROMPT FOR KIRO-CLI ==="
+    echo "Copy the following prompt, then press any key to launch kiro-cli:"
+    echo ""
+    echo "----------------------------------------"
+    echo "$PROMPT"
+    echo "----------------------------------------"
+    echo ""
+    echo -n "Press any key to launch kiro-cli..."
+    read -n 1 -s
+    echo ""
+    echo "Starting kiro-cli..."
+    exec "$AGENT"
+elif [[ "$(basename "$AGENT")" == "gemini"* ]]; then
     # Gemini supports -i/--prompt-interactive to start with an initial prompt
     echo "Starting Gemini with session context..."
     exec "$AGENT" -i "$PROMPT"
