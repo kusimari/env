@@ -102,15 +102,15 @@
     };
   };
 
-  ## Commented so as not to mess with ssh hosts and config
-  # programs.ssh = {
-  #   enable = true;
-  #   enableDefaultConfig = false;
-  #   matchBlocks = {
-  #     "github.com" = {
-  #       identityFile = "~/.ssh/github_id";
-  #     };
-  # };
+  programs.ssh = {
+    enable = true;
+    enableDefaultConfig = false;
+    matchBlocks = {
+      "github.com" = {
+        identityFile = "~/.ssh/github_id";
+      };
+    };
+  };
 
   programs.git = {
     enable = true;
