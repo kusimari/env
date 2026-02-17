@@ -9,13 +9,26 @@
 ;;; Code:
 
 ;;; -----------------------------------------------------------------
+;;; SECTION: Writable Directories
+;;;
+;;; WHY-CORE: When config files live in a read-only location (e.g. nix store),
+;;; Emacs needs writable paths for packages, auto-saves, and customizations.
+;;; -----------------------------------------------------------------
+(setq user-emacs-directory (expand-file-name "~/.emacs.d/"))
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(setq auto-save-file-name-transforms
+      `((".*" ,(expand-file-name "auto-save/" user-emacs-directory) t)))
+(make-directory (expand-file-name "auto-save/" user-emacs-directory) t)
+
+;;; -----------------------------------------------------------------
 ;;; SECTION: ELPA Package Management
-;;; 
+;;;
 ;;; WHY-CORE: This is the foundation of the Emacs configuration. It sets up
 ;;; the package manager (`package.el`) and defines a helper functions to
 ;;; use the package by either installing to default location or to a defined directory
 ;;; -----------------------------------------------------------------
 (require 'package)
+(setq package-user-dir (expand-file-name "elpa" user-emacs-directory))
 (add-to-list 'package-archives
              '("melpa" . "http://melpa.org/packages/") t)
 
@@ -354,7 +367,6 @@ In both cases, :demand t is set to ensure the package is loaded."
 ;;; -----------------------------------------------------------------
 (let ((gittree-path (concat (file-name-directory (or load-file-name buffer-file-name)) "core-gittree.el")))
   (load-file gittree-path))
-(activate-gittree-integration)
 
 
 ;;; -----------------------------------------------------------------
@@ -390,6 +402,8 @@ In both cases, :demand t is set to ensure the package is loaded."
 )
 (activate-modules)
 
+;; Load all the custom thingies that other modules would have written
+(when (file-exists-p custom-file) (load custom-file))
 
 (provide 'core)
 ;;; core.el ends here

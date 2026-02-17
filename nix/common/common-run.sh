@@ -5,6 +5,10 @@
 #   SED_INPLACE_FLAG: either '' (for macOS) or nothing (for Linux)
 #   NIX_COMMAND: the nix command to run (platform-specific)
 #   NIX_ECHO_MESSAGE: the echo message to display before running nix command
+#
+# Arguments:
+#   $1 - (optional) path to pre-nix setup script
+#   $2 - (optional) path to post-nix setup script
 
 # Note: Not using 'set -e' to ensure placeholders are always restored even if nix fails
 
@@ -51,6 +55,21 @@ echo "$NIX_ECHO_MESSAGE"
 
 # Run the platform-specific nix command
 eval "$NIX_COMMAND"
+
+# Execute post-nix setup script if provided as second argument
+if [[ -n "$2" ]]; then
+    if [[ -f "$2" ]]; then
+        echo "Executing post-nix setup script: $2"
+        if [[ -x "$2" ]]; then
+            source "$2"
+            echo "Post-nix setup script executed successfully"
+        else
+            echo "Error: Post-nix setup script is not executable: $2"
+        fi
+    else
+        echo "Error: Post-nix setup script not found: $2"
+    fi
+fi
 
 echo "Restoring placeholders..."
 if [[ "${SED_INPLACE_FLAG+x}" = "x" ]]; then

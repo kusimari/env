@@ -63,6 +63,7 @@
 
       # mac specific configs
       security.pam.services.sudo_local.touchIdAuth = true;
+      security.pam.services.sudo_local.reattach = true;
 
 
     };
@@ -76,6 +77,7 @@
         home-manager.darwinModules.home-manager {
           home-manager.useGlobalPkgs = true;
           home-manager.useUserPackages = true;
+          home-manager.backupFileExtension = "bak";
           users.users.${user} = { name = "${user}";
                                   home = "/Users/${user}";
                                 };

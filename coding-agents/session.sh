@@ -8,12 +8,16 @@ shift # Shift past the agent argument
 # Initialize variables
 SYSTEM_PROMPT_FILE=""
 SESSION_FILE=""
+AGENT_ARGS=()
 
 # Parse named arguments
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         -s|--system-prompt) SYSTEM_PROMPT_FILE="$2"; shift ;;
         -f|--feature) SESSION_FILE="$2"; shift ;;
+        --) shift; AGENT_ARGS=("$@"); break ;;  # Everything after -- goes to agent
+        --*) AGENT_ARGS+=("$1" "$2"); shift ;;  # Pass through agent flags with values
+        -*) AGENT_ARGS+=("$1"); ;;               # Pass through agent flags without values
         *) echo "Unknown parameter passed: $1"; exit 1 ;;
     esac
     shift
@@ -21,9 +25,13 @@ done
 
 # --- Validation ---
 if [ -z "$AGENT" ]; then
-    echo "Usage: $0 <agent-executable> --system-prompt <path> [--feature <path>]"
-    echo "Example: $0 gemini --system-prompt coding-agents/session-system-prompt.md --feature coding-agents-aided-features/gemini-cli-configure.md"
-    echo "Example: $0 claude --system-prompt coding-agents/session-system-prompt.md"
+    echo "Usage: $0 <agent-executable> --system-prompt <path> [--feature <path>] [agent-options...]"
+    echo "       $0 <agent-executable> --system-prompt <path> [--feature <path>] -- [agent-options...]"
+    echo ""
+    echo "Examples:"
+    echo "  $0 claude-code --system-prompt coding-agents/session-system-prompt.md --feature coding-agents-aided-features/gittree-treemacs.md --model opus"
+    echo "  $0 claude-code --system-prompt coding-agents/session-system-prompt.md --model sonnet"
+    echo "  $0 gemini --system-prompt coding-agents/session-system-prompt.md --feature coding-agents-aided-features/gemini-cli-configure.md"
     exit 1
 fi
 
@@ -34,7 +42,7 @@ fi
 
 if [ -z "$SYSTEM_PROMPT_FILE" ]; then
     echo "Error: --system-prompt is a required argument."
-    echo "Usage: $0 <agent-executable> --system-prompt <path> [--feature <path>]"
+    echo "Usage: $0 <agent-executable> --system-prompt <path> [--feature <path>] [agent-options...]"
     exit 1
 fi
 
@@ -100,18 +108,18 @@ if [[ "$(basename "$AGENT")" == "kiro-cli" ]]; then
     echo -n "Press any key to launch kiro-cli..."
     read -n 1 -s
     echo ""
-    echo "Starting kiro-cli..."
-    exec "$AGENT"
+    echo "Starting kiro-cli with args: ${AGENT_ARGS[*]}"
+    exec "$AGENT" "${AGENT_ARGS[@]}"
 elif [[ "$(basename "$AGENT")" == "gemini"* ]]; then
     # Gemini supports -i/--prompt-interactive to start with an initial prompt
-    echo "Starting Gemini with session context..."
-    exec "$AGENT" -i "$PROMPT"
+    echo "Starting Gemini with session context and args: ${AGENT_ARGS[*]}"
+    exec "$AGENT" "${AGENT_ARGS[@]}" -i "$PROMPT"
 else
     # Claude and other agents work fine with stdin input
-    echo "Starting $AGENT with session context..."
+    echo "Starting $AGENT with session context and args: ${AGENT_ARGS[*]}"
 
     # Start the agent with an initial message that loads the session context
-    exec "$AGENT" << EOF
+    exec "$AGENT" "${AGENT_ARGS[@]}" << EOF
 $PROMPT
 EOF
 fi

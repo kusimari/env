@@ -52,6 +52,7 @@
   programs.zsh = {
     enable = true;
     enableCompletion = true;
+
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
     sessionVariables = {
@@ -125,11 +126,11 @@
   };
   # emacs configuration - create directory with all emacs files and load from there
   home.file.".emacs".text = ''
-    ;; Load core.el from nix store emacs directory
     (load-file "~/.config/emacs/core.el")
   '';
 
   home.file.".config/emacs".source = ../../emacs;
+  home.shellAliases.emacs-gittree = ''emacs --eval "(gittree-mode 1)"'';
 
   # Terminal Live Git Diff - Enhanced git workflow with lazygit
   programs.gittree = {
