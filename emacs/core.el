@@ -192,6 +192,7 @@ In both cases, :demand t is set to ensure the package is loaded."
     :config
     (setq neo-smart-open t))
   (setq global-auto-revert-model t)
+  (global-visual-line-mode 1)
 )
 (activate-general-edit)
     

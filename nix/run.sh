@@ -15,7 +15,7 @@
 # Get the directory where the calling script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
 USER_HOST_FILE="$SCRIPT_DIR/../home/user-host.nix"
-FLAKE_DIR="$SCRIPT_DIR"
+FLAKE_DIR="$SCRIPT_DIR/.."
 
 echo "Replacing placeholders with actual values..."
 if [[ "${SED_INPLACE_FLAG+x}" = "x" ]]; then
