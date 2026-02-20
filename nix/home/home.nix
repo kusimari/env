@@ -20,14 +20,16 @@
     tree
     git  # todo: set userEmail and userName locally
     htop
-    ripgrep  # also used by emacs consult
-    fd       # also used by emacs consult
 
     rclone
     exiftool
 
     claude-code
     gemini-cli-bin
+
+    # Terminal utilities
+    ripgrep  # fast regex search across files (rg), also used by emacs consult
+    fd       # fast file finder, also used by emacs consult
   ];
 
   programs.tmux = {
@@ -82,6 +84,34 @@
     nix-direnv.enable = true;
   };
 
+  # Terminal utilities with shell integration
+  # fuzzy finder for files, history, and piped input
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
+  # cat clone with syntax highlighting and git integration
+  programs.bat.enable = true;
+
+  # modern ls replacement with icons, git status, and tree view
+  programs.eza = {
+    enable = true;
+    enableZshIntegration = true;  # aliases ls/ll/la/lt etc.
+  };
+
+  # smarter cd that learns your most-used directories
+  programs.zoxide = {
+    enable = true;
+    enableZshIntegration = true;  # adds z/zi commands
+  };
+
+  # shell history search/sync with context (replaces ctrl-r)
+  programs.atuin = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
   programs.vscode = {
     # https://github.com/LnL7/nix-darwin/issues/1315
     # added nix to the "allow full disk access" security list
@@ -132,7 +162,7 @@
   home.file.".config/emacs".source = ../../emacs;
   home.shellAliases.emacs-gittree = ''emacs --eval "(gittree-mode 1)"'';
 
-  # Terminal Live Git Diff - Enhanced git workflow with lazygit
+  # Terminal UI for git - installs lazygit with delta and custom config
   programs.gittree = {
     enable = true;
     commandName = "lg";

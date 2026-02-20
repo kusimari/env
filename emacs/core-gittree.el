@@ -37,8 +37,11 @@
 ;; Global Variables
 ;; ============================================================
 
-(defvar gittree--file-watches (make-hash-table :test 'equal)
-  "Hash table mapping file paths to their file-notify watch descriptors.")
+(defvar gittree--file-modtimes (make-hash-table :test 'equal)
+  "Hash table mapping watched file paths to their last-known modification times.")
+
+(defvar gittree--poll-timer nil
+  "Timer for polling file modification times.")
 
 (defvar gittree--status-cache (make-hash-table :test 'equal)
   "Cache of git status for files. Maps filename to status string.")
@@ -73,40 +76,47 @@
   (substring commit 0 (min 7 (length commit))))
 
 ;; ============================================================
-;; File Watch Functions
+;; File Change Polling
 ;; ============================================================
 
-(defun gittree--file-changed-callback (event)
-  "Handle file change EVENT and prompt to reload."
-  (let* ((file (nth 2 event))
-         (action (nth 1 event))
-         (buf (get-file-buffer file)))
-    (when (and buf
-               (memq action '(changed))
-               (buffer-live-p buf)
-               (not (buffer-modified-p buf)))
-      (with-current-buffer buf
-        (message "GitTree: File %s changed externally" (buffer-name))
-        (if (y-or-n-p (format "File %s changed on disk. Reload? " (buffer-name)))
-            (revert-buffer t t t)
-          (message "GitTree: Keeping buffer as-is"))))))
+(defun gittree--check-file-changes ()
+  "Poll watched files for external modifications and prompt to reload.
+Skips check when minibuffer is active or during keyboard macros to
+avoid disrupting user input."
+  (unless (or (active-minibuffer-window)
+              executing-kbd-macro)
+    (maphash
+     (lambda (file saved-modtime)
+       (when (file-exists-p file)
+         (let ((current-modtime (file-attribute-modification-time
+                                 (file-attributes file))))
+           (when (and current-modtime
+                      (not (time-equal-p saved-modtime current-modtime)))
+             (puthash file current-modtime gittree--file-modtimes)
+             (let ((buf (find-buffer-visiting file)))
+               (when (and buf
+                          (buffer-live-p buf)
+                          (not (buffer-modified-p buf)))
+                 (with-current-buffer buf
+                   (if (y-or-n-p (format "File %s changed on disk. Reload? "
+                                         (buffer-name)))
+                       (revert-buffer t t t)
+                     (message "GitTree: Keeping buffer as-is")))))))))
+     gittree--file-modtimes)))
 
 (defun gittree-watch-file ()
-  "Set up file watcher for current buffer."
-  (when (and (buffer-file-name)
-             (file-exists-p (buffer-file-name))
-             (not (gethash (buffer-file-name) gittree--file-watches)))
-    (let ((descriptor (file-notify-add-watch
-                       (buffer-file-name)
-                       '(change)
-                       #'gittree--file-changed-callback)))
-      (puthash (buffer-file-name) descriptor gittree--file-watches))))
+  "Record current buffer's file modtime for change tracking."
+  (when-let ((file (buffer-file-name)))
+    (when (and (file-exists-p file)
+               (not (gethash file gittree--file-modtimes)))
+      (puthash file
+               (file-attribute-modification-time (file-attributes file))
+               gittree--file-modtimes))))
 
 (defun gittree-unwatch-file ()
-  "Remove file watcher for current buffer."
-  (when-let ((descriptor (gethash (buffer-file-name) gittree--file-watches)))
-    (file-notify-rm-watch descriptor)
-    (remhash (buffer-file-name) gittree--file-watches)))
+  "Stop tracking current buffer's file."
+  (when-let ((file (buffer-file-name)))
+    (remhash file gittree--file-modtimes)))
 
 ;; ============================================================
 ;; Commit Comparison Functions
@@ -413,14 +423,20 @@ Returns alist of (filepath . status-string)."
                                       (file-name-nondirectory (directory-file-name default-directory)))
   (treemacs)
 
+  ;; Disable line numbers in treemacs buffer (overrides global-display-line-numbers-mode)
+  (when-let ((tw (treemacs-get-local-window)))
+    (with-current-buffer (window-buffer tw)
+      (setq-local display-line-numbers nil)))
+
   ;; Apply customizations
   (setq treemacs-file-name-transformer #'gittree--file-name-transformer)
   (setq gittree-original-visit-action treemacs-default-visit-action)
   (setq treemacs-default-visit-action #'gittree-visit-node)
 
-  ;; Set up hooks
+  ;; Set up hooks and polling for file change detection
   (add-hook 'find-file-hook #'gittree-watch-file)
   (add-hook 'kill-buffer-hook #'gittree-unwatch-file)
+  (setq gittree--poll-timer (run-with-timer 2 2 #'gittree--check-file-changes))
 
   ;; Advice for focus management after vdiff setup
   (advice-add 'vdiff--diff-refresh-finish :after #'gittree--refocus-treemacs)
@@ -448,15 +464,14 @@ Returns alist of (filepath . status-string)."
   ;; Remove hooks
   (remove-hook 'find-file-hook #'gittree-watch-file)
   (remove-hook 'kill-buffer-hook #'gittree-unwatch-file)
-
   ;; Remove vdiff advice
   (advice-remove 'vdiff--diff-refresh-finish #'gittree--refocus-treemacs)
 
-  ;; Clean up file watches
-  (maphash (lambda (_file descriptor)
-             (file-notify-rm-watch descriptor))
-           gittree--file-watches)
-  (clrhash gittree--file-watches)
+  ;; Cancel poll timer and clean up tracked files
+  (when gittree--poll-timer
+    (cancel-timer gittree--poll-timer)
+    (setq gittree--poll-timer nil))
+  (clrhash gittree--file-modtimes)
 
   ;; Clean up status cache
   (clrhash gittree--status-cache)
