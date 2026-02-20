@@ -3,7 +3,7 @@
   # Import custom modules directly
   imports = [
     ../../gittree/gittree-module.nix
-    ../../obsidian/obsidian-module.nix
+    ../../obsidian-module.nix
   ];
 
   # shell with solarized dark
@@ -172,7 +172,7 @@
   # Obsidian note-taking - installs Obsidian and clones vault on activation
   programs.obsidian = {
     enable = true;
-    notesRepo = ""; # TODO: set your notes git repository URL, e.g. "git@github.com:user/obsidian-vault.git"
+    notesRepo = "git@github.com:kusimari/scratch-pad.git";
     # notesPath defaults to ~/obsidian
   };
 
