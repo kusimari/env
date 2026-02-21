@@ -10,11 +10,8 @@
 
 # Platform-specific configuration for common-run.sh
 # Linux sed uses -i without additional flag (don't export SED_INPLACE_FLAG)
-export NIX_COMMAND='home-manager switch --flake "$FLAKE_DIR#ubuntu"'
+export NIX_COMMAND='nix run home-manager/master -- switch --flake "$FLAKE_DIR#ubuntu"'
 export NIX_ECHO_MESSAGE="Running home-manager switch..."
-
-# Option 1: For initial setup (uncomment if needed)
-# export NIX_COMMAND='nix run home-manager/master -- init --switch "$FLAKE_DIR#ubuntu"'
 
 # Execute common functionality
 source "$(dirname "${BASH_SOURCE[0]}")/../run.sh" "$@"
