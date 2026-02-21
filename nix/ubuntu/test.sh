@@ -22,8 +22,8 @@ docker run --rm \
 
     source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 
-    # Copy repo so run.sh can modify user-host.nix in place
-    cp -r /env /env-rw
+    # Clone repo (git-tracked files required for Nix flake path resolution)
+    git clone /env /env-rw
     cd /env-rw
 
     bash nix/ubuntu/run.sh '"$*"'
