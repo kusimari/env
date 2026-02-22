@@ -74,6 +74,24 @@
     # Ubuntu-specific configuration
     ubuntuConfiguration = { pkgs, ... }: {
       nix.package = pkgs.nix;
+      nixpkgs.overlays = [ inputs.nixgl.overlays.default ];
+      # Platform-specific GUI apps (mirrors darwin's homebrew.casks)
+      # rofi: bind shortcut to "rofi -show drun" in GNOME Settings → Keyboard → Custom Shortcuts
+      home.packages = [ pkgs.google-chrome ];
+      programs.rofi = {
+        enable = true;
+        extraConfig.show-icons = true;
+        theme = builtins.toString (pkgs.writeText "rofi-theme.rasi" ''
+          @theme "Arc-Dark"
+          * {
+            font: "Monospace 24";
+          }
+          window {
+            width:  50%;
+            height: 50%;
+          }
+        '');
+      };
     };
 
   in {

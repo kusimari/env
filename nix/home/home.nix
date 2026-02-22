@@ -1,4 +1,4 @@
-{ config, pkgs, nixgl, ... }:
+{ config, pkgs, ... }:
 {
   # Import custom modules directly
   imports = [
@@ -39,11 +39,27 @@
     extraConfig = builtins.readFile ./tmux.conf;
   };
 
-  # on Ubuntu unfortunately have to run with nixGL
-  # nix run --impure github:nix-community/nixGL -- program
-  # but that ain't functional too
   programs.alacritty = {
     enable = true;
+    # On Ubuntu (non-NixOS), nixGL is required to expose the host OpenGL drivers.
+    # nixGLIntel covers Mesa-based systems (Intel/AMD). For Nvidia, swap with nixGLNvidia.
+    # symlinkJoin preserves the .desktop file so app launchers (e.g. Synapse) find it,
+    # while replacing only the binary with the nixGL wrapper.
+    package = if pkgs.stdenv.isLinux
+      then
+        let
+          wrapper = pkgs.writeShellScript "alacritty-nixgl" ''
+            exec ${pkgs.nixgl.nixGLIntel}/bin/nixGLIntel ${pkgs.alacritty}/bin/alacritty "$@"
+          '';
+        in pkgs.symlinkJoin {
+          name = "alacritty-nixgl";
+          paths = [ pkgs.alacritty ];
+          postBuild = ''
+            rm $out/bin/alacritty
+            ln -s ${wrapper} $out/bin/alacritty
+          '';
+        }
+      else pkgs.alacritty;
     settings.general.import = [ pkgs.alacritty-theme.solarized_dark ];
     settings = {
       window.decorations = "Full";
