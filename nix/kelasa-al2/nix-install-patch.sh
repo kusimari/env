@@ -1,11 +1,19 @@
 #!/bin/bash
 
-# Fix nixbld group and users for Amazon Linux 2
-# This script creates the missing nixbld group and users for multi-user Nix
+# Nix installation and patch script for Amazon Linux 2
+# This script installs Nix using Determinate Systems installer and fixes nixbld group issues
 
 set -e  # Exit on any error
 
-echo "🔧 Setting up nixbld group and users for multi-user Nix..."
+echo "🚀 Nix installation and patch for Amazon Linux 2..."
+
+# Step 0: Install Nix using Determinate Systems installer
+echo "📦 Installing/Reinstalling Nix with Determinate Systems installer..."
+curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+echo "✅ Nix installation completed"
+
+echo ""
+echo "🔧 Patching nixbld group and users for multi-user Nix..."
 
 # Step 1: Check if nixbld group already exists
 echo "📋 Checking existing nixbld group..."

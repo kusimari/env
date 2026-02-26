@@ -1,9 +1,8 @@
 #!/bin/bash
 
-# stuff installed outside nix - zsh with chsh of user
-
-# nix install
-  # curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh -s -- install
+# Prerequisites:
+# - Nix installed (use ./nix-install-patch.sh if needed)
+# - zsh with chsh of user (manual step)
 
 # nix setup
   # run home-manager - temporarily replace placeholder values, run nix, then revert with sed
