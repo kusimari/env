@@ -132,7 +132,7 @@
       modules = [
         commonConfiguration
         linuxConfiguration
-        {
+        ({ pkgs, ... }: {
           home.username = "${user}";
           home.homeDirectory = "/home/${user}";
 
@@ -148,7 +148,7 @@
             LC_ALL = "en_US.UTF-8";
             LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
           };
-        }
+        })
         ./home/home.nix
       ];
     };
