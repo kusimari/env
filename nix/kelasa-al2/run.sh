@@ -11,14 +11,11 @@
 # Platform-specific configuration for common-run.sh
 # Linux sed uses -i without additional flag (don't export SED_INPLACE_FLAG)
 
-# Force single-user mode to avoid nixbld group issues on AL2
-export NIX_REMOTE=""
-
-# For AL2: Use nix run command for initial setup
+# For AL2: Use nix run command for initial setup (after fixing nixbld group)
 export NIX_COMMAND='nix run home-manager/master -- init --switch "$FLAKE_DIR#kelasa-al2"'
 export NIX_ECHO_MESSAGE="Running home-manager init with nix run..."
 
-# Standard command (commented out for AL2 - use after initial setup)
+# Standard command (use after initial setup)
 # export NIX_COMMAND='home-manager switch --flake "$FLAKE_DIR#kelasa-al2"'
 # export NIX_ECHO_MESSAGE="Running home-manager switch..."
 
