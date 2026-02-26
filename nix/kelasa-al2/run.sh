@@ -11,7 +11,7 @@
 # Linux sed uses -i without additional flag (don't export SED_INPLACE_FLAG)
 
 # For AL2: Use nix run command for initial setup (after fixing nixbld group)
-export NIX_COMMAND='nix run home-manager/master -- init --switch "$FLAKE_DIR#kelasa-al2"'
+export NIX_COMMAND='nix --extra-experimental-features "nix-command flakes" run home-manager/master -- init --switch "$FLAKE_DIR#kelasa-al2"'
 export NIX_ECHO_MESSAGE="Running home-manager init with nix run..."
 
 # Standard command (use after initial setup)
