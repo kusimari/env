@@ -18,12 +18,16 @@ USER_HOST_FILE="$SCRIPT_DIR/../home/user-host.nix"
 FLAKE_DIR="$SCRIPT_DIR/.."
 
 echo "Replacing placeholders with actual values..."
+# Get values and escape special characters for sed
+USER_VALUE=$(whoami)
+HOSTNAME_VALUE=$(hostname)
+
 if [[ "${SED_INPLACE_FLAG+x}" = "x" ]]; then
     # macOS: SED_INPLACE_FLAG is set (even if empty)
-    sed -i "$SED_INPLACE_FLAG" "s/replace-user/$(whoami)/g; s/replace-hostname/$(hostname)/g" "$USER_HOST_FILE"
+    sed -i "$SED_INPLACE_FLAG" "s|replace-user|$USER_VALUE|g; s|replace-hostname|$HOSTNAME_VALUE|g" "$USER_HOST_FILE"
 else
     # Linux: SED_INPLACE_FLAG is not set
-    sed -i "s/replace-user/$(whoami)/g; s/replace-hostname/$(hostname)/g" "$USER_HOST_FILE"
+    sed -i "s|replace-user|$USER_VALUE|g; s|replace-hostname|$HOSTNAME_VALUE|g" "$USER_HOST_FILE"
 fi
 
 # Execute pre-nix setup script if provided as argument
@@ -74,10 +78,10 @@ fi
 echo "Restoring placeholders..."
 if [[ "${SED_INPLACE_FLAG+x}" = "x" ]]; then
     # macOS: SED_INPLACE_FLAG is set (even if empty)
-    sed -i "$SED_INPLACE_FLAG" "s/$(whoami)/replace-user/g; s/$(hostname)/replace-hostname/g" "$USER_HOST_FILE"
+    sed -i "$SED_INPLACE_FLAG" "s|$USER_VALUE|replace-user|g; s|$HOSTNAME_VALUE|replace-hostname|g" "$USER_HOST_FILE"
 else
     # Linux: SED_INPLACE_FLAG is not set
-    sed -i "s/$(whoami)/replace-user/g; s/$(hostname)/replace-hostname/g" "$USER_HOST_FILE"
+    sed -i "s|$USER_VALUE|replace-user|g; s|$HOSTNAME_VALUE|replace-hostname|g" "$USER_HOST_FILE"
 fi
 
 echo "Done!"
