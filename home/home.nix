@@ -2,7 +2,7 @@
 {
   # Import custom modules directly
   imports = [
-    ../../gittree/gittree-module.nix
+    ../gittree/gittree-module.nix
   ];
 
   # shell with solarized dark
@@ -175,7 +175,7 @@
     (load-file "~/.config/emacs/core.el")
   '';
 
-  home.file.".config/emacs".source = ../../emacs;
+  home.file.".config/emacs".source = ../emacs;
   home.shellAliases.emacs-gittree = ''emacs --eval "(gittree-mode 1)"'';
 
   # Terminal UI for git - installs lazygit with delta and custom config
