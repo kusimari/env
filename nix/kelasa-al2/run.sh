@@ -10,12 +10,12 @@
 # Platform-specific configuration for common-run.sh
 # Linux sed uses -i without additional flag (don't export SED_INPLACE_FLAG)
 
-# For AL2: Use nix run command for initial setup with backup
-export NIX_COMMAND='nix --extra-experimental-features "nix-command flakes" run home-manager/master -- init --switch -b backup "$FLAKE_DIR#kelasa-al2"'
+# For AL2: Use nix run command for initial setup with backup (use absolute path)
+export NIX_COMMAND='nix --extra-experimental-features "nix-command flakes" run home-manager/master -- init --switch -b backup "$(realpath $FLAKE_DIR)#kelasa-al2"'
 export NIX_ECHO_MESSAGE="Running home-manager init with backup..."
 
 # Standard command (use after initial setup)
-# export NIX_COMMAND='home-manager switch --flake "$FLAKE_DIR#kelasa-al2"'
+# export NIX_COMMAND='home-manager switch --flake "$(realpath $FLAKE_DIR)#kelasa-al2"'
 # export NIX_ECHO_MESSAGE="Running home-manager switch..."
 
 # Execute common functionality
