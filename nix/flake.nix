@@ -142,9 +142,11 @@
           ];
 
           # Fix terminal encoding for AL2
+          home.packages = [ pkgs.glibcLocales ];
           home.sessionVariables = {
             LANG = "en_US.UTF-8";
             LC_ALL = "en_US.UTF-8";
+            LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
           };
         }
         ./home/home.nix
