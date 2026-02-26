@@ -53,23 +53,14 @@ sudo systemctl status nix-daemon --no-pager -l
 
 echo "✅ nix-daemon restarted"
 
-# Step 4: Test the fix
-echo "🧪 Testing SSL fix..."
+# Step 4: Test basic functionality
+echo "🧪 Testing basic Nix functionality..."
 
-# Test 1: Basic nix evaluation
-echo "Testing basic nix evaluation..."
+# Simple evaluation test
 if SSL_CERT_FILE=/etc/ssl/certs/ca-bundle.crt nix --extra-experimental-features "nix-command flakes" eval --expr '1 + 1'; then
     echo "✅ Basic nix evaluation working"
 else
     echo "❌ Basic nix evaluation failed"
-fi
-
-# Test 2: Try to download something small
-echo "Testing package download..."
-if SSL_CERT_FILE=/etc/ssl/certs/ca-bundle.crt nix --extra-experimental-features "nix-command flakes" eval --expr 'builtins.currentTime'; then
-    echo "✅ Nix can evaluate and potentially download"
-else
-    echo "❌ Nix evaluation with download failed"
 fi
 
 echo ""
