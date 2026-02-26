@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Prerequisites:
-# - Nix installed (use ./nix-install-patch.sh if needed)
+# Prerequisites for Amazon Linux 2:
+# - Nix installed with SINGLE-USER mode: sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --no-daemon
+# - SSL certificates fixed (use ./fix-git-ssl.sh if needed)
 # - zsh with chsh of user (manual step)
 
 # nix setup
