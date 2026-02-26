@@ -137,7 +137,7 @@
           home.homeDirectory = "/home/${user}";
 
           # Fix PATH for single-user Nix installation (AL2 specific)
-          programs.zsh.sessionPath = [
+          home.sessionPath = [
             "/home/${user}/.nix-profile/bin"
           ];
         }
