@@ -140,6 +140,12 @@
           home.sessionPath = [
             "/home/${user}/.nix-profile/bin"
           ];
+
+          # Fix terminal encoding for AL2
+          home.sessionVariables = {
+            LANG = "en_US.UTF-8";
+            LC_ALL = "en_US.UTF-8";
+          };
         }
         ./home/home.nix
       ];
