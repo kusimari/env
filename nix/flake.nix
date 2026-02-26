@@ -71,8 +71,8 @@
       security.pam.services.sudo_local.reattach = true;
     };
 
-    # Ubuntu-specific configuration
-    ubuntuConfiguration = { pkgs, ... }: {
+    # Linux-specific configuration (shared by ubuntu and kelasa-al2)
+    linuxConfiguration = { pkgs, ... }: {
       nix.package = pkgs.nix;
       nixpkgs.overlays = [ inputs.nixgl.overlays.default ];
       # Platform-specific GUI apps (mirrors darwin's homebrew.casks)
@@ -118,7 +118,20 @@
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
       modules = [
         commonConfiguration
-        ubuntuConfiguration
+        linuxConfiguration
+        {
+          home.username = "${user}";
+          home.homeDirectory = "/home/${user}";
+        }
+        ./home/home.nix
+      ];
+    };
+
+    homeConfigurations.kelasa-al2 = home-manager.lib.homeManagerConfiguration {
+      pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      modules = [
+        commonConfiguration
+        linuxConfiguration
         {
           home.username = "${user}";
           home.homeDirectory = "/home/${user}";
