@@ -26,6 +26,7 @@
 
     claude-code
     gemini-cli-bin
+    gh
 
     # Terminal utilities
     ripgrep  # fast regex search across files (rg), also used by emacs consult
