@@ -18,4 +18,4 @@ export NIX_ECHO_MESSAGE="Running nix-darwin switch..."
 # export NIX_COMMAND='sudo -H nix run nix-darwin/nix-darwin-25.05#darwin-rebuild -- switch --flake "$FLAKE_DIR#darwin"'
 
 # Execute common functionality
-source "$(dirname "${BASH_SOURCE[0]}")/../run.sh" "$@"
+source "$(dirname "${BASH_SOURCE[0]}")/run.sh" "$@"
