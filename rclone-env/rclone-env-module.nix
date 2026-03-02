@@ -16,7 +16,7 @@ in {
     home.file.".zfunc/_rclone-env".source = ./_rclone-env;
 
     # Ensure ~/.zfunc is on fpath before compinit
-    programs.zsh.initContent = ''
+    programs.zsh.initExtraBeforeCompInit = ''
       fpath=(~/.zfunc $fpath)
     '';
   };
