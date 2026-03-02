@@ -1,9 +1,8 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 {
   # Import custom modules directly
   imports = [
     ../gittree/gittree-module.nix
-    ../rclone-env/rclone-env-module.nix
   ];
 
   # shell with solarized dark
@@ -186,6 +185,13 @@
     commandName = "lg";
   };
 
-  programs.rclone-env.enable = true;
+  # rclone-env: list, browse, check, copy, sync across rclone remotes
+  home.packages = [
+    (pkgs.writeShellScriptBin "rclone-env" (builtins.readFile ../rclone-env/rclone-env.sh))
+  ];
+  home.file.".zfunc/_rclone-env".source = ../rclone-env/_rclone-env;
+  programs.zsh.initContent = lib.mkOrder 550 ''
+    fpath=(~/.zfunc $fpath)
+  '';
 
 }
