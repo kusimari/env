@@ -15,8 +15,8 @@ in {
     # Zsh completion: place _rclone-env in ~/.zfunc
     home.file.".zfunc/_rclone-env".source = ./_rclone-env;
 
-    # Ensure ~/.zfunc is on fpath before compinit
-    programs.zsh.initExtraBeforeCompInit = ''
+    # Ensure ~/.zfunc is on fpath before compinit (mkOrder 550 runs before compinit at 600)
+    programs.zsh.initContent = lib.mkOrder 550 ''
       fpath=(~/.zfunc $fpath)
     '';
   };
