@@ -7,6 +7,7 @@ RCLONE_FLAGS=(
   --drive-chunk-size 256M
   --stats 1s
   --progress
+  --fast-list
 )
 
 CHECK_FLAGS=(
@@ -15,6 +16,7 @@ CHECK_FLAGS=(
   --drive-chunk-size 256M
   --stats 1s
   --progress
+  --fast-list
 )
 
 cmd_remotes() {
