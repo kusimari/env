@@ -59,6 +59,12 @@ cmd_copy() {
   rclone copy "${RCLONE_FLAGS[@]}" --checksum "$src" "$dst"
 }
 
+cmd_backends() {
+  rclone config providers | jq -c '.[]' | fzf \
+    --preview 'echo {} | jq .' \
+    --preview-window=right:60%
+}
+
 cmd_browse() {
   local path="${1:-}"
   if [[ -z "$path" ]]; then
@@ -94,6 +100,7 @@ case "$subcommand" in
   copy)         cmd_copy "${1:-}" "${2:-}" ;;
   sync)         cmd_sync "${1:-}" "${2:-}" ;;
   browse)       cmd_browse "${1:-}" ;;
+  backends)     cmd_backends ;;
   *)
     echo "Usage: rclone-env <command> [args]"
     echo ""
@@ -105,6 +112,7 @@ case "$subcommand" in
     echo "  copy <src> <dst>   Dry-run preview then copy with optimised defaults"
     echo "  sync <src> <dst>   Dry-run preview then sync with optimised defaults"
     echo "  browse <remote:>   Interactive TUI browser for a remote (rclone ncdu)"
+    echo "  backends            Browse all supported storage backends via fzf"
     exit 1
     ;;
 esac

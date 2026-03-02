@@ -31,6 +31,10 @@
     # Terminal utilities
     ripgrep  # fast regex search across files (rg), also used by emacs consult
     fd       # fast file finder, also used by emacs consult
+    jq       # JSON processor, used by rclone-env backends
+
+    # rclone-env: list, browse, check, copy, sync across rclone remotes
+    (pkgs.writeShellScriptBin "rclone-env" (builtins.readFile ../rclone-env/rclone-env.sh))
   ];
 
   programs.tmux = {
@@ -81,7 +85,8 @@
       ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE = "fg=#666666";
       ZSH_AUTOSUGGEST_STRATEGY = "(completion history)";
     };
-    initContent = ''
+    initContent = lib.mkOrder 550 ''
+      fpath=(~/.zfunc $fpath)
       # Source pre-nix setup shell initialization
       if [[ -f ~/.pre-nix-rc ]]; then
         source ~/.pre-nix-rc
@@ -185,13 +190,6 @@
     commandName = "lg";
   };
 
-  # rclone-env: list, browse, check, copy, sync across rclone remotes
-  home.packages = [
-    (pkgs.writeShellScriptBin "rclone-env" (builtins.readFile ../rclone-env/rclone-env.sh))
-  ];
   home.file.".zfunc/_rclone-env".source = ../rclone-env/_rclone-env;
-  programs.zsh.initContent = lib.mkOrder 550 ''
-    fpath=(~/.zfunc $fpath)
-  '';
 
 }

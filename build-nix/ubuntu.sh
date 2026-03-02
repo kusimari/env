@@ -8,7 +8,7 @@
 # nix setup
   # run home-manager - temporarily replace placeholder values, run nix, then revert with sed
 
-# Platform-specific configuration for common-run.sh
+# Platform-specific configuration for _common.sh
 # Linux sed uses -i without additional flag (don't export SED_INPLACE_FLAG)
 export NIX_COMMAND='home-manager switch --flake "$FLAKE_DIR#ubuntu"'
 export NIX_ECHO_MESSAGE="Running home-manager switch..."
@@ -17,4 +17,4 @@ export NIX_ECHO_MESSAGE="Running home-manager switch..."
 # export NIX_COMMAND='nix run home-manager/master -- init --switch "$FLAKE_DIR#ubuntu"'
 
 # Execute common functionality
-source "$(dirname "${BASH_SOURCE[0]}")/run.sh" "$@"
+source "$(dirname "${BASH_SOURCE[0]}")/_common.sh" "$@"

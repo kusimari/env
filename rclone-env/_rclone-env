@@ -11,6 +11,7 @@ _rclone-env() {
     'check:Check differences between source and dest'
     'copy:Dry-run preview then copy with optimised defaults'
     'sync:Dry-run preview then sync with optimised defaults'
+    'backends:Browse all supported storage backends'
   )
 
   _remotes() {
