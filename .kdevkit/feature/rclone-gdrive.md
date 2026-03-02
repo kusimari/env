@@ -1,12 +1,12 @@
 # Feature: rclone-env
 
-## Status: ready-to-implement
+## Status: implemented — pending Mac test
 
 ## Summary
-Create a self-contained `rclone-env/` directory with a home-manager Nix module that provides a `rclone-mount` CLI tool for mounting and unmounting rclone remotes (gdrive, SSH, etc.) with zsh autocompletion. Follows the gittree module pattern.
+Create a self-contained `rclone-env/` directory with a home-manager Nix module that provides a `rclone-env` CLI tool for mounting and unmounting rclone remotes (gdrive, SSH, etc.) with zsh autocompletion. Follows the gittree module pattern.
 
 ## Requirements
-- Single `rclone-mount` command with subcommands: `mount`, `umount`, `status`, `list`, `add`, `remove`
+- Single `rclone-env` command with subcommands: `mount`, `umount`, `status`, `list`, `add`, `remove`
 - Works with any rclone remote type (gdrive, sftp, s3, etc.)
 - User-level config file at `~/.config/rclone-env/remotes` mapping rclone remote paths to local mount points
 - `add` subcommand invokes `rclone config` interactively then saves the mount mapping
@@ -26,8 +26,8 @@ The `gittree/gittree-module.nix` pattern to follow:
 ```
 rclone-env/
   rclone-env-module.nix   # home-manager module
-  rclone-mount.sh         # main script (loaded via builtins.readFile)
-  _rclone-mount           # zsh completion function file
+  rclone-env.sh           # main script (loaded via builtins.readFile)
+  _rclone-env             # zsh completion function file
 ```
 
 ## Config file (~/.config/rclone-env/remotes)
@@ -64,11 +64,11 @@ in {
 
   config = mkIf cfg.enable {
     home.packages = [
-      (pkgs.writeShellScriptBin "rclone-mount" (builtins.readFile ./rclone-mount.sh))
+      (pkgs.writeShellScriptBin "rclone-env" (builtins.readFile ./rclone-env.sh))
     ];
 
-    # Zsh completion: place _rclone-mount in a dir on $fpath
-    home.file.".zfunc/_rclone-mount".source = ./_rclone-mount;
+    # Zsh completion: place _rclone-env in a dir on $fpath
+    home.file.".zfunc/_rclone-env".source = ./_rclone-env;
 
     # Ensure ~/.zfunc is on fpath (prepend in zsh initExtra)
     programs.zsh.initExtra = ''
@@ -97,7 +97,7 @@ casks = [
 ];
 ```
 
-## rclone-mount.sh design
+## rclone-env.sh design
 - Reads config from `~/.config/rclone-env/remotes`; creates it if missing
 - Resolves `~` in mount paths
 - Mount: `mkdir -p <mount-point>` then `rclone mount <remote> <mount-point> --daemon`
@@ -105,7 +105,7 @@ casks = [
 - Mount detection: check via `mount | grep <mount-point>` (or `findmnt`)
 - `add` flow: call `rclone config`, then `read` the remote name and desired mount point, append line to remotes file
 
-## _rclone-mount zsh completion design
+## _rclone-env zsh completion design
 - Completes subcommands on first arg
 - `mount`: sources remotes config, filters to unmounted ones
 - `umount`: sources remotes config, filters to currently-mounted ones
@@ -123,15 +123,15 @@ programs.rclone-env.enable = true;
 ```
 
 ## Implementation Steps
-1. `rclone-env/rclone-mount.sh` — main script
-2. `rclone-env/_rclone-mount` — zsh completion
-3. `rclone-env/rclone-env-module.nix` — Nix module
-4. `home/home.nix` — add import and enable
+1. `rclone-env/rclone-env.sh` — main script ✓
+2. `rclone-env/_rclone-env` — zsh completion ✓
+3. `rclone-env/rclone-env-module.nix` — Nix module ✓
+4. `home/home.nix` — add import and enable ✓
 
 ## Testing
 - `home-manager build` passes (no eval errors)
-- `rclone-mount list` works with empty config
-- `rclone-mount add` invokes `rclone config` and appends entry
+- `rclone-env list` works with empty config
+- `rclone-env add` invokes `rclone config` and appends entry
 - Tab-completion works for subcommands and remote names after `home-manager switch`
 
 ## Open questions / risks
@@ -145,7 +145,7 @@ programs.rclone-env.enable = true;
   - Create with: `git -C /home/kusimari/env/main worktree add ../feat-rclone-env -b feat/rclone-env`
   - **Do NOT create worktree inside `main/`**
 - After implementation: push `feat/rclone-env` to remote so Mac can pull and test before merging
-- Testing on Mac: `home-manager switch --flake .#darwin` — verify macfuse cask added, `rclone-mount` command available, tab completion works
+- Testing on Mac: `home-manager switch --flake .#darwin` — verify macfuse cask added, `rclone-env` command available, tab completion works
 - Merge via PR after Mac verification passes
 
 ## Session pickup instructions
@@ -153,4 +153,4 @@ To resume implementation in a new session:
 1. Open session in `/home/kusimari/env/feat-rclone-env`
 2. Load kdevkit-dev guide from: https://raw.githubusercontent.com/kusimari/kdevkit/main/build/kdevkit-dev.md
 3. Feature file is at `.kdevkit/feature/rclone-gdrive.md` — all context is there
-4. Status is `ready-to-implement` — proceed with Implementation Steps in order
+4. Status is `implemented — pending Mac test` — run `home-manager build` then test `rclone-env` command
