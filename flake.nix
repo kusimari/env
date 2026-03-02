@@ -78,6 +78,10 @@
       # Platform-specific GUI apps (mirrors darwin's homebrew.casks)
       # rofi: bind shortcut to "rofi -show drun" in GNOME Settings → Keyboard → Custom Shortcuts
       home.packages = [ pkgs.google-chrome ];
+      home.file.".local/share/applications/system-sleep.desktop".source    = ./rofi-desktop/system-sleep.desktop;
+      home.file.".local/share/applications/system-reboot.desktop".source  = ./rofi-desktop/system-reboot.desktop;
+      home.file.".local/share/applications/system-shutdown.desktop".source = ./rofi-desktop/system-shutdown.desktop;
+
       programs.rofi = {
         enable = true;
         extraConfig.show-icons = true;
