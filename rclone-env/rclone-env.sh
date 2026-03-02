@@ -60,9 +60,23 @@ cmd_copy() {
 }
 
 cmd_backends() {
-  rclone config providers | jq -c '.[]' | fzf \
-    --preview 'echo {} | jq .' \
-    --preview-window=right:60%
+  local tmp
+  tmp=$(mktemp)
+  rclone config providers 2>/dev/null | jq -c '.[]' > "$tmp"
+
+  local selected
+  selected=$(jq -r '"\(.Name)\t\(.Description)"' "$tmp" \
+    | fzf --exact \
+          --delimiter='\t' \
+          --with-nth=1 \
+          --preview="jq -C --arg n {1} 'select(.Name == \$n)' $tmp" \
+          --preview-window=right:60% \
+    | cut -f1)
+
+  if [[ -n "$selected" ]]; then
+    jq -C --arg n "$selected" 'select(.Name == $n)' "$tmp"
+  fi
+  rm -f "$tmp"
 }
 
 cmd_browse() {
