@@ -1,52 +1,20 @@
 #compdef rclone-env
 
 _rclone-env() {
-  local CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/rclone-env/remotes"
-
   local -a subcommands
   subcommands=(
-    'list:Show all configured remotes with mount status'
-    'status:Alias for list'
-    'mount:Mount a remote'
-    'umount:Unmount a remote'
-    'add:Configure a new remote interactively'
-    'remove:Remove a remote from config'
+    'remotes:List configured rclone remotes'
+    'list:Alias for remotes'
+    'add:Add a new remote interactively'
+    'ls:List directories on a remote'
+    'check:Check differences between source and dest'
+    'copy:Copy with optimised defaults'
   )
 
-  _all_rclone_remotes() {
-    rclone listremotes 2>/dev/null
-  }
-
-  _mapped_remotes() {
-    [[ -f "$CONFIG_FILE" ]] || return
-    grep -v '^\s*#' "$CONFIG_FILE" | grep -v '^\s*$' | awk '{print $1}'
-  }
-
-  _get_mountpoint() {
-    local remote="$1"
-    [[ -f "$CONFIG_FILE" ]] || return
-    grep -v '^\s*#' "$CONFIG_FILE" | grep -v '^\s*$' | awk -v r="$remote" '$1 == r {print $2; exit}'
-  }
-
-  _is_mounted() {
-    local mp="${1/#\~/$HOME}"
-    mount | grep -qF " $mp " 2>/dev/null || mount | grep -qF " $mp" 2>/dev/null
-  }
-
-  _get_unmounted() {
-    _mapped_remotes | while read -r remote; do
-      local mp
-      mp=$(_get_mountpoint "$remote")
-      _is_mounted "${mp/#\~/$HOME}" || echo "$remote"
-    done
-  }
-
-  _get_mounted() {
-    _mapped_remotes | while read -r remote; do
-      local mp
-      mp=$(_get_mountpoint "$remote")
-      _is_mounted "${mp/#\~/$HOME}" && echo "$remote" || true
-    done
+  _remotes() {
+    local -a remotes
+    remotes=(${(f)"$(rclone listremotes 2>/dev/null)"})
+    _describe 'remote' remotes
   }
 
   if (( CURRENT == 2 )); then
@@ -55,20 +23,14 @@ _rclone-env() {
   fi
 
   case "${words[2]}" in
-    mount)
-      local -a unmounted
-      unmounted=($(_get_unmounted))
-      _describe 'unmounted remote' unmounted
+    ls)
+      if (( CURRENT == 3 )); then
+        _remotes
+      fi
       ;;
-    umount)
-      local -a mounted
-      mounted=($(_get_mounted))
-      _describe 'mounted remote' mounted
-      ;;
-    remove)
-      local -a all_remotes
-      all_remotes=($(_mapped_remotes))
-      _describe 'remote' all_remotes
+    check|copy)
+      # Complete remote names for both source and dest positions
+      _remotes
       ;;
   esac
 }

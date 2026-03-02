@@ -64,8 +64,7 @@
           "raycast"
           "google-chrome"
           "porting-kit"
-          "macfuse"  # required for rclone-env mount functionality
-        ];
+];
       };
 
       security.pam.services.sudo_local.touchIdAuth = true;
@@ -78,10 +77,7 @@
       nixpkgs.overlays = [ inputs.nixgl.overlays.default ];
       # Platform-specific GUI apps (mirrors darwin's homebrew.casks)
       # rofi: bind shortcut to "rofi -show drun" in GNOME Settings → Keyboard → Custom Shortcuts
-      home.packages = [
-        pkgs.google-chrome
-        pkgs.fuse3  # required for rclone-env mount functionality
-      ];
+      home.packages = [ pkgs.google-chrome ];
       programs.rofi = {
         enable = true;
         extraConfig.show-icons = true;

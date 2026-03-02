@@ -4,7 +4,7 @@ let
   cfg = config.programs.rclone-env;
 in {
   options.programs.rclone-env = {
-    enable = mkEnableOption "rclone-env - mount/unmount rclone remotes";
+    enable = mkEnableOption "rclone-env - list, check, and copy rclone remotes";
   };
 
   config = mkIf cfg.enable {
