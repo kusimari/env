@@ -57,6 +57,15 @@ cmd_copy() {
   rclone copy "${RCLONE_FLAGS[@]}" --checksum "$src" "$dst"
 }
 
+cmd_browse() {
+  local path="${1:-}"
+  if [[ -z "$path" ]]; then
+    echo "Usage: rclone-env browse <remote:path>" >&2
+    exit 1
+  fi
+  rclone ncdu "$path"
+}
+
 cmd_sync() {
   local src="${1:-}" dst="${2:-}"
   if [[ -z "$src" || -z "$dst" ]]; then
@@ -82,6 +91,7 @@ case "$subcommand" in
   check)        cmd_check "${1:-}" "${2:-}" ;;
   copy)         cmd_copy "${1:-}" "${2:-}" ;;
   sync)         cmd_sync "${1:-}" "${2:-}" ;;
+  browse)       cmd_browse "${1:-}" ;;
   *)
     echo "Usage: rclone-env <command> [args]"
     echo ""
@@ -92,6 +102,7 @@ case "$subcommand" in
     echo "  check <src> <dst>  Check differences between source and dest"
     echo "  copy <src> <dst>   Dry-run preview then copy with optimised defaults"
     echo "  sync <src> <dst>   Dry-run preview then sync with optimised defaults"
+    echo "  browse <remote:>   Interactive TUI browser for a remote (rclone ncdu)"
     exit 1
     ;;
 esac

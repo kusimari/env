@@ -7,8 +7,9 @@ _rclone-env() {
     'list:Alias for remotes'
     'add:Add a new remote interactively'
     'ls:List directories on a remote'
+    'browse:Interactive TUI browser for a remote'
     'check:Check differences between source and dest'
-    'copy:Copy with optimised defaults'
+    'copy:Dry-run preview then copy with optimised defaults'
     'sync:Dry-run preview then sync with optimised defaults'
   )
 
@@ -24,14 +25,12 @@ _rclone-env() {
   fi
 
   case "${words[2]}" in
-    ls)
-      if (( CURRENT == 3 )); then
-        _remotes
-      fi
+    ls|browse)
+      (( CURRENT == 3 )) && _remotes
       ;;
     check|copy|sync)
       # Complete remote names for both source and dest positions
-      _remotes
+      (( CURRENT == 3 || CURRENT == 4 )) && _remotes
       ;;
   esac
 }
