@@ -72,7 +72,7 @@
     };
 
     # Linux-specific configuration (shared by ubuntu and kelasa-al2)
-    linuxConfiguration = { pkgs, ... }: {
+    linuxConfiguration = { pkgs, lib, ... }: {
       nix.package = pkgs.nix;
       nixpkgs.overlays = [ inputs.nixgl.overlays.default ];
       # Platform-specific GUI apps (mirrors darwin's homebrew.casks)
