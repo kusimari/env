@@ -35,6 +35,18 @@
 
     # rclone-env: list, browse, check, copy, sync across rclone remotes
     (pkgs.writeShellScriptBin "rclone-env" (builtins.readFile ../rclone-env/rclone-env.sh))
+
+    # nix-init: init a nix flake with direnv in the current directory
+    (pkgs.writeShellScriptBin "nix-init" ''
+      set -euo pipefail
+      if [[ -f flake.nix ]]; then
+        echo "flake.nix already exists, aborting." >&2
+        exit 1
+      fi
+      nix flake init --template templates#utils-generic
+      echo "use flake" >> .envrc
+      direnv allow
+    '')
   ];
 
   programs.tmux = {
