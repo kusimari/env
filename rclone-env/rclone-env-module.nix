@@ -9,11 +9,11 @@ in {
 
   config = mkIf cfg.enable {
     home.packages = [
-      (pkgs.writeShellScriptBin "rclone-mount" (builtins.readFile ./rclone-mount.sh))
+      (pkgs.writeShellScriptBin "rclone-env" (builtins.readFile ./rclone-env.sh))
     ];
 
-    # Zsh completion: place _rclone-mount in ~/.zfunc
-    home.file.".zfunc/_rclone-mount".source = ./_rclone-mount;
+    # Zsh completion: place _rclone-env in ~/.zfunc
+    home.file.".zfunc/_rclone-env".source = ./_rclone-env;
 
     # Ensure ~/.zfunc is on fpath before compinit
     programs.zsh.initExtra = ''

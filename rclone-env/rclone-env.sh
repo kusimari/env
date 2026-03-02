@@ -55,7 +55,7 @@ cmd_list() {
       echo "  [unmounted] $remote -> $mp"
     fi
   done < <(_parse_remotes)
-  [[ $found -eq 0 ]] && echo "No remotes configured. Use 'rclone-mount add' to add one."
+  [[ $found -eq 0 ]] && echo "No remotes configured. Use 'rclone-env add' to add one."
 }
 
 cmd_mount() {
@@ -165,7 +165,7 @@ cmd_add() {
 cmd_remove() {
   local target="${1:-}"
   if [[ -z "$target" ]]; then
-    echo "Usage: rclone-mount remove <remote>" >&2
+    echo "Usage: rclone-env remove <remote>" >&2
     exit 1
   fi
   _ensure_config
@@ -187,7 +187,7 @@ case "$subcommand" in
   add)         cmd_add ;;
   remove)      cmd_remove "${1:-}" ;;
   *)
-    echo "Usage: rclone-mount <command> [args]"
+    echo "Usage: rclone-env <command> [args]"
     echo ""
     echo "Commands:"
     echo "  list, status       Show all configured remotes and their mount status"

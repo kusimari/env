@@ -1,6 +1,6 @@
-#compdef rclone-mount
+#compdef rclone-env
 
-_rclone-mount() {
+_rclone-env() {
   local CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/rclone-env/remotes"
 
   local -a subcommands
@@ -68,4 +68,4 @@ _rclone-mount() {
   esac
 }
 
-_rclone-mount "$@"
+_rclone-env "$@"
