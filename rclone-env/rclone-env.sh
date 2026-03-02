@@ -31,14 +31,14 @@ _rclone_remotes() {
 # Mount point for a remote from our config file (empty if not set)
 _get_mountpoint_for() {
   local target="$1"
-  [[ -f "$REMOTES_FILE" ]] || return
-  grep -v '^\s*#' "$REMOTES_FILE" | grep -v '^\s*$' | awk -v r="$target" '$1 == r {print $2; exit}'
+  [[ -f "$REMOTES_FILE" ]] || return 0
+  grep -v '^\s*#' "$REMOTES_FILE" | grep -v '^\s*$' | awk -v r="$target" '$1 == r {print $2; exit}' || true
 }
 
 # All remotes in our config file with their mount points
 _parse_remotes() {
-  [[ -f "$REMOTES_FILE" ]] || return
-  grep -v '^\s*#' "$REMOTES_FILE" | grep -v '^\s*$' | awk '{print $1, $2}'
+  [[ -f "$REMOTES_FILE" ]] || return 0
+  grep -v '^\s*#' "$REMOTES_FILE" | grep -v '^\s*$' | awk '{print $1, $2}' || true
 }
 
 _is_mounted() {
