@@ -23,7 +23,21 @@ _resolve_path() {
   echo "${p/#\~/$HOME}"
 }
 
+# All remotes known to rclone
+_rclone_remotes() {
+  rclone listremotes 2>/dev/null
+}
+
+# Mount point for a remote from our config file (empty if not set)
+_get_mountpoint_for() {
+  local target="$1"
+  [[ -f "$REMOTES_FILE" ]] || return
+  grep -v '^\s*#' "$REMOTES_FILE" | grep -v '^\s*$' | awk -v r="$target" '$1 == r {print $2; exit}'
+}
+
+# All remotes in our config file with their mount points
 _parse_remotes() {
+  [[ -f "$REMOTES_FILE" ]] || return
   grep -v '^\s*#' "$REMOTES_FILE" | grep -v '^\s*$' | awk '{print $1, $2}'
 }
 
@@ -32,30 +46,25 @@ _is_mounted() {
   mount | grep -qF " $mp " 2>/dev/null || mount | grep -qF " $mp" 2>/dev/null
 }
 
-_get_mountpoint_for() {
-  local target="$1"
-  local mountpoint=""
-  while IFS=' ' read -r remote mp; do
-    [[ "$remote" == "$target" ]] && mountpoint="$mp" && break
-  done < <(_parse_remotes)
-  echo "$mountpoint"
-}
-
 cmd_list() {
-  _ensure_config
   local found=0
-  while IFS=' ' read -r remote mountpoint; do
+  while IFS= read -r remote; do
     [[ -z "$remote" ]] && continue
     found=1
-    local mp
-    mp=$(_resolve_path "$mountpoint")
-    if _is_mounted "$mp"; then
-      echo "  [mounted]   $remote -> $mp"
+    local mountpoint mp
+    mountpoint=$(_get_mountpoint_for "$remote")
+    if [[ -z "$mountpoint" ]]; then
+      echo "  [no mount]  $remote"
     else
-      echo "  [unmounted] $remote -> $mp"
+      mp=$(_resolve_path "$mountpoint")
+      if _is_mounted "$mp"; then
+        echo "  [mounted]   $remote -> $mp"
+      else
+        echo "  [unmounted] $remote -> $mp"
+      fi
     fi
-  done < <(_parse_remotes)
-  [[ $found -eq 0 ]] && echo "No remotes configured. Use 'rclone-env add' to add one."
+  done < <(_rclone_remotes)
+  [[ $found -eq 0 ]] && echo "No rclone remotes configured. Run 'rclone config' or 'rclone-env add' to add one."
 }
 
 cmd_mount() {
@@ -153,11 +162,28 @@ cmd_umount() {
 
 cmd_add() {
   _ensure_config
-  echo "Launching rclone config to set up a new remote..."
-  rclone config
-  echo ""
-  read -rp "Enter the rclone remote name (e.g. 'gdrive:' or 'myserver:photos'): " remote_name
-  read -rp "Enter the local mount point (e.g. ~/mnt/gdrive): " mount_point
+  local -a unmapped=()
+  while IFS= read -r remote; do
+    [[ -z "$(_get_mountpoint_for "$remote")" ]] && unmapped+=("$remote")
+  done < <(_rclone_remotes)
+
+  local remote_name
+  if [[ ${#unmapped[@]} -gt 0 ]]; then
+    echo "Existing remotes without a mount point:"
+    select remote_name in "${unmapped[@]}" "Configure a new remote"; do
+      [[ -n "$remote_name" ]] && break
+    done
+    if [[ "$remote_name" == "Configure a new remote" ]]; then
+      rclone config
+      read -rp "Enter the rclone remote name just configured (e.g. 'gdrive:'): " remote_name
+    fi
+  else
+    echo "Launching rclone config to set up a new remote..."
+    rclone config
+    read -rp "Enter the rclone remote name just configured (e.g. 'gdrive:'): " remote_name
+  fi
+
+  read -rp "Enter the local mount point for $remote_name (e.g. ~/mnt/gdrive): " mount_point
   echo "$remote_name    $mount_point" >> "$REMOTES_FILE"
   echo "Added: $remote_name -> $mount_point"
 }
