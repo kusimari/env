@@ -57,6 +57,20 @@ cmd_copy() {
   rclone copy "${RCLONE_FLAGS[@]}" --checksum "$src" "$dst"
 }
 
+cmd_sync() {
+  local src="${1:-}" dst="${2:-}"
+  if [[ -z "$src" || -z "$dst" ]]; then
+    echo "Usage: rclone-env sync <source> <dest>" >&2
+    exit 1
+  fi
+  echo "Dry run first..."
+  rclone sync --dry-run "$src" "$dst"
+  echo ""
+  read -rp "Proceed with sync? [y/N] " confirm
+  [[ "$confirm" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 0; }
+  rclone sync "${RCLONE_FLAGS[@]}" --checksum "$src" "$dst"
+}
+
 # Main
 subcommand="${1:-}"
 shift || true
@@ -67,6 +81,7 @@ case "$subcommand" in
   ls)           cmd_ls "${1:-}" ;;
   check)        cmd_check "${1:-}" "${2:-}" ;;
   copy)         cmd_copy "${1:-}" "${2:-}" ;;
+  sync)         cmd_sync "${1:-}" "${2:-}" ;;
   *)
     echo "Usage: rclone-env <command> [args]"
     echo ""
@@ -76,6 +91,7 @@ case "$subcommand" in
     echo "  ls <remote:path>   List directories on a remote"
     echo "  check <src> <dst>  Check differences between source and dest"
     echo "  copy <src> <dst>   Dry-run preview then copy with optimised defaults"
+    echo "  sync <src> <dst>   Dry-run preview then sync with optimised defaults"
     exit 1
     ;;
 esac

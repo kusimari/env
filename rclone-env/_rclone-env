@@ -9,6 +9,7 @@ _rclone-env() {
     'ls:List directories on a remote'
     'check:Check differences between source and dest'
     'copy:Copy with optimised defaults'
+    'sync:Dry-run preview then sync with optimised defaults'
   )
 
   _remotes() {
@@ -28,7 +29,7 @@ _rclone-env() {
         _remotes
       fi
       ;;
-    check|copy)
+    check|copy|sync)
       # Complete remote names for both source and dest positions
       _remotes
       ;;
