@@ -1,0 +1,71 @@
+#compdef rclone-mount
+
+_rclone-mount() {
+  local CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/rclone-env/remotes"
+
+  local -a subcommands
+  subcommands=(
+    'list:Show all configured remotes with mount status'
+    'status:Alias for list'
+    'mount:Mount a remote'
+    'umount:Unmount a remote'
+    'add:Configure a new remote interactively'
+    'remove:Remove a remote from config'
+  )
+
+  _get_remotes() {
+    [[ -f "$CONFIG_FILE" ]] || return
+    grep -v '^\s*#' "$CONFIG_FILE" | grep -v '^\s*$' | awk '{print $1}'
+  }
+
+  _get_mountpoint() {
+    local remote="$1"
+    grep -v '^\s*#' "$CONFIG_FILE" | grep -v '^\s*$' | awk -v r="$remote" '$1 == r {print $2}'
+  }
+
+  _is_mounted() {
+    local mp="${1/#\~/$HOME}"
+    mount | grep -qF " $mp " 2>/dev/null || mount | grep -qF " $mp" 2>/dev/null
+  }
+
+  _get_unmounted() {
+    _get_remotes | while read -r remote; do
+      local mp
+      mp=$(_get_mountpoint "$remote")
+      _is_mounted "$mp" || echo "$remote"
+    done
+  }
+
+  _get_mounted() {
+    _get_remotes | while read -r remote; do
+      local mp
+      mp=$(_get_mountpoint "$remote")
+      _is_mounted "$mp" && echo "$remote" || true
+    done
+  }
+
+  if (( CURRENT == 2 )); then
+    _describe 'subcommand' subcommands
+    return
+  fi
+
+  case "${words[2]}" in
+    mount)
+      local -a unmounted
+      unmounted=($(_get_unmounted))
+      _describe 'unmounted remote' unmounted
+      ;;
+    umount)
+      local -a mounted
+      mounted=($(_get_mounted))
+      _describe 'mounted remote' mounted
+      ;;
+    remove|status)
+      local -a all_remotes
+      all_remotes=($(_get_remotes))
+      _describe 'remote' all_remotes
+      ;;
+  esac
+}
+
+_rclone-mount "$@"

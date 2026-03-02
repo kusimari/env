@@ -3,6 +3,7 @@
   # Import custom modules directly
   imports = [
     ../gittree/gittree-module.nix
+    ../rclone-env/rclone-env-module.nix
   ];
 
   # shell with solarized dark
@@ -184,5 +185,7 @@
     enable = true;
     commandName = "lg";
   };
+
+  programs.rclone-env.enable = true;
 
 }
