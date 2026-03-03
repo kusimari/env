@@ -1,15 +1,16 @@
 Follow the rabbit in flake.nix
 
 For system configuration:
-  - Darwin: ./nix-install-scripts/darwin-run.sh
-  - Ubuntu: ./nix-install-scripts/ubuntu-run.sh
+  - Darwin: ./build-nix/darwin.sh
+  - Ubuntu: ./build-nix/ubuntu.sh
   - Amazon Linux 2:
-    - First run SSL fixes: ./nix-install-scripts/kelasa-al2-fix-ssl-trusted-user.sh
-    - Then setup: ./nix-install-scripts/kelasa-al2-run.sh
+    - First run SSL fixes: ./build-nix/al2-fix-ssl.sh
+    - Then setup: ./build-nix/al2.sh
+
+To check flake evaluates without building:
+  - ./build-nix/test.sh
 
 For a new project folder:
   - mkdir <folder>; cd <folder>
-  - nix flake init --template templates#utils-generic
-  - echo "use flake" >> .envrc
-  - direnv allow
+  - nix-init
   - use language specific builders or use one of nix-templates which generalizes them

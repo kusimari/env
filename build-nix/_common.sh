@@ -85,3 +85,6 @@ else
 fi
 
 echo "Done!"
+
+printf '\n\033[1;33m=== Post-install setup notes ===\033[0m\n'
+cat "$FLAKE_DIR/setup-notes.md"

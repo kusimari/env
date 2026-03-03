@@ -64,7 +64,7 @@
           "raycast"
           "google-chrome"
           "porting-kit"
-        ];
+];
       };
 
       security.pam.services.sudo_local.touchIdAuth = true;
@@ -72,12 +72,17 @@
     };
 
     # Linux-specific configuration (shared by ubuntu and kelasa-al2)
-    linuxConfiguration = { pkgs, ... }: {
+    linuxConfiguration = { pkgs, lib, ... }: {
       nix.package = pkgs.nix;
       nixpkgs.overlays = [ inputs.nixgl.overlays.default ];
       # Platform-specific GUI apps (mirrors darwin's homebrew.casks)
       # rofi: bind shortcut to "rofi -show drun" in GNOME Settings → Keyboard → Custom Shortcuts
       home.packages = [ pkgs.google-chrome ];
+      home.file = lib.mapAttrs' (name: _: {
+        name  = ".local/share/applications/${name}";
+        value.source = ./rofi-desktop + "/${name}";
+      }) (builtins.readDir ./rofi-desktop);
+
       programs.rofi = {
         enable = true;
         extraConfig.show-icons = true;

@@ -1,0 +1,39 @@
+#compdef rclone-env
+
+_rclone-env() {
+  local -a subcommands
+  subcommands=(
+    'remotes:List configured rclone remotes'
+    'list:Alias for remotes'
+    'add:Add a new remote interactively'
+    'ls:List directories on a remote'
+    'browse:Interactive TUI browser for a remote'
+    'check:Check differences between source and dest'
+    'copy:Dry-run preview then copy with optimised defaults'
+    'sync:Dry-run preview then sync with optimised defaults'
+    'backends:Browse all supported storage backends'
+  )
+
+  _remotes() {
+    local -a remotes
+    remotes=(${(f)"$(rclone listremotes 2>/dev/null)"})
+    _describe 'remote' remotes
+  }
+
+  if (( CURRENT == 2 )); then
+    _describe 'subcommand' subcommands
+    return
+  fi
+
+  case "${words[2]}" in
+    ls|browse)
+      (( CURRENT == 3 )) && _remotes
+      ;;
+    check|copy|sync)
+      # Complete remote names for both source and dest positions
+      (( CURRENT == 3 || CURRENT == 4 )) && _remotes
+      ;;
+  esac
+}
+
+_rclone-env "$@"

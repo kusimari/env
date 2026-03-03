@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 {
   # Import custom modules directly
   imports = [
@@ -31,6 +31,13 @@
     # Terminal utilities
     ripgrep  # fast regex search across files (rg), also used by emacs consult
     fd       # fast file finder, also used by emacs consult
+    jq       # JSON processor, used by rclone-env backends
+
+    # rclone-env: list, browse, check, copy, sync across rclone remotes
+    (pkgs.writeShellScriptBin "rclone-env" (builtins.readFile ../rclone-env/rclone-env.sh))
+
+    # nix-init: init a nix flake with direnv in the current directory
+    (pkgs.writeShellScriptBin "nix-init" (builtins.readFile ../nix-init/nix-init.sh))
   ];
 
   programs.tmux = {
@@ -81,7 +88,8 @@
       ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE = "fg=#666666";
       ZSH_AUTOSUGGEST_STRATEGY = "(completion history)";
     };
-    initContent = ''
+    initContent = lib.mkOrder 550 ''
+      fpath=(~/.zfunc $fpath)
       # Source pre-nix setup shell initialization
       if [[ -f ~/.pre-nix-rc ]]; then
         source ~/.pre-nix-rc
@@ -184,5 +192,7 @@
     enable = true;
     commandName = "lg";
   };
+
+  home.file.".zfunc/_rclone-env".source = ../rclone-env/_rclone-env;
 
 }
