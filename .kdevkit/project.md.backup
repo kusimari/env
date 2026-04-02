@@ -6,9 +6,6 @@ Personal development environment managed with Nix flakes and home-manager.
 - macOS (aarch64-darwin) via nix-darwin
 - Ubuntu x86_64-linux via home-manager standalone
 - Amazon Linux 2 (kelasa-al2) via home-manager standalone
-- **Cloud VMs (x86_64-linux) via NixOS system configuration**
-  - GCP Compute Engine (Ubuntu → nixos-infect conversion)
-  - AWS EC2 (Official NixOS AMIs)
 
 ## Stack
 - Nix flakes (`flake.nix`)
@@ -23,8 +20,6 @@ Personal development environment managed with Nix flakes and home-manager.
 - **Darwin build**: `./build-nix/darwin.sh`
 - **Ubuntu build**: `./build-nix/ubuntu.sh`
 - **Amazon Linux 2**: First run `./build-nix/al2-fix-ssl.sh`, then `./build-nix/al2.sh`
-- **Cloud build test**: `./build-nix/cloud.sh` (local NixOS config validation)
-- **Cloud deployment**: Via GitHub Actions workflow (requires cloud account setup)
 
 ### New Project Setup
 ```bash
@@ -60,14 +55,11 @@ nix-init
 - `home/home.nix`: User-level configuration shared across platforms
 - `home/user-host.nix`: User and hostname definitions
 - `build-nix/_common.sh`: Shared build utilities
-- `cloud/`: Cloud VM provisioning configuration and scripts
-- `.github/workflows/`: GitHub Actions for automated cloud deployment
 
 ### Platform-Specific Considerations
 - **Darwin-specific**: Homebrew casks, TouchID authentication, system settings
 - **Linux-specific**: GUI applications via rofi, nixGL overlays, custom .desktop files
 - **AL2-specific**: PATH fixes, locale configuration, single-user Nix installation
-- **Cloud-specific**: System-level NixOS config, SSH-only access, cloud-optimized boot
 - **Cross-platform**: Nix packages, home-manager modules, common configuration
 
 ### Key Overlays
@@ -75,38 +67,6 @@ nix-init
 - nix-vscode-extensions
 - claude-code-nix
 - nixGL (Linux only)
-
-## Configuration Architecture
-
-### Setup Methods by Target
-- **Existing OS Setup**: Use `build-nix/<os>.sh` scripts
-  - `build-nix/darwin.sh` - macOS via nix-darwin
-  - `build-nix/ubuntu.sh` - Ubuntu via home-manager standalone
-  - `build-nix/al2.sh` - Amazon Linux 2 via home-manager standalone
-- **Cloud Provisioning**: Use GitHub Action → `build-nix/cloud.sh`
-  - Provisions VM and applies NixOS configuration in one step
-
-### Script Pattern
-All build scripts follow the same workflow:
-1. **Pre-nix**: Environment preparation, dependency checks
-2. **Nix**: Configuration application (`nix build`, `nixos-rebuild`, etc.)
-3. **Post-nix**: Final setup, status verification
-
-### Configuration Mapping
-- **Darwin**: `nixosConfigurations.darwin` + integrated home-manager
-- **Ubuntu**: `homeConfigurations.ubuntu` (standalone home-manager)
-- **AL2**: `homeConfigurations.kelasa-al2` (standalone home-manager)
-- **Cloud**: `nixosConfigurations.cloud` + integrated home-manager
-
-### Cloud Deployment Architecture
-- **Authentication**: OIDC federation (no stored credentials)
-  - GCP: Workload Identity Federation
-  - AWS: IAM roles with GitHub OIDC provider
-- **Initialization**:
-  - **GCP**: Ubuntu 24.04 → nixos-infect → NixOS configuration
-  - **AWS**: Official NixOS AMI → direct configuration application
-- **Management**: GitHub Actions workflow with manual triggers
-- **Access**: Multiple SSH methods (browser, CLI, direct)
 
 ## Conventions
 - Branch naming: `type/description`
