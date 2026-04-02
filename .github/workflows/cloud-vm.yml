@@ -1,4 +1,4 @@
-name: 🚀 Cloud VM Deployment
+name: Cloud VM Deployment
 
 on:
   workflow_dispatch:
@@ -63,21 +63,22 @@ on:
         required: false
         type: string
 
-# Restrict to specific user for security
 jobs:
   security-check:
     runs-on: ubuntu-latest
     outputs:
       authorized: ${{ steps.check.outputs.authorized }}
     steps:
-    - name: 🔒 Verify authorized user
+    - name: Verify authorized user
       id: check
+      env:
+        ACTOR: ${{ github.actor }}
       run: |
-        if [[ "${{ github.actor }}" == "kusimari" ]]; then
-          echo "✅ User ${{ github.actor }} is authorized"
+        if [[ "$ACTOR" == "kusimari" ]]; then
+          echo "User $ACTOR is authorized"
           echo "authorized=true" >> $GITHUB_OUTPUT
         else
-          echo "❌ User ${{ github.actor }} is not authorized for cloud deployments"
+          echo "User $ACTOR is not authorized for cloud deployments"
           echo "authorized=false" >> $GITHUB_OUTPUT
           exit 1
         fi
@@ -86,62 +87,48 @@ jobs:
     needs: security-check
     if: needs.security-check.outputs.authorized == 'true'
     runs-on: ubuntu-latest
-    outputs:
-      provider: ${{ steps.validate.outputs.provider }}
-      action: ${{ steps.validate.outputs.action }}
-      vm_name: ${{ steps.validate.outputs.vm_name }}
-      machine_type: ${{ steps.validate.outputs.machine_type }}
-      region: ${{ steps.validate.outputs.region }}
     steps:
-    - name: 📝 Validate inputs
+    - name: Validate inputs
       id: validate
+      env:
+        INPUT_PROVIDER: ${{ inputs.provider }}
+        INPUT_ACTION: ${{ inputs.action }}
+        INPUT_VM_NAME: ${{ inputs.vm_name }}
+        INPUT_DESTROY_CONFIRM: ${{ inputs.destroy_confirmation }}
+        INPUT_GCP_PROJECT: ${{ inputs.gcp_project_id }}
+        INPUT_GCP_WIF: ${{ inputs.gcp_workload_identity_provider }}
+        INPUT_GCP_SA: ${{ inputs.gcp_service_account }}
+        INPUT_AWS_ROLE: ${{ inputs.aws_role_arn }}
       run: |
-        # Validate provider
-        if [[ "${{ inputs.provider }}" != "gcp" && "${{ inputs.provider }}" != "aws" ]]; then
-          echo "❌ Invalid provider: ${{ inputs.provider }}"
-          exit 1
-        fi
-
-        # Validate action
-        if [[ "${{ inputs.action }}" != "create" && "${{ inputs.action }}" != "destroy" ]]; then
-          echo "❌ Invalid action: ${{ inputs.action }}"
-          exit 1
-        fi
-
         # Validate VM name (alphanumeric, hyphens, underscores only)
-        if [[ ! "${{ inputs.vm_name }}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-          echo "❌ Invalid VM name: ${{ inputs.vm_name }}"
+        if [[ ! "$INPUT_VM_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+          echo "Invalid VM name: $INPUT_VM_NAME"
           echo "VM name must contain only letters, numbers, hyphens, and underscores"
           exit 1
         fi
 
         # Validate destroy confirmation
-        if [[ "${{ inputs.action }}" == "destroy" && "${{ inputs.destroy_confirmation }}" != "DELETE" ]]; then
-          echo "❌ Destroy action requires typing 'DELETE' in the confirmation field"
+        if [[ "$INPUT_ACTION" == "destroy" && "$INPUT_DESTROY_CONFIRM" != "DELETE" ]]; then
+          echo "Destroy action requires typing 'DELETE' in the confirmation field"
           exit 1
         fi
 
         # Validate provider-specific inputs
-        if [[ "${{ inputs.provider }}" == "gcp" ]]; then
-          if [[ -z "${{ inputs.gcp_project_id }}" || -z "${{ inputs.gcp_workload_identity_provider }}" || -z "${{ inputs.gcp_service_account }}" ]]; then
-            echo "❌ GCP deployment requires gcp_project_id, gcp_workload_identity_provider, and gcp_service_account"
+        if [[ "$INPUT_PROVIDER" == "gcp" ]]; then
+          if [[ -z "$INPUT_GCP_PROJECT" || -z "$INPUT_GCP_WIF" || -z "$INPUT_GCP_SA" ]]; then
+            echo "GCP deployment requires gcp_project_id, gcp_workload_identity_provider, and gcp_service_account"
             exit 1
           fi
         fi
 
-        if [[ "${{ inputs.provider }}" == "aws" ]]; then
-          if [[ -z "${{ inputs.aws_role_arn }}" ]]; then
-            echo "❌ AWS deployment requires aws_role_arn"
+        if [[ "$INPUT_PROVIDER" == "aws" ]]; then
+          if [[ -z "$INPUT_AWS_ROLE" ]]; then
+            echo "AWS deployment requires aws_role_arn"
             exit 1
           fi
         fi
 
-        echo "✅ All inputs validated"
-        echo "provider=${{ inputs.provider }}" >> $GITHUB_OUTPUT
-        echo "action=${{ inputs.action }}" >> $GITHUB_OUTPUT
-        echo "vm_name=${{ inputs.vm_name }}" >> $GITHUB_OUTPUT
-        echo "machine_type=${{ inputs.machine_type }}" >> $GITHUB_OUTPUT
-        echo "region=${{ inputs.region }}" >> $GITHUB_OUTPUT
+        echo "All inputs validated"
 
   deploy-gcp:
     needs: [security-check, validate-inputs]
@@ -151,32 +138,32 @@ jobs:
       id-token: write
       contents: read
     outputs:
-      vm_ip: ${{ steps.create.outputs.vm_ip }}
-      vm_zone: ${{ steps.create.outputs.vm_zone }}
       connection_info: ${{ steps.create.outputs.connection_info }}
     steps:
-    - name: 📥 Checkout code
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: 🔐 Authenticate to Google Cloud
+    - name: Authenticate to Google Cloud
       uses: google-github-actions/auth@v2
       with:
         workload_identity_provider: ${{ inputs.gcp_workload_identity_provider }}
         service_account: ${{ inputs.gcp_service_account }}
 
-    - name: ⚙️ Set up Cloud SDK
+    - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
 
-    - name: 📊 Load configuration
+    - name: Load configuration
       id: config
+      env:
+        INPUT_MACHINE_TYPE: ${{ inputs.machine_type }}
+        INPUT_REGION: ${{ inputs.region }}
       run: |
-        # Set defaults from config.yaml
-        MACHINE_TYPE="${{ inputs.machine_type }}"
+        MACHINE_TYPE="$INPUT_MACHINE_TYPE"
         if [[ -z "$MACHINE_TYPE" ]]; then
           MACHINE_TYPE=$(yq '.defaults.gcp.machine_type' cloud/config.yaml)
         fi
 
-        ZONE="${{ inputs.region }}"
+        ZONE="$INPUT_REGION"
         if [[ -z "$ZONE" ]]; then
           ZONE=$(yq '.defaults.gcp.zone' cloud/config.yaml)
         fi
@@ -187,99 +174,74 @@ jobs:
         echo "image_family=$(yq '.defaults.gcp.image_family' cloud/config.yaml)" >> $GITHUB_OUTPUT
         echo "image_project=$(yq '.defaults.gcp.image_project' cloud/config.yaml)" >> $GITHUB_OUTPUT
 
-    - name: 🚀 Create GCP VM
+    - name: Create GCP VM
       if: inputs.action == 'create'
       id: create
+      env:
+        VM_NAME: env-${{ inputs.vm_name }}
+        GCP_PROJECT: ${{ inputs.gcp_project_id }}
+        ZONE: ${{ steps.config.outputs.zone }}
+        MACHINE_TYPE: ${{ steps.config.outputs.machine_type }}
+        IMAGE_FAMILY: ${{ steps.config.outputs.image_family }}
+        IMAGE_PROJECT: ${{ steps.config.outputs.image_project }}
+        DISK_SIZE: ${{ steps.config.outputs.disk_size }}
       run: |
-        VM_NAME="env-${{ inputs.vm_name }}"
+        echo "Creating GCP VM: $VM_NAME"
 
-        echo "🚀 Creating GCP VM: $VM_NAME"
-
-        # Create the VM with startup script
         gcloud compute instances create "$VM_NAME" \
-          --project="${{ inputs.gcp_project_id }}" \
-          --zone="${{ steps.config.outputs.zone }}" \
-          --machine-type="${{ steps.config.outputs.machine_type }}" \
-          --image-family="${{ steps.config.outputs.image_family }}" \
-          --image-project="${{ steps.config.outputs.image_project }}" \
-          --boot-disk-size="${{ steps.config.outputs.disk_size }}" \
+          --project="$GCP_PROJECT" \
+          --zone="$ZONE" \
+          --machine-type="$MACHINE_TYPE" \
+          --image-family="$IMAGE_FAMILY" \
+          --image-project="$IMAGE_PROJECT" \
+          --boot-disk-size="$DISK_SIZE" \
           --boot-disk-type="pd-standard" \
           --tags="env-cloud-vm" \
           --metadata-from-file="startup-script=cloud/init-gcp.sh" \
-          --scopes="https://www.googleapis.com/auth/cloud-platform" \
-          --preemptible
+          --scopes="https://www.googleapis.com/auth/cloud-platform"
 
-        # Wait for instance to be ready
-        echo "⏳ Waiting for VM to be ready..."
+        echo "Waiting for VM to be ready..."
         sleep 30
 
-        # Get VM details
         VM_IP=$(gcloud compute instances describe "$VM_NAME" \
-          --project="${{ inputs.gcp_project_id }}" \
-          --zone="${{ steps.config.outputs.zone }}" \
+          --project="$GCP_PROJECT" \
+          --zone="$ZONE" \
           --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
 
-        echo "✅ VM created successfully!"
-        echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
-        echo "vm_zone=${{ steps.config.outputs.zone }}" >> $GITHUB_OUTPUT
+        echo "VM created successfully!"
 
-        # Generate connection info
-        CONNECTION_INFO=$(cat << EOF
-        ## 🔗 GCP VM Connection Information
+        # Generate connection info for summary
+        {
+          echo "connection_info<<CONNEOF"
+          echo "## GCP VM Connection Information"
+          echo ""
+          echo "**VM:** \`$VM_NAME\` | **IP:** \`$VM_IP\` | **Zone:** \`$ZONE\` | **Type:** \`$MACHINE_TYPE\`"
+          echo ""
+          echo "**SSH Methods:**"
+          echo "1. **Browser:** [GCP Console](https://console.cloud.google.com/compute/instances?project=$GCP_PROJECT) → SSH"
+          echo "2. **gcloud:** \`gcloud compute ssh kusimari@$VM_NAME --zone=$ZONE --project=$GCP_PROJECT\`"
+          echo "3. **Direct:** \`ssh kusimari@$VM_IP\`"
+          echo ""
+          echo "**Status:** Ubuntu → NixOS conversion in progress (5-10 min). Check: \`gcloud compute instances get-serial-port-output $VM_NAME --zone=$ZONE --project=$GCP_PROJECT\`"
+          echo "CONNEOF"
+        } >> $GITHUB_OUTPUT
 
-        **VM Details:**
-        - Name: \`$VM_NAME\`
-        - IP: \`$VM_IP\`
-        - Zone: \`${{ steps.config.outputs.zone }}\`
-        - Machine Type: \`${{ steps.config.outputs.machine_type }}\`
-
-        **SSH Connection Methods:**
-
-        1. **Browser SSH (GCP Console):**
-           - Go to [Compute Engine → VM Instances](https://console.cloud.google.com/compute/instances?project=${{ inputs.gcp_project_id }})
-           - Find \`$VM_NAME\` and click "SSH"
-
-        2. **gcloud CLI:**
-           \`\`\`bash
-           gcloud compute ssh kusimari@$VM_NAME --zone=${{ steps.config.outputs.zone }} --project=${{ inputs.gcp_project_id }}
-           \`\`\`
-
-        3. **Direct SSH (after adding your key):**
-           \`\`\`bash
-           ssh kusimari@$VM_IP
-           \`\`\`
-
-        **Status Check:**
-        The VM is initializing. Ubuntu is being converted to NixOS (takes 5-10 minutes).
-        Check initialization status:
-        \`\`\`bash
-        gcloud compute instances get-serial-port-output $VM_NAME --zone=${{ steps.config.outputs.zone }} --project=${{ inputs.gcp_project_id }}
-        \`\`\`
-        EOF
-        )
-        echo "connection_info<<EOF" >> $GITHUB_OUTPUT
-        echo "$CONNECTION_INFO" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-
-    - name: 🗑️ Destroy GCP VM
+    - name: Destroy GCP VM
       if: inputs.action == 'destroy'
+      env:
+        VM_NAME: env-${{ inputs.vm_name }}
+        GCP_PROJECT: ${{ inputs.gcp_project_id }}
+        ZONE: ${{ steps.config.outputs.zone }}
       run: |
-        VM_NAME="env-${{ inputs.vm_name }}"
-
-        echo "🗑️ Destroying GCP VM: $VM_NAME"
+        echo "Destroying GCP VM: $VM_NAME"
 
         if gcloud compute instances describe "$VM_NAME" \
-           --project="${{ inputs.gcp_project_id }}" \
-           --zone="${{ steps.config.outputs.zone }}" >/dev/null 2>&1; then
-
+           --project="$GCP_PROJECT" --zone="$ZONE" >/dev/null 2>&1; then
           gcloud compute instances delete "$VM_NAME" \
-            --project="${{ inputs.gcp_project_id }}" \
-            --zone="${{ steps.config.outputs.zone }}" \
-            --quiet
-
-          echo "✅ VM destroyed successfully!"
+            --project="$GCP_PROJECT" --zone="$ZONE" --quiet
+          echo "VM destroyed successfully!"
         else
-          echo "⚠️ VM not found (may already be deleted)"
+          echo "VM not found (may already be deleted)"
         fi
 
   deploy-aws:
@@ -290,30 +252,29 @@ jobs:
       id-token: write
       contents: read
     outputs:
-      vm_ip: ${{ steps.create.outputs.vm_ip }}
-      vm_region: ${{ steps.create.outputs.vm_region }}
-      instance_id: ${{ steps.create.outputs.instance_id }}
       connection_info: ${{ steps.create.outputs.connection_info }}
     steps:
-    - name: 📥 Checkout code
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: 🔐 Configure AWS credentials
+    - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: ${{ inputs.aws_role_arn }}
         aws-region: ${{ inputs.aws_region || 'us-east-1' }}
 
-    - name: 📊 Load configuration and find AMI
+    - name: Load configuration and find AMI
       id: config
+      env:
+        INPUT_MACHINE_TYPE: ${{ inputs.machine_type }}
+        INPUT_REGION: ${{ inputs.aws_region }}
       run: |
-        # Set defaults from config.yaml
-        INSTANCE_TYPE="${{ inputs.machine_type }}"
+        INSTANCE_TYPE="$INPUT_MACHINE_TYPE"
         if [[ -z "$INSTANCE_TYPE" ]]; then
           INSTANCE_TYPE=$(yq '.defaults.aws.instance_type' cloud/config.yaml)
         fi
 
-        REGION="${{ inputs.aws_region }}"
+        REGION="$INPUT_REGION"
         if [[ -z "$REGION" ]]; then
           REGION=$(yq '.defaults.aws.region' cloud/config.yaml)
         fi
@@ -327,7 +288,7 @@ jobs:
           --region "$REGION")
 
         if [[ "$AMI_ID" == "None" || -z "$AMI_ID" ]]; then
-          echo "❌ No NixOS AMI found in region $REGION"
+          echo "No NixOS AMI found in region $REGION"
           exit 1
         fi
 
@@ -336,106 +297,91 @@ jobs:
         echo "ami_id=$AMI_ID" >> $GITHUB_OUTPUT
         echo "volume_size=$(yq '.defaults.aws.volume_size' cloud/config.yaml)" >> $GITHUB_OUTPUT
 
-    - name: 🚀 Create AWS EC2 Instance
+    - name: Create AWS EC2 Instance
       if: inputs.action == 'create'
       id: create
+      env:
+        VM_NAME: env-${{ inputs.vm_name }}
+        AMI_ID: ${{ steps.config.outputs.ami_id }}
+        INSTANCE_TYPE: ${{ steps.config.outputs.instance_type }}
+        REGION: ${{ steps.config.outputs.region }}
       run: |
-        VM_NAME="env-${{ inputs.vm_name }}"
+        echo "Creating AWS EC2 Instance: $VM_NAME"
+        echo "Using AMI: $AMI_ID"
 
-        echo "🚀 Creating AWS EC2 Instance: $VM_NAME"
-        echo "Using AMI: ${{ steps.config.outputs.ami_id }}"
+        # Find the env-cloud-ssh security group created by bootstrap
+        SG_ID=$(aws ec2 describe-security-groups \
+          --filters "Name=group-name,Values=env-cloud-ssh" \
+          --query 'SecurityGroups[0].GroupId' --output text \
+          --region "$REGION")
+
+        if [[ "$SG_ID" == "None" || -z "$SG_ID" ]]; then
+          echo "Security group 'env-cloud-ssh' not found. Run cloud/bootstrap/aws-setup.sh first."
+          exit 1
+        fi
 
         # Encode init script as base64
         INIT_SCRIPT_B64=$(base64 -w 0 cloud/init-aws.sh)
 
-        # Create instance
+        # Create instance with dedicated security group
         INSTANCE_JSON=$(aws ec2 run-instances \
-          --image-id "${{ steps.config.outputs.ami_id }}" \
-          --instance-type "${{ steps.config.outputs.instance_type }}" \
+          --image-id "$AMI_ID" \
+          --instance-type "$INSTANCE_TYPE" \
           --user-data "$INIT_SCRIPT_B64" \
           --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$VM_NAME},{Key=Purpose,Value=env-cloud},{Key=Repository,Value=kusimari/env}]" \
-          --security-groups default \
-          --region "${{ steps.config.outputs.region }}")
+          --security-group-ids "$SG_ID" \
+          --region "$REGION")
 
         INSTANCE_ID=$(echo "$INSTANCE_JSON" | jq -r '.Instances[0].InstanceId')
 
-        echo "⏳ Waiting for instance to be running..."
-        aws ec2 wait instance-running --instance-ids "$INSTANCE_ID" --region "${{ steps.config.outputs.region }}"
+        echo "Waiting for instance to be running..."
+        aws ec2 wait instance-running --instance-ids "$INSTANCE_ID" --region "$REGION"
 
-        # Get instance details
         INSTANCE_INFO=$(aws ec2 describe-instances \
           --instance-ids "$INSTANCE_ID" \
           --query 'Reservations[0].Instances[0]' \
-          --region "${{ steps.config.outputs.region }}")
+          --region "$REGION")
 
         VM_IP=$(echo "$INSTANCE_INFO" | jq -r '.PublicIpAddress')
         AZ=$(echo "$INSTANCE_INFO" | jq -r '.Placement.AvailabilityZone')
 
-        echo "✅ Instance created successfully!"
-        echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
-        echo "vm_region=${{ steps.config.outputs.region }}" >> $GITHUB_OUTPUT
-        echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+        echo "Instance created successfully!"
 
-        # Generate connection info
-        CONNECTION_INFO=$(cat << EOF
-        ## 🔗 AWS EC2 Connection Information
+        # Generate connection info for summary
+        {
+          echo "connection_info<<CONNEOF"
+          echo "## AWS EC2 Connection Information"
+          echo ""
+          echo "**Instance:** \`$VM_NAME\` (\`$INSTANCE_ID\`) | **IP:** \`$VM_IP\` | **AZ:** \`$AZ\` | **Type:** \`$INSTANCE_TYPE\`"
+          echo ""
+          echo "**SSH Methods:**"
+          echo "1. **Browser:** [EC2 Console](https://console.aws.amazon.com/ec2/home?region=$REGION#Instances:) → Connect → EC2 Instance Connect"
+          echo "2. **CLI:** \`aws ec2-instance-connect send-ssh-public-key --instance-id $INSTANCE_ID --instance-os-user kusimari --ssh-public-key file://~/.ssh/id_rsa.pub --availability-zone $AZ && ssh kusimari@$VM_IP\`"
+          echo "3. **Direct:** \`ssh kusimari@$VM_IP\`"
+          echo ""
+          echo "**Status:** NixOS config being applied (2-5 min). Check: \`aws ec2 get-console-output --instance-id $INSTANCE_ID --region $REGION\`"
+          echo "CONNEOF"
+        } >> $GITHUB_OUTPUT
 
-        **Instance Details:**
-        - Name: \`$VM_NAME\`
-        - Instance ID: \`$INSTANCE_ID\`
-        - IP: \`$VM_IP\`
-        - Region: \`${{ steps.config.outputs.region }}\`
-        - Availability Zone: \`$AZ\`
-        - Instance Type: \`${{ steps.config.outputs.instance_type }}\`
-
-        **SSH Connection Methods:**
-
-        1. **EC2 Instance Connect (Browser):**
-           - Go to [EC2 Console → Instances](https://console.aws.amazon.com/ec2/home?region=${{ steps.config.outputs.region }}#Instances:)
-           - Find \`$VM_NAME\` and click "Connect" → "EC2 Instance Connect"
-
-        2. **AWS CLI (Instance Connect):**
-           \`\`\`bash
-           aws ec2-instance-connect send-ssh-public-key --instance-id $INSTANCE_ID --instance-os-user kusimari --ssh-public-key file://~/.ssh/id_rsa.pub --availability-zone $AZ
-           ssh kusimari@$VM_IP
-           \`\`\`
-
-        3. **Direct SSH (after adding your key):**
-           \`\`\`bash
-           ssh kusimari@$VM_IP
-           \`\`\`
-
-        **Status Check:**
-        The instance is initializing. NixOS configuration is being applied (takes 2-5 minutes).
-        Check initialization logs:
-        \`\`\`bash
-        aws ec2 get-console-output --instance-id $INSTANCE_ID --region ${{ steps.config.outputs.region }}
-        \`\`\`
-        EOF
-        )
-        echo "connection_info<<EOF" >> $GITHUB_OUTPUT
-        echo "$CONNECTION_INFO" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-
-    - name: 🗑️ Destroy AWS EC2 Instance
+    - name: Destroy AWS EC2 Instance
       if: inputs.action == 'destroy'
+      env:
+        VM_NAME: env-${{ inputs.vm_name }}
+        REGION: ${{ steps.config.outputs.region }}
       run: |
-        VM_NAME="env-${{ inputs.vm_name }}"
+        echo "Destroying AWS EC2 Instance: $VM_NAME"
 
-        echo "🗑️ Destroying AWS EC2 Instance: $VM_NAME"
-
-        # Find instance by name tag
         INSTANCE_ID=$(aws ec2 describe-instances \
           --filters "Name=tag:Name,Values=$VM_NAME" "Name=instance-state-name,Values=running,stopped,stopping,pending" \
           --query 'Reservations[].Instances[].[InstanceId]' \
           --output text \
-          --region "${{ steps.config.outputs.region }}")
+          --region "$REGION")
 
         if [[ -n "$INSTANCE_ID" && "$INSTANCE_ID" != "None" ]]; then
-          aws ec2 terminate-instances --instance-ids "$INSTANCE_ID" --region "${{ steps.config.outputs.region }}"
-          echo "✅ Instance $INSTANCE_ID terminated successfully!"
+          aws ec2 terminate-instances --instance-ids "$INSTANCE_ID" --region "$REGION"
+          echo "Instance $INSTANCE_ID terminated successfully!"
         else
-          echo "⚠️ Instance not found (may already be terminated)"
+          echo "Instance not found (may already be terminated)"
         fi
 
   summary:
@@ -443,28 +389,38 @@ jobs:
     if: always() && needs.security-check.outputs.authorized == 'true'
     runs-on: ubuntu-latest
     steps:
-    - name: 📋 Generate deployment summary
+    - name: Generate deployment summary
+      env:
+        INPUT_ACTION: ${{ inputs.action }}
+        INPUT_PROVIDER: ${{ inputs.provider }}
+        INPUT_VM_NAME: ${{ inputs.vm_name }}
+        ACTOR: ${{ github.actor }}
+        GCP_RESULT: ${{ needs.deploy-gcp.result }}
+        AWS_RESULT: ${{ needs.deploy-aws.result }}
+        GCP_CONN: ${{ needs.deploy-gcp.outputs.connection_info }}
+        AWS_CONN: ${{ needs.deploy-aws.outputs.connection_info }}
       run: |
-        echo "# 🚀 Cloud VM Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "# Cloud VM Deployment Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Action:** ${{ inputs.action }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Provider:** ${{ inputs.provider }}" >> $GITHUB_STEP_SUMMARY
-        echo "**VM Name:** ${{ inputs.vm_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Action:** $INPUT_ACTION | **Provider:** $INPUT_PROVIDER | **VM:** $INPUT_VM_NAME | **By:** @$ACTOR" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
 
-        if [[ "${{ inputs.action }}" == "create" ]]; then
-          if [[ "${{ inputs.provider }}" == "gcp" && "${{ needs.deploy-gcp.result }}" == "success" ]]; then
-            echo "${{ needs.deploy-gcp.outputs.connection_info }}" >> $GITHUB_STEP_SUMMARY
-          elif [[ "${{ inputs.provider }}" == "aws" && "${{ needs.deploy-aws.result }}" == "success" ]]; then
-            echo "${{ needs.deploy-aws.outputs.connection_info }}" >> $GITHUB_STEP_SUMMARY
+        if [[ "$INPUT_ACTION" == "create" ]]; then
+          if [[ "$INPUT_PROVIDER" == "gcp" && "$GCP_RESULT" == "success" ]]; then
+            echo "$GCP_CONN" >> $GITHUB_STEP_SUMMARY
+          elif [[ "$INPUT_PROVIDER" == "aws" && "$AWS_RESULT" == "success" ]]; then
+            echo "$AWS_CONN" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Deployment failed.** Check the job logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "**Deployment failed.** Check the job logs for details." >> $GITHUB_STEP_SUMMARY
           fi
-        else
-          echo "🗑️ **VM destroyed successfully.**" >> $GITHUB_STEP_SUMMARY
+        elif [[ "$INPUT_ACTION" == "destroy" ]]; then
+          if [[ "$INPUT_PROVIDER" == "gcp" && "$GCP_RESULT" == "success" ]]; then
+            echo "**VM destroyed successfully.**" >> $GITHUB_STEP_SUMMARY
+          elif [[ "$INPUT_PROVIDER" == "aws" && "$AWS_RESULT" == "success" ]]; then
+            echo "**VM destroyed successfully.**" >> $GITHUB_STEP_SUMMARY
+          elif [[ "$GCP_RESULT" == "skipped" && "$AWS_RESULT" == "skipped" ]]; then
+            echo "**No deployment job ran.** Check inputs." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Destroy may have failed.** Check the job logs." >> $GITHUB_STEP_SUMMARY
+          fi
         fi
-
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "---" >> $GITHUB_STEP_SUMMARY
-        echo "*For more VMs, re-run this workflow with different vm_name values.*" >> $GITHUB_STEP_SUMMARY

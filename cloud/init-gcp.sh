@@ -4,11 +4,14 @@
 # This script runs on first boot of Ubuntu 24.04 LTS and converts it to NixOS
 # using nixos-infect, then applies our configuration
 #
+# Flow:
+# 1. Ubuntu boot → run nixos-infect → reboot
+# 2. NixOS boot → GCP re-runs startup script → detect /etc/NIXOS → apply flake config
+#
 
 set -euo pipefail
 
 # Configuration
-REPO_URL="https://github.com/kusimari/env"
 FLAKE_CONFIG="github:kusimari/env#cloud"
 USERNAME="kusimari"
 LOG_FILE="/var/log/cloud-init-custom.log"
@@ -19,14 +22,41 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
-# Check if we're post-reboot (NixOS is running)
+# ============================================================
+# Post-reboot path: NixOS is running, apply our flake config
+# ============================================================
 if [[ -f /etc/NIXOS ]]; then
     log "=== GCP NixOS Post-Reboot Configuration ==="
 
-    # We're now running NixOS after nixos-infect conversion
+    # Skip if already completed successfully
+    if [[ -f /var/lib/cloud-init-success ]]; then
+        log "Cloud init already completed, skipping"
+        exit 0
+    fi
+
     log "Detected NixOS system, applying configuration..."
 
-    # Import SSH keys from GitHub
+    # Wait for network
+    log "Waiting for network connectivity..."
+    timeout=60
+    while ! curl -s --connect-timeout 5 https://api.github.com >/dev/null 2>&1; do
+        if [ $timeout -le 0 ]; then
+            log "ERROR: Network connectivity timeout"
+            exit 1
+        fi
+        sleep 5
+        ((timeout-=5))
+    done
+
+    # Apply NixOS configuration first (this creates the user)
+    log "Applying NixOS configuration from: $FLAKE_CONFIG"
+    nixos-rebuild switch --flake "$FLAKE_CONFIG" || {
+        log "ERROR: nixos-rebuild failed"
+        exit 1
+    }
+    log "NixOS configuration applied successfully"
+
+    # Import SSH keys from GitHub (after user exists from nixos-rebuild)
     log "Importing SSH keys from GitHub for user: $USERNAME"
     mkdir -p /home/$USERNAME/.ssh
     curl -fsSL "https://api.github.com/users/$USERNAME/keys" | \
@@ -39,22 +69,9 @@ if [[ -f /etc/NIXOS ]]; then
     chown -R $USERNAME:users /home/$USERNAME/.ssh
     log "SSH keys imported successfully"
 
-    # Apply NixOS configuration
-    log "Applying NixOS configuration from: $FLAKE_CONFIG"
-    nixos-rebuild switch --flake "$FLAKE_CONFIG" || {
-        log "ERROR: nixos-rebuild failed"
-        exit 1
-    }
-
-    log "NixOS configuration applied successfully"
-
     # Create success marker
     touch /var/lib/cloud-init-success
     echo "Cloud VM initialized at $(date)" > /var/lib/cloud-init-success
-
-    # Clean up the systemd service
-    systemctl disable nixos-cloud-init.service || true
-    rm -f /etc/systemd/system/nixos-cloud-init.service
 
     log "=== GCP NixOS Cloud Init Completed Successfully ==="
     log "System Information:"
@@ -67,7 +84,9 @@ if [[ -f /etc/NIXOS ]]; then
     exit 0
 fi
 
-# We're running Ubuntu, start nixos-infect process
+# ============================================================
+# First boot path: Ubuntu → nixos-infect conversion
+# ============================================================
 log "=== GCP Ubuntu -> NixOS Conversion Started ==="
 
 # Update package database
@@ -84,57 +103,22 @@ log "Downloading nixos-infect..."
 curl -fsSL "$NIXOS_INFECT_URL" -o /root/nixos-infect
 chmod +x /root/nixos-infect
 
-# Create systemd service for post-reboot configuration
-log "Creating post-reboot systemd service..."
-cat > /tmp/nixos-cloud-init.service <<EOF
-[Unit]
-Description=NixOS Cloud Init Post-Reboot Configuration
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-User=root
-ExecStart=$0
-RemainAfterExit=yes
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# The service will be installed during nixos-infect, so we'll prepare it
-mkdir -p /etc/systemd/system
-cp /tmp/nixos-cloud-init.service /etc/systemd/system/
-systemctl daemon-reload
-systemctl enable nixos-cloud-init.service
-
 # Create a minimal NixOS configuration for nixos-infect
+# This is the bootstrap config — our flake config replaces it after reboot
 log "Creating basic NixOS configuration for nixos-infect..."
 mkdir -p /etc/nixos
 
-cat > /etc/nixos/configuration.nix <<EOF
+cat > /etc/nixos/configuration.nix <<'NIXEOF'
 { config, pkgs, ... }:
 {
   imports = [ ./hardware-configuration.nix ];
 
-  # Enable SSH
+  # Enable SSH with key-only access
   services.openssh.enable = true;
-  services.openssh.settings.PermitRootLogin = "yes";
+  services.openssh.settings.PermitRootLogin = "prohibit-password";
 
   # Enable flakes
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-
-  # Create initial user
-  users.users.$USERNAME = {
-    isNormalUser = true;
-    extraGroups = [ "wheel" ];
-    shell = pkgs.bash;  # Will be changed by our flake config
-  };
-
-  # Enable sudo without password for wheel group (temporary)
-  security.sudo.wheelNeedsPassword = false;
 
   # Network configuration
   networking.useDHCP = true;
@@ -142,10 +126,10 @@ cat > /etc/nixos/configuration.nix <<EOF
 
   system.stateVersion = "24.05";
 }
-EOF
+NIXEOF
 
 log "Starting nixos-infect conversion..."
-log "This will reboot the system to complete the conversion to NixOS"
+log "After reboot, GCP will re-run this startup script which will detect NixOS and apply the flake config"
 
 # Set environment variables for nixos-infect
 export NIX_CHANNEL=nixos-24.05

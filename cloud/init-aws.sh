@@ -8,7 +8,6 @@
 set -euo pipefail
 
 # Configuration
-REPO_URL="https://github.com/kusimari/env"
 FLAKE_CONFIG="github:kusimari/env#cloud"
 USERNAME="kusimari"
 LOG_FILE="/var/log/cloud-init-custom.log"
@@ -33,7 +32,15 @@ while ! curl -s --connect-timeout 5 https://api.github.com >/dev/null 2>&1; do
 done
 log "Network connectivity confirmed"
 
-# Import SSH keys from GitHub
+# Apply NixOS configuration first (this creates the user)
+log "Applying NixOS configuration from: $FLAKE_CONFIG"
+nixos-rebuild switch --flake "$FLAKE_CONFIG" || {
+    log "ERROR: nixos-rebuild failed"
+    exit 1
+}
+log "NixOS configuration applied successfully"
+
+# Import SSH keys from GitHub (after user exists from nixos-rebuild)
 log "Importing SSH keys from GitHub for user: $USERNAME"
 mkdir -p /home/$USERNAME/.ssh
 curl -fsSL "https://api.github.com/users/$USERNAME/keys" | \
@@ -46,27 +53,14 @@ chmod 700 /home/$USERNAME/.ssh
 chown -R $USERNAME:users /home/$USERNAME/.ssh
 log "SSH keys imported successfully"
 
-# Apply NixOS configuration
-log "Applying NixOS configuration from: $FLAKE_CONFIG"
-nixos-rebuild switch --flake "$FLAKE_CONFIG" || {
-    log "ERROR: nixos-rebuild failed"
-    exit 1
-}
-
-log "NixOS configuration applied successfully"
-
 # Create success marker
-log "Creating success marker"
 touch /var/lib/cloud-init-success
 echo "Cloud VM initialized at $(date)" > /var/lib/cloud-init-success
 
 log "=== AWS NixOS Cloud Init Completed Successfully ==="
-
-# Optional: Show system info
 log "System Information:"
 log "Hostname: $(hostname)"
 log "NixOS Version: $(nixos-version)"
 log "User: $USERNAME"
 log "SSH Service: $(systemctl is-active sshd)"
-
 log "Cloud VM is ready for use!"

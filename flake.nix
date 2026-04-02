@@ -106,13 +106,34 @@
         isNormalUser = true;
         extraGroups = [ "wheel" ];
         shell = pkgs.zsh;
-        # SSH keys will be configured via cloud provider's method (GitHub keys)
+        # Import SSH public keys from GitHub for passwordless access
+        openssh.authorizedKeys.keyFiles = [];
+        openssh.authorizedKeys.keys = [];
       };
 
-      # Root filesystem configuration (required for NixOS)
+      # Filesystem and boot are provided by the cloud image's hardware-configuration.nix
+      # These are placeholders that get overridden on the actual VM by nixos-infect (GCP)
+      # or the NixOS AMI (AWS) which generate real hardware-configuration.nix
       fileSystems."/" = {
-        device = "/dev/sda1";
+        device = "/dev/disk/by-label/nixos";
         fsType = "ext4";
+      };
+      boot.loader.grub.device = "nodev";
+      boot.loader.grub.efiSupport = true;
+      boot.loader.efi.canTouchEfiVariables = false;
+
+      # Kernel modules needed for cloud VM virtualization (GCP/AWS)
+      boot.initrd.availableKernelModules = [
+        "virtio_pci" "virtio_scsi" "virtio_blk" "virtio_net"
+        "ahci" "sd_mod" "xen_blkfront" "nvme"
+      ];
+      boot.kernelParams = [ "console=ttyS0" ];
+
+      # Networking
+      networking.hostName = "env-cloud";
+      networking.firewall = {
+        enable = true;
+        allowedTCPPorts = [ 22 ];
       };
 
       # Enable SSH service
@@ -125,23 +146,13 @@
         };
       };
 
-      # Firewall configuration - only allow SSH
-      networking.firewall = {
-        enable = true;
-        allowedTCPPorts = [ 22 ];
-      };
-
-      # Essential system packages
+      # Essential system packages (curl/wget needed before home-manager activates)
       environment.systemPackages = with pkgs; [
-        git
         curl
         wget
         vim
+        jq
       ];
-
-      # Cloud-optimized boot and system settings
-      boot.loader.grub.device = "/dev/sda";
-      boot.kernelParams = [ "console=ttyS0" ];
 
       # System state version
       system.stateVersion = "25.05";
