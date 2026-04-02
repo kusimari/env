@@ -143,9 +143,6 @@
       boot.loader.grub.device = "/dev/sda";
       boot.kernelParams = [ "console=ttyS0" ];
 
-      # Nix configuration
-      nix.settings.experimental-features = [ "nix-command" "flakes" ];
-
       # System state version
       system.stateVersion = "25.05";
     };

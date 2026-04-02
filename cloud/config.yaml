@@ -1,0 +1,105 @@
+# Cloud VM Provisioning Configuration
+# Default specifications and settings for GCP and AWS deployments
+
+# Repository Configuration
+repository:
+  owner: kusimari
+  name: env
+  branch: gcp-aws
+  flake_url: github:kusimari/env#cloud
+
+# Default VM Specifications
+defaults:
+  gcp:
+    # GCP Compute Engine settings
+    machine_type: e2-medium        # 2 vCPU, 4GB RAM
+    disk_size_gb: 20
+    disk_type: pd-standard
+    zone: us-central1-a            # Default zone
+    # Ubuntu 24.04 LTS (will be converted to NixOS via nixos-infect)
+    image_family: ubuntu-2404-lts
+    image_project: ubuntu-os-cloud
+    network: default
+    subnet: default
+    preemptible: true              # Cost optimization
+
+  aws:
+    # EC2 settings
+    instance_type: t3.medium       # 2 vCPU, 4GB RAM
+    volume_size: 20
+    volume_type: gp3
+    region: us-east-1              # Default region
+    availability_zone: us-east-1a
+    # Official NixOS AMI (updated weekly)
+    # AMI will be dynamically queried by account ID 427812963091
+    ami_owner: "427812963091"      # Official NixOS AMI account
+    ami_name_filter: "nixos-*"
+    vpc: default
+    subnet: default
+
+# Networking Configuration
+networking:
+  ssh_port: 22
+  allowed_ssh_cidrs:
+    - "0.0.0.0/0"                 # Allow SSH from anywhere (cloud console restrictions apply)
+
+# Bootstrap Resource Naming
+bootstrap:
+  gcp:
+    service_account: env-cloud-deployer
+    workload_identity_pool: env-github-pool
+    workload_identity_provider: env-github-provider
+    firewall_rule: allow-ssh-env-cloud
+
+  aws:
+    oidc_provider_name: env-github-oidc
+    role_name: env-cloud-deployer-role
+    policy_name: env-cloud-deployer-policy
+
+# User Configuration
+user:
+  username: kusimari              # Must match NixOS user configuration
+  ssh_import_github: kusimari     # GitHub username for SSH key import
+  shell: /run/current-system/sw/bin/zsh
+
+# Init Script Configuration
+init:
+  # Commands run before nixos-rebuild
+  pre_nix:
+    - "echo 'Starting cloud VM initialization...'"
+    - "curl -fsSL https://api.github.com/users/kusimari/keys > /tmp/github_keys"
+
+  # Commands run after nixos-rebuild (via systemd service)
+  post_nix:
+    - "echo 'NixOS configuration applied successfully'"
+    - "systemctl status home-manager-kusimari.service || true"
+
+# GitHub Actions Configuration
+github_actions:
+  # Manual trigger inputs and their defaults
+  inputs:
+    provider:
+      description: "Cloud provider (gcp or aws)"
+      required: true
+      default: "gcp"
+      type: choice
+      options: ["gcp", "aws"]
+    action:
+      description: "Action to perform"
+      required: true
+      default: "create"
+      type: choice
+      options: ["create", "destroy"]
+    vm_name:
+      description: "VM name (unique identifier)"
+      required: true
+      default: "dev-vm"
+      type: string
+    machine_type:
+      description: "Machine type (leave empty for default)"
+      required: false
+      type: string
+    region:
+      description: "Region/Zone (leave empty for default)"
+      required: false
+      type: string
