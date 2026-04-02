@@ -39,13 +39,24 @@ Three-phase workflow for structured feature development:
 
 ## Phase 2 — Implementation
 
-**Goal:** Implement the approved plan via `.kdevkit/innerspace-loop.md`, pass all quality and test gates, and push.
+**Goal:** Implement the approved plan, pass all quality and test gates, and push.
+
+**⚠️ MANDATORY: Every implementation task MUST follow `.kdevkit/innerspace-loop.md` completely.** Do not skip any stage of the innerspace loop — every commit must go through implementation, quality gates, testing, and code review before it is made.
 
 ### Process
 1. Create work branch following project naming conventions (see `.kdevkit/project.md`)
-2. Follow innerspace-loop.md for development workflow
-3. Run project-specific build and test commands (see `.kdevkit/project.md`)
-4. Pass code review gates defined in `.kdevkit/review.md`
+2. For each implementation task:
+   a. **Follow `.kdevkit/innerspace-loop.md` end-to-end** — all stages are required
+   b. Run project-specific build and test commands (see `.kdevkit/project.md`)
+   c. Pass code review gates defined in `.kdevkit/review.md`
+   d. Only commit after all gates pass
+3. Repeat for each task in the plan
+
+### Sub-Agent Delegation
+When delegating implementation tasks to sub-agents:
+- The sub-agent **must** follow `.kdevkit/innerspace-loop.md`
+- When a sub-agent returns, **verify it followed the full dev loop**: ask for its quality gate results, test results, and code review findings before accepting its work
+- If a sub-agent skipped any stage, reject its work and re-run with the full loop
 
 ### Exit Criteria
 - All quality gates passed (thresholds defined in `.kdevkit/project.md`)
