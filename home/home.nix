@@ -53,7 +53,8 @@
     # nixGLIntel covers Mesa-based systems (Intel/AMD). For Nvidia, swap with nixGLNvidia.
     # symlinkJoin preserves the .desktop file so app launchers (e.g. Synapse) find it,
     # while replacing only the binary with the nixGL wrapper.
-    package = if pkgs.stdenv.isLinux
+    # Note: nixGL is only needed for standalone home-manager (not NixOS), and only available on Linux
+    package = if pkgs.stdenv.isLinux && (builtins.hasAttr "nixgl" pkgs)
       then
         let
           wrapper = pkgs.writeShellScript "alacritty-nixgl" ''

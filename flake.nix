@@ -99,6 +99,57 @@
       };
     };
 
+    # Cloud VM system-level configuration
+    cloudSystemConfiguration = { pkgs, ... }: {
+      # User account with sudo privileges and zsh shell
+      users.users.${user} = {
+        isNormalUser = true;
+        extraGroups = [ "wheel" ];
+        shell = pkgs.zsh;
+        # SSH keys will be configured via cloud provider's method (GitHub keys)
+      };
+
+      # Root filesystem configuration (required for NixOS)
+      fileSystems."/" = {
+        device = "/dev/sda1";
+        fsType = "ext4";
+      };
+
+      # Enable SSH service
+      services.openssh = {
+        enable = true;
+        settings = {
+          PermitRootLogin = "no";
+          PasswordAuthentication = false;
+          KbdInteractiveAuthentication = false;
+        };
+      };
+
+      # Firewall configuration - only allow SSH
+      networking.firewall = {
+        enable = true;
+        allowedTCPPorts = [ 22 ];
+      };
+
+      # Essential system packages
+      environment.systemPackages = with pkgs; [
+        git
+        curl
+        wget
+        vim
+      ];
+
+      # Cloud-optimized boot and system settings
+      boot.loader.grub.device = "/dev/sda";
+      boot.kernelParams = [ "console=ttyS0" ];
+
+      # Nix configuration
+      nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
+      # System state version
+      system.stateVersion = "25.05";
+    };
+
   in {
     darwinConfigurations.darwin = nix-darwin.lib.darwinSystem {
       modules = [
@@ -155,6 +206,19 @@
           };
         })
         ./home/home.nix
+      ];
+    };
+
+    nixosConfigurations.cloud = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        commonConfiguration
+        cloudSystemConfiguration
+        home-manager.nixosModules.home-manager {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.users.${user} = import ./home/home.nix;
+        }
       ];
     };
   };

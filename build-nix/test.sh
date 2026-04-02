@@ -26,5 +26,8 @@ nix eval "$FLAKE_DIR#homeConfigurations.ubuntu.activationPackage.name"
 echo "Evaluating homeConfigurations.kelasa-al2..."
 nix eval "$FLAKE_DIR#homeConfigurations.kelasa-al2.activationPackage.name"
 
+echo "Evaluating nixosConfigurations.cloud..."
+nix eval "$FLAKE_DIR#nixosConfigurations.cloud.config.system.build.toplevel.name"
+
 echo ""
 echo "Flake OK."
