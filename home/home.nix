@@ -205,7 +205,7 @@
   # zsh completions — placed in ~/.zfunc which is in fpath (see initContent above)
   # Generated at build time to avoid runtime permission issues with system completion dirs
   home.file.".zfunc/_rclone".source = pkgs.runCommand "_rclone" {} ''
-    ${pkgs.rclone}/bin/rclone completion zsh > $out
+    ${pkgs.rclone}/bin/rclone completion zsh $out
   '';
   home.file.".zfunc/_rclone-env".source = ../rclone-env/_rclone-env;
 
