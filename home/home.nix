@@ -1,8 +1,11 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, envKind, ... }:
 {
-  # Import custom modules directly
+  # Import custom modules and environment-specific config.
+  # envKind is "mane" or "kelasa", passed via extraSpecialArgs in flake.nix.
+  # Edit home/mane.nix or home/kelasa.nix to add environment-specific packages.
   imports = [
     ../gittree/gittree-module.nix
+    ./${envKind}.nix
   ];
 
   # shell with solarized dark
@@ -107,7 +110,6 @@
       plugins = [ "direnv" "tmux" ];
       theme = "robbyrussell";
     };
-    completionInit = "rclone completion zsh";
   };
 
   programs.direnv = {
@@ -200,6 +202,11 @@
     commandName = "lg";
   };
 
+  # zsh completions — placed in ~/.zfunc which is in fpath (see initContent above)
+  # Generated at build time to avoid runtime permission issues with system completion dirs
+  home.file.".zfunc/_rclone".source = pkgs.runCommand "_rclone" {} ''
+    ${pkgs.rclone}/bin/rclone completion zsh $out
+  '';
   home.file.".zfunc/_rclone-env".source = ../rclone-env/_rclone-env;
 
 }

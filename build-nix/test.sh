@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Evaluate the flake to catch Nix errors without building anything.
-# Tests both Linux homeConfigurations (ubuntu, kelasa-al2).
+# Build the flake to catch both evaluation and builder errors.
+# Tests both Linux homeConfigurations (ubuntu-mane, al2-kelasa).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 USER_HOST_FILE="$SCRIPT_DIR/../home/user-host.nix"
@@ -20,11 +20,11 @@ echo "Replacing placeholders..."
 sed -i "s|user = \"replace-user\";|user = \"$USER_VALUE\";|g; s|hostName = \"replace-hostname\";|hostName = \"$HOSTNAME_VALUE\";|g" "$USER_HOST_FILE"
 
 echo ""
-echo "Evaluating homeConfigurations.ubuntu..."
-nix eval "$FLAKE_DIR#homeConfigurations.ubuntu.activationPackage.name"
+echo "Building homeConfigurations.ubuntu-mane..."
+nix build "$FLAKE_DIR#homeConfigurations.ubuntu-mane.activationPackage" --no-link
 
-echo "Evaluating homeConfigurations.kelasa-al2..."
-nix eval "$FLAKE_DIR#homeConfigurations.kelasa-al2.activationPackage.name"
+echo "Building homeConfigurations.al2-kelasa..."
+nix build "$FLAKE_DIR#homeConfigurations.al2-kelasa.activationPackage" --no-link
 
 echo ""
 echo "Flake OK."
