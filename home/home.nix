@@ -96,11 +96,12 @@
         source ~/.pre-nix-rc
       fi
     '';
-    # Source .zshrc for non-interactive login shells (e.g. SSH via Tailscale).
-    # Zsh skips .zshrc for login+non-interactive sessions; this fills the gap.
-    # The guard prevents double-sourcing in normal interactive terminal sessions.
-    profileExtra = ''
-      [[ ! -o interactive ]] && [[ -f "''${ZDOTDIR:-$HOME}/.zshrc" ]] && source "''${ZDOTDIR:-$HOME}/.zshrc"
+    # Determinate Nix adds nix-daemon.sh to /etc/zshrc (interactive only).
+    # Source it in .zshenv so non-login shells (e.g. Tailscale SSH) get Nix in PATH.
+    envExtra = ''
+      if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
+        . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
+      fi
     '';
     oh-my-zsh = {
       enable = true;
