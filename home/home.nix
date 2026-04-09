@@ -91,19 +91,13 @@
       ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE = "fg=#666666";
       ZSH_AUTOSUGGEST_STRATEGY = "(completion history)";
     };
-    initContent = lib.mkMerge [
-      (lib.mkOrder 550 ''
-        fpath=(~/.zfunc $fpath)
-        # Source pre-nix setup shell initialization
-        if [[ -f ~/.pre-nix-rc ]]; then
-          source ~/.pre-nix-rc
-        fi
-      '')
-      # rclone completion uses compdef which requires compinit to have run first
-      (lib.mkOrder 900 ''
-        source <(rclone completion zsh)
-      '')
-    ];
+    initContent = lib.mkOrder 550 ''
+      fpath=(~/.zfunc $fpath)
+      # Source pre-nix setup shell initialization
+      if [[ -f ~/.pre-nix-rc ]]; then
+        source ~/.pre-nix-rc
+      fi
+    '';
     # Determinate Nix adds nix-daemon.sh to /etc/zshrc (interactive only).
     # Source it in .zshenv so non-login shells (e.g. Tailscale SSH) get Nix in PATH.
     envExtra = ''
@@ -208,6 +202,11 @@
     commandName = "lg";
   };
 
+  # zsh completions — placed in ~/.zfunc which is in fpath (see initContent above)
+  # Generated at build time to avoid runtime permission issues with system completion dirs
+  home.file.".zfunc/_rclone".source = pkgs.runCommand "_rclone" {} ''
+    ${pkgs.rclone}/bin/rclone completion zsh > $out
+  '';
   home.file.".zfunc/_rclone-env".source = ../rclone-env/_rclone-env;
 
 }
