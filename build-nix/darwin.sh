@@ -11,11 +11,11 @@
 
 # Platform-specific configuration for _common.sh
 export SED_INPLACE_FLAG=''  # macOS requires empty string after -i
-export NIX_COMMAND='sudo -H nix run nix-darwin -- switch --flake "$FLAKE_DIR#darwin"'
+export NIX_COMMAND='sudo -H nix run nix-darwin -- switch --flake ".#darwin-kelasa"'
 export NIX_ECHO_MESSAGE="Running nix-darwin switch..."
 
 # Option 2: Specific nix-darwin version (uncomment if needed)
-# export NIX_COMMAND='sudo -H nix run nix-darwin/nix-darwin-25.05#darwin-rebuild -- switch --flake "$FLAKE_DIR#darwin"'
+# export NIX_COMMAND='sudo -H nix run nix-darwin/nix-darwin-25.05#darwin-rebuild -- switch --flake ".#darwin-kelasa"'
 
 # Execute common functionality
 source "$(dirname "${BASH_SOURCE[0]}")/_common.sh" "$@"

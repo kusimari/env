@@ -1,8 +1,11 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, envKind, ... }:
 {
-  # Import custom modules directly
+  # Import custom modules and environment-specific config.
+  # envKind is "mane" or "kelasa", passed via extraSpecialArgs in flake.nix.
+  # Edit home/mane.nix or home/kelasa.nix to add environment-specific packages.
   imports = [
     ../gittree/gittree-module.nix
+    ./${envKind}.nix
   ];
 
   # shell with solarized dark
@@ -107,7 +110,11 @@
       plugins = [ "direnv" "tmux" ];
       theme = "robbyrussell";
     };
-    completionInit = "rclone completion zsh";
+    # rclone completion must run after compinit; initExtra is the right place.
+    # completionInit would replace compinit entirely, breaking all other completions.
+    initExtra = ''
+      source <(rclone completion zsh)
+    '';
   };
 
   programs.direnv = {

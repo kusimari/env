@@ -12,11 +12,11 @@
 # Linux sed uses -i without additional flag (don't export SED_INPLACE_FLAG)
 
 # For AL2: Use nix run command for initial setup with backup (cd to flake dir first)
-export NIX_COMMAND='cd "$FLAKE_DIR" && nix --extra-experimental-features "nix-command flakes" run home-manager/master -- init --switch -b bak ".#kelasa-al2"'
+export NIX_COMMAND='nix --extra-experimental-features "nix-command flakes" run home-manager/master -- init --switch -b bak ".#al2-kelasa"'
 export NIX_ECHO_MESSAGE="Running home-manager init with backup..."
 
 # Standard command (use after initial setup)
-# export NIX_COMMAND='cd "$FLAKE_DIR" && home-manager switch --flake ".#kelasa-al2"'
+# export NIX_COMMAND='home-manager switch --flake ".#al2-kelasa"'
 # export NIX_ECHO_MESSAGE="Running home-manager switch..."
 
 # Execute common functionality

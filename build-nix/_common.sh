@@ -57,7 +57,8 @@ fi
 
 echo "$NIX_ECHO_MESSAGE"
 
-# Run the platform-specific nix command
+# cd to the flake directory so NIX_COMMAND can reference the flake as "."
+cd "$FLAKE_DIR" || { echo "Error: cannot cd to flake directory: $FLAKE_DIR"; exit 1; }
 eval "$NIX_COMMAND"
 
 # Execute post-nix setup script if provided as second argument
