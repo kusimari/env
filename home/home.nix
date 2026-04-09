@@ -96,6 +96,12 @@
         source ~/.pre-nix-rc
       fi
     '';
+    # Source .zshrc for non-interactive login shells (e.g. SSH via Tailscale).
+    # Zsh skips .zshrc for login+non-interactive sessions; this fills the gap.
+    # The guard prevents double-sourcing in normal interactive terminal sessions.
+    profileExtra = ''
+      [[ ! -o interactive ]] && [[ -f "''${ZDOTDIR:-$HOME}/.zshrc" ]] && source "''${ZDOTDIR:-$HOME}/.zshrc"
+    '';
     oh-my-zsh = {
       enable = true;
       plugins = [ "direnv" "tmux" ];
