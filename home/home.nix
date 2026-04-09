@@ -91,13 +91,19 @@
       ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE = "fg=#666666";
       ZSH_AUTOSUGGEST_STRATEGY = "(completion history)";
     };
-    initContent = lib.mkOrder 550 ''
-      fpath=(~/.zfunc $fpath)
-      # Source pre-nix setup shell initialization
-      if [[ -f ~/.pre-nix-rc ]]; then
-        source ~/.pre-nix-rc
-      fi
-    '';
+    initContent = lib.mkMerge [
+      (lib.mkOrder 550 ''
+        fpath=(~/.zfunc $fpath)
+        # Source pre-nix setup shell initialization
+        if [[ -f ~/.pre-nix-rc ]]; then
+          source ~/.pre-nix-rc
+        fi
+      '')
+      # rclone completion uses compdef which requires compinit to have run first
+      (lib.mkOrder 900 ''
+        source <(rclone completion zsh)
+      '')
+    ];
     # Determinate Nix adds nix-daemon.sh to /etc/zshrc (interactive only).
     # Source it in .zshenv so non-login shells (e.g. Tailscale SSH) get Nix in PATH.
     envExtra = ''
@@ -110,11 +116,6 @@
       plugins = [ "direnv" "tmux" ];
       theme = "robbyrussell";
     };
-    # rclone completion must run after compinit; initExtra is the right place.
-    # completionInit would replace compinit entirely, breaking all other completions.
-    initExtra = ''
-      source <(rclone completion zsh)
-    '';
   };
 
   programs.direnv = {
