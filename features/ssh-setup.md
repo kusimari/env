@@ -111,20 +111,28 @@ Expected output: `Hi username! You've successfully authenticated...`
 
 ## Implementation
 
-The SSH setup logic lives in `home/ssh-setup.sh` and is called by the home-manager activation script defined in `home/home.nix`.
+The SSH setup is implemented as a modular Nix configuration split across two files:
 
-### Script Location
+### File Structure
 
-- `home/ssh-setup.sh`: Standalone shell script with all setup logic
-- Installed to: `~/.config/env/ssh-setup.sh`
-- Called during: `home-manager switch` activation phase
+- **`home/ssh-setup.nix`**: Nix module with SSH configuration
+  - Defines `config_nix` and `known_hosts_nix` content
+  - Sets up activation script to run setup logic
+  - Imported by `home/home.nix`
 
-### Why External Script?
+- **`home/ssh-setup.sh`**: Shell script with setup logic
+  - Adds Include directive to system SSH config
+  - Creates SSH keys interactively if missing
+  - Uploads keys to GitHub (if GH_TOKEN set)
+  - Runs directly from nix store (not copied to home directory)
 
-- Easier to read and maintain than inline activation code
-- Can be tested independently
-- Clear separation of concerns
-- Can be reused or called manually if needed
+### Why This Design?
+
+- **Modular**: All SSH config in one place (`ssh-setup.nix`)
+- **Clean**: Script runs from nix store, no files copied to home directory
+- **Maintainable**: Shell logic separate from Nix declarations
+- **Testable**: Can test script independently
+- **Reusable**: Module can be imported into any home-manager config
 
 ## Troubleshooting
 
