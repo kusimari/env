@@ -17,8 +17,7 @@ Automatic SSH configuration that works on all systems (Linux, macOS, workspaces,
 ├── config             # System-managed (you can edit this)
 │   └── (contains "Include ~/.ssh/config_nix" at bottom)
 ├── config_nix         # Nix-managed (symlink to /nix/store)
-├── known_hosts        # System-managed (you can edit this)
-└── known_hosts_nix    # Nix-managed (symlink to /nix/store)
+└── known_hosts        # System-managed (GitHub keys added at activation)
 ```
 
 ### Separation of Concerns
@@ -53,10 +52,9 @@ The nix-managed `config_nix` contains:
 ```ssh-config
 Host github.com
   IdentityFile ~/.ssh/github_id
-  UserKnownHostsFile ~/.ssh/known_hosts ~/.ssh/known_hosts_nix
 ```
 
-The nix-managed `known_hosts_nix` contains GitHub's public keys (verified).
+GitHub's public keys are fetched dynamically at activation time using `ssh-keyscan` and added to the system `~/.ssh/known_hosts` file (not hardcoded).
 
 ## Usage
 

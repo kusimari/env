@@ -68,6 +68,14 @@ if [[ ! -f "$KNOWN_HOSTS" ]]; then
   echo "✓ Created known_hosts"
 fi
 
+# Fetch GitHub public keys dynamically
+# This ensures keys are always up-to-date from GitHub's servers
+echo "Fetching GitHub public keys..."
+# ssh-keyscan outputs keys to stdout, connection info to stderr
+# -H flag hashes hostnames for security
+ssh-keyscan -H github.com >> "$KNOWN_HOSTS" 2>/dev/null
+echo "✓ Added GitHub public keys to known_hosts"
+
 # Handle GitHub SSH key
 if [[ ! -f "$GITHUB_KEY" ]]; then
   echo ""
