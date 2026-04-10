@@ -23,8 +23,8 @@ Automatic SSH configuration that works on all systems (Linux, macOS, workspaces,
 ### Separation of Concerns
 
 - **System files** (`config`, `known_hosts`): You and other tools can write to these freely
-- **Nix files** (`config_nix`, `known_hosts_nix`): Managed declaratively by home-manager
-- **Include directive**: SSH reads both sets of files (system first, then nix)
+- **Nix files** (`config_nix`): Managed declaratively by home-manager
+- **Include directive**: SSH reads system config first, then nix config
 
 This pattern allows:
 - System processes to write to standard SSH files
@@ -114,8 +114,8 @@ The SSH setup is implemented as a modular Nix configuration split across two fil
 ### File Structure
 
 - **`home/ssh-setup.nix`**: Nix module with SSH configuration
-  - Defines `config_nix` and `known_hosts_nix` content
-  - Sets up activation script to run setup logic
+  - Defines `config_nix` content
+  - Sets up activation script to run setup logic and fetch GitHub keys
   - Imported by `home/home.nix`
 
 - **`home/ssh-setup.sh`**: Shell script with setup logic
@@ -163,7 +163,10 @@ chmod 600 ~/.ssh/github_id
 
 Check known_hosts includes GitHub:
 ```bash
-ssh -G github.com | grep userknownhostsfile
+grep "github.com" ~/.ssh/known_hosts
 ```
 
-Should show both `known_hosts` and `known_hosts_nix`.
+If empty, GitHub keys may not have been fetched. Run activation again or manually fetch:
+```bash
+ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+```
