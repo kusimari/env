@@ -17,22 +17,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
 USER_HOST_FILE="$SCRIPT_DIR/../home/user-host.nix"
 FLAKE_DIR="$SCRIPT_DIR/.."
 
-echo "Creating user-host.nix with current user and hostname..."
-# Get current values
+echo "Replacing placeholders with actual values..."
+# Get values - no escaping needed since we're replacing entire assignments
 USER_VALUE=$(whoami)
 HOSTNAME_VALUE=$(hostname)
 
-# Ensure parent directory exists
-mkdir -p "$(dirname "$USER_HOST_FILE")"
-
-# Create user-host.nix dynamically (file is in .gitignore)
-cat > "$USER_HOST_FILE" <<EOF
-{
-  user = "$USER_VALUE";
-  hostName = "$HOSTNAME_VALUE";
-}
-EOF
-echo "✓ Created user-host.nix with user=$USER_VALUE, hostName=$HOSTNAME_VALUE"
+if [[ "${SED_INPLACE_FLAG+x}" = "x" ]]; then
+    # macOS: SED_INPLACE_FLAG is set (even if empty)
+    sed -i "$SED_INPLACE_FLAG" "s|user = \"replace-user\";|user = \"$USER_VALUE\";|g; s|hostName = \"replace-hostname\";|hostName = \"$HOSTNAME_VALUE\";|g" "$USER_HOST_FILE"
+else
+    # Linux: SED_INPLACE_FLAG is not set
+    sed -i "s|user = \"replace-user\";|user = \"$USER_VALUE\";|g; s|hostName = \"replace-hostname\";|hostName = \"$HOSTNAME_VALUE\";|g" "$USER_HOST_FILE"
+fi
 
 # Execute pre-nix setup script if provided as argument
 # The script should write shell initialization to ~/.pre-nix-rc
@@ -78,6 +74,15 @@ if [[ -n "$2" ]]; then
     else
         echo "Error: Post-nix setup script not found: $2"
     fi
+fi
+
+echo "Restoring placeholders..."
+if [[ "${SED_INPLACE_FLAG+x}" = "x" ]]; then
+    # macOS: SED_INPLACE_FLAG is set (even if empty)
+    sed -i "$SED_INPLACE_FLAG" "s|user = \"$USER_VALUE\";|user = \"replace-user\";|g; s|hostName = \"$HOSTNAME_VALUE\";|hostName = \"replace-hostname\";|g" "$USER_HOST_FILE"
+else
+    # Linux: SED_INPLACE_FLAG is not set
+    sed -i "s|user = \"$USER_VALUE\";|user = \"replace-user\";|g; s|hostName = \"$HOSTNAME_VALUE\";|hostName = \"replace-hostname\";|g" "$USER_HOST_FILE"
 fi
 
 echo "Done!"
