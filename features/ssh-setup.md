@@ -169,7 +169,9 @@ Check if GitHub keys exist in known_hosts_nix:
 cat ~/.ssh/known_hosts_nix
 ```
 
-If empty, re-run activation to fetch keys:
+If empty, this usually means the activation script couldn't reach GitHub (network issue during initial build). Re-run activation to fetch keys:
 ```bash
 home-manager switch --flake .#<your-config>
 ```
+
+The activation script will show a warning if key fetching fails and preserve any existing keys.

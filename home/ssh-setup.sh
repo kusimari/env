@@ -85,10 +85,18 @@ fi
 echo "Fetching GitHub public keys..."
 # ssh-keyscan outputs keys to stdout, connection info to stderr
 # -H flag hashes hostnames for security
-# First clear the file to avoid duplicates on subsequent runs
-> "$KNOWN_HOSTS_NIX"
-ssh-keyscan -H github.com >> "$KNOWN_HOSTS_NIX" 2>/dev/null
-echo "✓ Added GitHub public keys to known_hosts_nix"
+# -T flag sets timeout (10 seconds)
+# Fetch to temp file first, only replace if successful
+TEMP_KEYS=$(mktemp)
+# Use absolute paths since PATH may be limited during activation
+if /usr/bin/timeout 10 /usr/bin/ssh-keyscan -H -T 10 github.com > "$TEMP_KEYS" 2>/dev/null && [[ -s "$TEMP_KEYS" ]]; then
+  mv "$TEMP_KEYS" "$KNOWN_HOSTS_NIX"
+  chmod 600 "$KNOWN_HOSTS_NIX"
+  echo "✓ Added GitHub public keys to known_hosts_nix"
+else
+  rm -f "$TEMP_KEYS"
+  echo "⚠️  Failed to fetch GitHub keys (network issue?). Keeping existing keys if any."
+fi
 
 # Handle GitHub SSH key
 if [[ ! -f "$GITHUB_KEY" ]]; then
