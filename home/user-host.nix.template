@@ -1,0 +1,8 @@
+# Template for user-host.nix
+# This file is automatically created by build-nix/_common.sh
+# DO NOT edit this template - it's for reference only
+# The actual user-host.nix is in .gitignore and created dynamically
+{
+  user = "replace-user";
+  hostName = "replace-hostname";
+}

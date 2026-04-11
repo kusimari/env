@@ -30,7 +30,7 @@
 
     claude-code
     gemini-cli-bin
-    gh  # GitHub CLI for SSH key upload automation
+    gh
 
     # Terminal utilities
     ripgrep  # fast regex search across files (rg), also used by emacs consult

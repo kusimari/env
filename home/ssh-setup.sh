@@ -87,7 +87,8 @@ echo "Fetching GitHub public keys..."
 # -T flag sets timeout (10 seconds)
 # Fetch keys for both hostname and IP addresses to keep system known_hosts clean
 TEMP_KEYS=$(mktemp)
-# Use absolute paths since PATH may be limited during activation
+# Use absolute /usr/bin paths since PATH is limited during home-manager activation
+# (nix is installed but /usr/bin utilities are more reliable during bootstrap)
 # Resolve github.com to IPs and scan both hostname and IPs
 GITHUB_IPS=$(/usr/bin/host github.com 2>/dev/null | grep "has address" | /usr/bin/awk '{print $NF}')
 if /usr/bin/timeout 10 /usr/bin/ssh-keyscan -T 10 github.com $GITHUB_IPS > "$TEMP_KEYS" 2>/dev/null && [[ -s "$TEMP_KEYS" ]]; then
