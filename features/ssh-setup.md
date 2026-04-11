@@ -17,14 +17,16 @@ Automatic SSH configuration that works on all systems (Linux, macOS, workspaces,
 ├── config             # System-managed (you can edit this)
 │   └── (contains "Include ~/.ssh/config_nix" at bottom)
 ├── config_nix         # Nix-managed (symlink to /nix/store)
-└── known_hosts        # System-managed (GitHub keys added at activation)
+├── known_hosts        # System-managed (for your own hosts)
+└── known_hosts_nix    # Nix-managed (GitHub keys)
 ```
 
 ### Separation of Concerns
 
 - **System files** (`config`, `known_hosts`): You and other tools can write to these freely
-- **Nix files** (`config_nix`): Managed declaratively by home-manager
+- **Nix files** (`config_nix`, `known_hosts_nix`): Managed declaratively by home-manager
 - **Include directive**: SSH reads system config first, then nix config
+- **UserKnownHostsFile**: SSH checks both known_hosts files for host keys
 
 This pattern allows:
 - System processes to write to standard SSH files
@@ -52,9 +54,10 @@ The nix-managed `config_nix` contains:
 ```ssh-config
 Host github.com
   IdentityFile ~/.ssh/github_id
+  UserKnownHostsFile ~/.ssh/known_hosts ~/.ssh/known_hosts_nix
 ```
 
-GitHub's public keys are fetched dynamically at activation time using `ssh-keyscan` and added to the system `~/.ssh/known_hosts` file (not hardcoded).
+GitHub's public keys are fetched dynamically at activation time using `ssh-keyscan` and added to the nix-managed `~/.ssh/known_hosts_nix` file (not hardcoded). The `UserKnownHostsFile` directive ensures SSH checks both system and nix-managed known_hosts files.
 
 ## Usage
 
@@ -161,12 +164,12 @@ chmod 600 ~/.ssh/github_id
 
 ### GitHub authentication fails
 
-Check known_hosts includes GitHub:
+Check if GitHub keys exist in known_hosts_nix:
 ```bash
-grep "github.com" ~/.ssh/known_hosts
+cat ~/.ssh/known_hosts_nix
 ```
 
-If empty, GitHub keys may not have been fetched. Run activation again or manually fetch:
+If empty, re-run activation to fetch keys:
 ```bash
-ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+home-manager switch --flake .#<your-config>
 ```

@@ -11,11 +11,14 @@
     # Nix-managed GitHub SSH configuration
     Host github.com
       IdentityFile ~/.ssh/github_id
+      # Check both system and nix-managed known_hosts files
+      UserKnownHostsFile ~/.ssh/known_hosts ~/.ssh/known_hosts_nix
   '';
 
   # Activation script - runs ssh-setup.sh directly from nix store
   # This runs on ALL systems during home-manager switch
   # Fetches GitHub public keys at activation time (not hardcoded)
+  # Creates and manages known_hosts_nix (not as a home-manager file, since we need to write to it)
   # No files copied to home directory - keeps it clean
   home.activation.setupSSHConfig = lib.hm.dag.entryAfter ["writeBoundary"] ''
     bash ${./ssh-setup.sh}

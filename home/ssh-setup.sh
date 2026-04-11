@@ -8,6 +8,7 @@
 SSH_DIR="$HOME/.ssh"
 SSH_CONFIG="$SSH_DIR/config"
 KNOWN_HOSTS="$SSH_DIR/known_hosts"
+KNOWN_HOSTS_NIX="$SSH_DIR/known_hosts_nix"
 GITHUB_KEY="$SSH_DIR/github_id"
 INCLUDE_LINE="Include ~/.ssh/config_nix"
 
@@ -68,13 +69,26 @@ if [[ ! -f "$KNOWN_HOSTS" ]]; then
   echo "✓ Created known_hosts"
 fi
 
-# Fetch GitHub public keys dynamically
+# Create/recreate known_hosts_nix if it doesn't exist or is a symlink
+# (home-manager may create it as a symlink, which is read-only)
+if [[ -L "$KNOWN_HOSTS_NIX" ]]; then
+  rm "$KNOWN_HOSTS_NIX"
+fi
+
+if [[ ! -f "$KNOWN_HOSTS_NIX" ]]; then
+  touch "$KNOWN_HOSTS_NIX"
+  chmod 600 "$KNOWN_HOSTS_NIX"
+fi
+
+# Fetch GitHub public keys to nix-managed known_hosts_nix
 # This ensures keys are always up-to-date from GitHub's servers
 echo "Fetching GitHub public keys..."
 # ssh-keyscan outputs keys to stdout, connection info to stderr
 # -H flag hashes hostnames for security
-ssh-keyscan -H github.com >> "$KNOWN_HOSTS" 2>/dev/null
-echo "✓ Added GitHub public keys to known_hosts"
+# First clear the file to avoid duplicates on subsequent runs
+> "$KNOWN_HOSTS_NIX"
+ssh-keyscan -H github.com >> "$KNOWN_HOSTS_NIX" 2>/dev/null
+echo "✓ Added GitHub public keys to known_hosts_nix"
 
 # Handle GitHub SSH key
 if [[ ! -f "$GITHUB_KEY" ]]; then
