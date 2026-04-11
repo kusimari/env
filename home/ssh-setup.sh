@@ -84,12 +84,11 @@ fi
 # This ensures keys are always up-to-date from GitHub's servers
 echo "Fetching GitHub public keys..."
 # ssh-keyscan outputs keys to stdout, connection info to stderr
-# -H flag hashes hostnames for security
 # -T flag sets timeout (10 seconds)
 # Fetch to temp file first, only replace if successful
 TEMP_KEYS=$(mktemp)
 # Use absolute paths since PATH may be limited during activation
-if /usr/bin/timeout 10 /usr/bin/ssh-keyscan -H -T 10 github.com > "$TEMP_KEYS" 2>/dev/null && [[ -s "$TEMP_KEYS" ]]; then
+if /usr/bin/timeout 10 /usr/bin/ssh-keyscan -T 10 github.com > "$TEMP_KEYS" 2>/dev/null && [[ -s "$TEMP_KEYS" ]]; then
   mv "$TEMP_KEYS" "$KNOWN_HOSTS_NIX"
   chmod 600 "$KNOWN_HOSTS_NIX"
   echo "✓ Added GitHub public keys to known_hosts_nix"
