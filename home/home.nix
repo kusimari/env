@@ -6,6 +6,7 @@
   imports = [
     ../gittree/gittree-module.nix
     ./${envKind}.nix
+    ./ssh-setup.nix
   ];
 
   # shell with solarized dark
@@ -163,16 +164,6 @@
         "editor.minimap.autohide" = true;
         "editor.inlayHints.enabled" = "offUnlessPressed";
         "workbench.colorTheme" =  "Zenburn";
-      };
-    };
-  };
-
-  programs.ssh = {
-    enable = true;
-    enableDefaultConfig = false;
-    matchBlocks = {
-      "github.com" = {
-        identityFile = "~/.ssh/github_id";
       };
     };
   };
