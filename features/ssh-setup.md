@@ -127,6 +127,12 @@ The SSH setup is implemented as a modular Nix configuration split across two fil
   - Uploads keys to GitHub (if GH_TOKEN set)
   - Runs directly from nix store (not copied to home directory)
 
+- **`home/user-host.nix`**: User and hostname configuration
+  - Contains placeholder values: `replace-user` and `replace-hostname`
+  - Must be tracked in git (Nix flakes require all imported files tracked)
+  - Build script temporarily replaces placeholders during activation
+  - **Never commit actual username/hostname values**
+
 ### Why This Design?
 
 - **Modular**: All SSH config in one place (`ssh-setup.nix`)
@@ -134,6 +140,44 @@ The SSH setup is implemented as a modular Nix configuration split across two fil
 - **Maintainable**: Shell logic separate from Nix declarations
 - **Testable**: Can test script independently
 - **Reusable**: Module can be imported into any home-manager config
+
+### Implementation Notes
+
+#### Absolute Paths for System Utilities
+
+The activation script uses absolute `/usr/bin` paths for system utilities:
+```bash
+/usr/bin/timeout
+/usr/bin/ssh-keyscan
+/usr/bin/host
+/usr/bin/awk
+```
+
+**Why?** During home-manager activation, PATH is limited and doesn't include standard directories. While nix is installed, `/usr/bin` utilities are more reliable during the bootstrap process.
+
+#### GitHub IP Scanning
+
+The script resolves `github.com` to IP addresses and scans both hostname and IPs:
+```bash
+GITHUB_IPS=$(/usr/bin/host github.com 2>/dev/null | grep "has address" | awk '{print $NF}')
+ssh-keyscan github.com $GITHUB_IPS >> known_hosts_nix
+```
+
+**Why?** When SSH connects to github.com, it resolves to an IP (140.82.116.x). If the IP isn't in known_hosts, SSH automatically adds it to the **system** `~/.ssh/known_hosts`, polluting that file. By scanning both the hostname and IPs upfront, all entries go into `known_hosts_nix`, keeping the system file clean.
+
+#### Nix Flake File Tracking Requirement
+
+`home/user-host.nix` must be tracked in git with placeholder values. It cannot be in `.gitignore`.
+
+**Why?** Nix flakes require all imported files to be tracked by Git. If the file is ignored, you get:
+```
+error: Path 'home/user-host.nix' in the repository is not tracked by Git
+```
+
+The build script (`build-nix/_common.sh`) handles this by:
+1. Temporarily replacing placeholders with actual values before running nix
+2. Restoring placeholders after build completes
+3. Warning comment in file prevents accidental commits of personal info
 
 ## Troubleshooting
 
@@ -175,3 +219,85 @@ home-manager switch --flake .#<your-config>
 ```
 
 The activation script will show a warning if key fetching fails and preserve any existing keys.
+
+## Headless Environments
+
+For headless setups (cloud dev environments, NixOS servers, CI/CD), the interactive SSH key creation won't work since there's no terminal input.
+
+### Approach 1: Pre-create Key Before First Build
+
+Create the SSH key manually before running `home-manager switch`:
+
+```bash
+# Create key
+ssh-keygen -t ed25519 -f ~/.ssh/github_id -C "your-email@example.com" -N ""
+
+# Copy public key and add to GitHub manually
+cat ~/.ssh/github_id.pub
+# Visit: https://github.com/settings/ssh/new
+
+# Then run home-manager switch
+home-manager switch --flake .#<your-config>
+```
+
+The activation script will detect the existing key and skip creation.
+
+### Approach 2: Use GH_TOKEN for Automated Upload
+
+Set `GH_TOKEN` environment variable to automate key upload:
+
+```bash
+# Create key
+ssh-keygen -t ed25519 -f ~/.ssh/github_id -C "your-email@example.com" -N ""
+
+# Set token and run activation (will auto-upload)
+export GH_TOKEN=ghp_your_token_here
+home-manager switch --flake .#<your-config>
+```
+
+Get a token at: https://github.com/settings/tokens (needs `write:public_key` scope)
+
+### Approach 3: Use GitHub Deploy Keys (Repository-Specific)
+
+For repository-specific access (common in CI/CD):
+
+1. Generate a key: `ssh-keygen -t ed25519 -f ~/.ssh/deploy_key -N ""`
+2. Add public key to repository: Settings → Deploy keys
+3. Modify `config_nix` to use the deploy key:
+   ```
+   Host github.com
+     IdentityFile ~/.ssh/deploy_key
+   ```
+
+### Approach 4: Cloud Init / User Data Scripts
+
+For automated cloud environment setup:
+
+```bash
+#!/bin/bash
+# In cloud-init or user-data script
+
+# Create SSH key non-interactively
+ssh-keygen -t ed25519 -f /home/user/.ssh/github_id -C "cloud@example.com" -N ""
+chown user:user /home/user/.ssh/github_id*
+
+# Option A: Upload via gh CLI with pre-configured token
+export GH_TOKEN="${SECRET_GH_TOKEN}"
+sudo -u user gh auth login --with-token <<< "$GH_TOKEN"
+sudo -u user gh ssh-key add /home/user/.ssh/github_id.pub --title "cloud-$(hostname)"
+
+# Option B: Use pre-created key from secrets manager
+# (Store private key in AWS Secrets Manager, GCP Secret Manager, etc.)
+# Fetch and write to ~/.ssh/github_id
+
+# Then run home-manager
+sudo -u user home-manager switch --flake .#<config>
+```
+
+### Design Consideration
+
+The current design assumes:
+- First-time setup may be interactive (workstations, laptops)
+- SSH key is already present (headless/automated environments)
+
+For fully automated environments, you must provision the SSH key before the first `home-manager switch`. The activation script gracefully handles this: if `~/.ssh/github_id` exists, it skips creation and only fetches GitHub host keys.
