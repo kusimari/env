@@ -17,6 +17,9 @@
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;
 
+  home.sessionVariables = {
+    EDITOR = "emacs";
+  };
 
   # https://github.com/nix-community/home-manager/issues/1341#issuecomment-2049723843
 
