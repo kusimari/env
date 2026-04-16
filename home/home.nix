@@ -5,6 +5,7 @@
   # Edit home/mane.nix or home/kelasa.nix to add environment-specific packages.
   imports = [
     ../gittree/gittree-module.nix
+    ../tmux/tmux.nix
     ./${envKind}.nix
     ./ssh-setup.nix
   ];
@@ -47,12 +48,6 @@
     (pkgs.writeShellScriptBin "nix-init" (builtins.readFile ../nix-init/nix-init.sh))
   ];
 
-  programs.tmux = {
-    enable = true;
-    # To test config changes without rebuilding:
-    # tmux source-file <tmux.conf-path>
-    extraConfig = builtins.readFile ./tmux.conf;
-  };
 
   programs.alacritty = {
     enable = true;
