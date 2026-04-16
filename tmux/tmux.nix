@@ -12,8 +12,8 @@ let
     # Use postInstall to add script after mkTmuxPlugin copies files
     postInstall = ''
       mkdir -p $target/scripts
-      cp $target/tmux-sessions-view.py $target/scripts/view.sh
-      chmod +x $target/scripts/view.sh
+      cp $target/tmux-sessions-view.py $target/scripts/view.py
+      chmod +x $target/scripts/view.py
     '';
 
     meta = with lib; {
@@ -46,6 +46,6 @@ in
   programs.zsh.shellAliases = {
     tmux-sessions-save = "tmux run-shell ${pkgs.tmuxPlugins.resurrect}/share/tmux-plugins/resurrect/scripts/save.sh";
     tmux-sessions-restore = "tmux run-shell ${pkgs.tmuxPlugins.resurrect}/share/tmux-plugins/resurrect/scripts/restore.sh";
-    tmux-sessions-view = "tmux run-shell ${sessions-view}/share/tmux-plugins/sessions-view/scripts/view.sh";
+    tmux-sessions-view = "tmux run-shell ${sessions-view}/share/tmux-plugins/sessions-view/scripts/view.py";
   };
 }
