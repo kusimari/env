@@ -9,16 +9,11 @@ let
     version = "1.0.0";
     src = ./.;
 
-    # Override installPhase to install Python script in scripts/ subdirectory
-    installPhase = ''
-      runHook preInstall
-
-      target=$out/share/tmux-plugins/sessions-view
+    # Use postInstall to add script after mkTmuxPlugin copies files
+    postInstall = ''
       mkdir -p $target/scripts
-      cp tmux-sessions-view.py $target/scripts/view.sh
+      cp $target/tmux-sessions-view.py $target/scripts/view.sh
       chmod +x $target/scripts/view.sh
-
-      runHook postInstall
     '';
 
     meta = with lib; {
