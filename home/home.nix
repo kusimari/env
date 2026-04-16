@@ -49,9 +49,29 @@
 
   programs.tmux = {
     enable = true;
+
+    plugins = with pkgs.tmuxPlugins; [
+      resurrect
+      continuum
+    ];
+
     # To test config changes without rebuilding:
     # tmux source-file <tmux.conf-path>
+    # Consolidated configuration: styling + plugin settings
     extraConfig = builtins.readFile ./tmux.conf;
+  };
+
+  # Tmux session persistence - install helper script
+  home.file.".config/tmux/scripts/list-saved-sessions.sh" = {
+    source = ./tmux-list-saved-sessions.sh;
+    executable = true;
+  };
+
+  # Tmux session persistence shell aliases - keep near tmux config for clarity
+  programs.zsh.shellAliases = {
+    tmux-sessions-save = "tmux run-shell ${pkgs.tmuxPlugins.resurrect}/share/tmux-plugins/resurrect/scripts/save.sh";
+    tmux-sessions-restore = "tmux run-shell ${pkgs.tmuxPlugins.resurrect}/share/tmux-plugins/resurrect/scripts/restore.sh";
+    tmux-sessions-view = "~/.config/tmux/scripts/list-saved-sessions.sh";
   };
 
   programs.alacritty = {
