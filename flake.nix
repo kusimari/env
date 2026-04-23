@@ -101,6 +101,25 @@
       };
     };
 
+    # Shared configuration for AL2/AL2023 kelasa machines
+    al2KelasaConfiguration = { pkgs, ... }: {
+      home.username = "${user}";
+      home.homeDirectory = "/home/${user}";
+
+      # Fix PATH for single-user Nix installation
+      home.sessionPath = [
+        "/home/${user}/.nix-profile/bin"
+      ];
+
+      # Fix terminal encoding
+      home.packages = [ pkgs.glibcLocales ];
+      home.sessionVariables = {
+        LANG = "en_US.UTF-8";
+        LC_ALL = "en_US.UTF-8";
+        LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
+      };
+    };
+
   in {
     # darwin-kelasa: work macOS machine
     darwinConfigurations.darwin-kelasa = nix-darwin.lib.darwinSystem {
@@ -145,23 +164,19 @@
       modules = [
         commonConfiguration
         linuxConfiguration
-        ({ pkgs, ... }: {
-          home.username = "${user}";
-          home.homeDirectory = "/home/${user}";
+        al2KelasaConfiguration
+        ./home/home.nix
+      ];
+    };
 
-          # Fix PATH for single-user Nix installation (AL2 specific)
-          home.sessionPath = [
-            "/home/${user}/.nix-profile/bin"
-          ];
-
-          # Fix terminal encoding for AL2
-          home.packages = [ pkgs.glibcLocales ];
-          home.sessionVariables = {
-            LANG = "en_US.UTF-8";
-            LC_ALL = "en_US.UTF-8";
-            LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
-          };
-        })
+    # al2023-kelasa: office Amazon Linux 2023 machine
+    homeConfigurations.al2023-kelasa = home-manager.lib.homeManagerConfiguration {
+      pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      extraSpecialArgs = { envKind = "kelasa"; };
+      modules = [
+        commonConfiguration
+        linuxConfiguration
+        al2KelasaConfiguration
         ./home/home.nix
       ];
     };

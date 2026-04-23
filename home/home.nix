@@ -26,7 +26,7 @@
 
   home.packages = with pkgs; [
     tree
-    git  # todo: set userEmail and userName locally
+    git
     htop
 
     rclone
@@ -92,16 +92,21 @@
     };
     initContent = lib.mkOrder 550 ''
       fpath=(~/.zfunc $fpath)
-      # Source pre-nix setup shell initialization
-      if [[ -f ~/.pre-nix-rc ]]; then
-        source ~/.pre-nix-rc
-      fi
     '';
     # Determinate Nix adds nix-daemon.sh to /etc/zshrc (interactive only).
     # Source it in .zshenv so non-login shells (e.g. Tailscale SSH) get Nix in PATH.
     envExtra = ''
       if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
         . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
+      fi
+
+      # Generic hook system: source pre/post-nix RC files if they exist
+      # These files are managed by external scripts (Gorantls-env/desktop/pre-nix.sh, post-nix flake)
+      if [[ -f ~/.pre-nix-rc ]]; then
+        source ~/.pre-nix-rc
+      fi
+      if [[ -f ~/.post-nix-rc ]]; then
+        source ~/.post-nix-rc
       fi
     '';
     oh-my-zsh = {
