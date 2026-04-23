@@ -4,10 +4,41 @@ You are a coding agent helping to capture an existing project workspace into a r
 
 ## Input Required from User
 
-Ask the user for:
-1. **Source workspace directory** - The existing workspace to capture (e.g., `~/workplace/myproject`)
-2. **Output directory** - Where to store the captured metadata (e.g., `~/env-workplace/<private-env>/projects`)
-3. **Project name** - A name for this project (default: basename of source directory)
+**IMPORTANT**: Always ask for these at the start:
+
+1. **Source workspace directory** - The existing workspace to capture
+   - Ask: "Which workspace directory should I capture?"
+   - Example: `~/workplace/myproject` or `/home/user/workplace/trace`
+   - Validate: Check that directory exists
+
+2. **Output metadata directory** - Where to store the captured configuration
+   - Ask: "Where should I store the project metadata?"
+   - Example: `~/env-workplace/Gorantls-env/projects` or `/local/home/user/env-workplace/Gorantls-env/projects`
+   - Validate: Check that directory exists
+
+3. **Project name** (optional) - Name for this project
+   - Ask: "Project name? (press Enter to use directory name)"
+   - Default: basename of source directory
+   - This determines the output directory: `<output-dir>/<project-name>/`
+
+## Check for Existing Project
+
+Before capturing, check if the project already exists:
+
+```bash
+ls -la <output-dir>/<project-name>/
+```
+
+If project exists:
+- Inform user: "Project '<project-name>' already exists at <output-dir>/<project-name>/"
+- Ask: "Should I update the existing project or create a backup?"
+  - **Update**: Overwrite workspace.md, merge/update tool-configs
+  - **Backup**: Move existing to `<project-name>.backup.<timestamp>`, then create fresh
+
+If updating:
+- Preserve existing Nix/flake.nix unless user wants to regenerate
+- Merge tool-configs (don't delete existing configs)
+- Update workspace.md with new information
 
 ## Capture Process
 

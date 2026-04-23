@@ -4,9 +4,17 @@ You are a coding agent helping to recreate a project workspace from its workspac
 
 ## Input Required from User
 
-Ask the user for:
-1. **Project metadata directory** - Path to the project's metadata (e.g., `~/env-workplace/<private-env>/projects/myproject`)
-2. **Target workspace directory** (optional) - Where to create workspace (default: `~/workplace/<project-name>`)
+**IMPORTANT**: Always ask for these at the start:
+
+1. **Project metadata directory** - Path to the project's metadata containing workspace.md
+   - Ask: "Which project should I setup? (provide path to project metadata directory)"
+   - Example: `~/env-workplace/Gorantls-env/projects/trace`
+   - Validate: Check that directory exists and contains workspace.md
+
+2. **Target workspace directory** (optional) - Where to create the workspace
+   - Ask: "Where should I create the workspace? (press Enter for default: ~/workplace/<project-name>)"
+   - Default: `~/workplace/<project-name>` (extracted from metadata dir basename)
+   - Validate: Check parent directory exists
 
 ## Setup Process
 
