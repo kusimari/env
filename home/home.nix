@@ -101,7 +101,7 @@
       fi
 
       # Generic hook system: source pre/post-nix RC files if they exist
-      # These files are managed by external scripts (Gorantls-env/desktop/pre-nix.sh, post-nix flake)
+      # These files can be managed by external setup scripts or other repos
       if [[ -f ~/.pre-nix-rc ]]; then
         source ~/.pre-nix-rc
       fi
