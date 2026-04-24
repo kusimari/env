@@ -31,6 +31,7 @@ in
   # Tmux configuration with session persistence plugins
   programs.tmux = {
     enable = true;
+    terminal = "tmux-256color";
 
     plugins = with pkgs.tmuxPlugins; [
       resurrect      # Save/restore sessions
