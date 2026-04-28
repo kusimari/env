@@ -8,6 +8,7 @@
     ../tmux/tmux.nix
     ./${envKind}.nix
     ./ssh-setup.nix
+    ./emacs-gittree.nix
   ];
 
   # shell with solarized dark
@@ -46,9 +47,6 @@
 
     # nix-init: init a nix flake with direnv in the current directory
     (pkgs.writeShellScriptBin "nix-init" (builtins.readFile ../nix-init/nix-init.sh))
-
-    # emacs-gittree: launch emacs in gittree mode, optionally comparing two refs
-    (pkgs.writeShellScriptBin "emacs-gittree" (builtins.readFile ../gittree/emacs-gittree.sh))
   ];
 
 
