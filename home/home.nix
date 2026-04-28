@@ -8,7 +8,7 @@
     ../tmux/tmux.nix
     ./${envKind}.nix
     ./ssh-setup.nix
-    ./emacs-gittree.nix
+    ./emacs.nix
   ];
 
   # shell with solarized dark
@@ -178,17 +178,6 @@
       lg = "log --oneline --graph --all --decorate";
     };
   };
-
-  programs.emacs = {
-    enable = true;
-    package = pkgs.emacs-nox;
-  };
-  # emacs configuration - create directory with all emacs files and load from there
-  home.file.".emacs".text = ''
-    (load-file "~/.config/emacs/core.el")
-  '';
-
-  home.file.".config/emacs".source = ../emacs;
 
   # Terminal UI for git - installs lazygit with delta and custom config
   programs.gittree = {
