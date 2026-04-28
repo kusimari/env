@@ -46,6 +46,9 @@
 
     # nix-init: init a nix flake with direnv in the current directory
     (pkgs.writeShellScriptBin "nix-init" (builtins.readFile ../nix-init/nix-init.sh))
+
+    # emacs-gittree: launch emacs in gittree mode, optionally comparing two refs
+    (pkgs.writeShellScriptBin "emacs-gittree" (builtins.readFile ../gittree/emacs-gittree.sh))
   ];
 
 
@@ -188,7 +191,6 @@
   '';
 
   home.file.".config/emacs".source = ../emacs;
-  home.shellAliases.emacs-gittree = ''emacs --eval "(gittree-mode 1)"'';
 
   # Terminal UI for git - installs lazygit with delta and custom config
   programs.gittree = {
