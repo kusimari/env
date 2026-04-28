@@ -361,6 +361,21 @@ In both cases, :demand t is set to ensure the package is loaded."
 
 
 ;;; -----------------------------------------------------------------
+;;; SECTION: Markdown
+;;;
+;;; WHY-CORE: .md files are universal across this environment; loading
+;;; markdown-mode by default (instead of the opt-in EMACS_MODULES path)
+;;; ensures every session gets syntax highlighting, list navigation, and
+;;; table editing for markdown without per-project configuration.
+;;; -----------------------------------------------------------------
+(defun activate-markdown ()
+  (my-use-package markdown-mode)
+  (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
+  (add-to-list 'auto-mode-alist '("\\.markdown\\'" . markdown-mode)))
+(activate-markdown)
+
+
+;;; -----------------------------------------------------------------
 ;;; SECTION: Git Integration (Lazygit + Magit)
 ;;;
 ;;; WHY-CORE: Enhanced git workflow with side-by-side diffs and
