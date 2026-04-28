@@ -109,6 +109,16 @@
       };
     };
 
+    # Shared module list for headless Amazon Linux kelasa machines.
+    # al2-kelasa and al2023-kelasa have identical nix configs today; if they
+    # diverge later, fork this into separate lists.
+    al2KelasaModules = [
+      commonConfiguration
+      linuxBaseConfiguration
+      al2KelasaConfiguration
+      ./home/home.nix
+    ];
+
     # Shared configuration for AL2/AL2023 kelasa machines
     al2KelasaConfiguration = { pkgs, ... }: {
       home.username = "${user}";
@@ -170,24 +180,14 @@
     homeConfigurations.al2-kelasa = home-manager.lib.homeManagerConfiguration {
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
       extraSpecialArgs = { envKind = "kelasa"; };
-      modules = [
-        commonConfiguration
-        linuxBaseConfiguration
-        al2KelasaConfiguration
-        ./home/home.nix
-      ];
+      modules = al2KelasaModules;
     };
 
     # al2023-kelasa: office Amazon Linux 2023 machine (headless SSH)
     homeConfigurations.al2023-kelasa = home-manager.lib.homeManagerConfiguration {
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
       extraSpecialArgs = { envKind = "kelasa"; };
-      modules = [
-        commonConfiguration
-        linuxBaseConfiguration
-        al2KelasaConfiguration
-        ./home/home.nix
-      ];
+      modules = al2KelasaModules;
     };
   };
 }
