@@ -52,6 +52,14 @@
 (defvar gittree--pending-refocus nil
   "When non-nil, vdiff post-refresh advice will return focus to treemacs.")
 
+(defvar gittree-launch-left-ref nil
+  "When non-nil, overrides the status-based left ref in `gittree-visit-node'.
+Set by `gittree-launch' so interactively-selected files get compared at the
+user-supplied refs instead of status-derived ones.")
+
+(defvar gittree-launch-right-ref nil
+  "When non-nil, overrides the status-based right ref in `gittree-visit-node'.")
+
 (defvar gittree--status-configs
   '(;; Clean/untracked files -> single panel
     (:pattern nil :left nil :right "working" :vdiff nil :desc "Clean file")
@@ -396,10 +404,13 @@ Returns alist of (filepath . status-string)."
              (config (gittree--find-status-config git-status))
              (filename (file-name-nondirectory path))
              (treemacs-win (treemacs-get-local-window))
-             (left-ref (plist-get config :left))
-             (right-ref (plist-get config :right))
-             (use-vdiff (plist-get config :vdiff))
-             (desc (plist-get config :desc)))
+             (override (or gittree-launch-left-ref gittree-launch-right-ref))
+             (left-ref (or gittree-launch-left-ref (plist-get config :left)))
+             (right-ref (or gittree-launch-right-ref (plist-get config :right)))
+             (use-vdiff (if override t (plist-get config :vdiff)))
+             (desc (if override
+                       (format "Launch: %s vs %s" left-ref right-ref)
+                     (plist-get config :desc))))
         (message "GitTree: %s | status='%s' | %s" filename git-status desc)
         (gittree-cleanup-panels)
         (gittree-cleanup-file-buffers path)
@@ -476,7 +487,36 @@ Returns alist of (filepath . status-string)."
   ;; Clean up status cache
   (clrhash gittree--status-cache)
 
+  ;; Clear any launch overrides
+  (setq gittree-launch-left-ref nil
+        gittree-launch-right-ref nil)
+
   (message "GitTree: Interface deactivated"))
+
+;; ============================================================
+;; CLI Launch Entry Point
+;; ============================================================
+
+;;;###autoload
+(defun gittree-launch (left-ref right-ref &optional file)
+  "Start gittree-mode with LEFT-REF vs RIGHT-REF diff for FILE.
+When FILE is nil, gittree-mode opens with the tree active; the user picks
+a file and the right panel shows the LEFT-REF vs RIGHT-REF diff for it.
+When FILE is non-nil, open gittree-mode and immediately show the diff for
+FILE. Either ref may be 'working', ':0', 'HEAD', or any git ref."
+  (setq gittree-launch-left-ref (and left-ref (not (string-empty-p left-ref)) left-ref)
+        gittree-launch-right-ref (and right-ref (not (string-empty-p right-ref)) right-ref))
+  (gittree-mode 1)
+  (when (and file (not (string-empty-p file)))
+    (let ((expanded (expand-file-name file)))
+      (when (file-exists-p expanded)
+        (gittree-cleanup-panels)
+        (gittree-cleanup-file-buffers expanded)
+        (gittree-show-dual-panel
+         expanded
+         gittree-launch-left-ref
+         gittree-launch-right-ref
+         t)))))
 
 ;; ============================================================
 ;; Minor Mode Definition
