@@ -40,12 +40,25 @@ keybinding:
 
 # === WORKFLOW COMMANDS ===
 customCommands:
-  # === E KEY: FILES PANEL ONLY ===
-  # Compare working directory (editable) vs staged/commit
+  # === E KEY: FILES PANEL — working vs selected commit ===
   - key: 'E'
-    command: 'emacs -eval "(gittree-compare-working \"{{.SelectedFile.Name}}\" \"{{.SelectedCommit.Sha}}\")"'
-    description: 'Edit: working directory (editable) vs commit/staged'
+    command: 'emacs-gittree {{.SelectedCommit.Sha}} working {{.SelectedFile.Name}}'
+    description: 'Edit: working directory (editable) vs commit'
     context: 'files'
+    output: terminal
+
+  # === E KEY: COMMITS PANEL — selected commit vs its parent ===
+  - key: 'E'
+    command: 'emacs-gittree {{.SelectedLocalCommit.Sha}}^ {{.SelectedLocalCommit.Sha}}'
+    description: 'Edit: diff selected commit vs its parent'
+    context: 'commits'
+    output: terminal
+
+  # === E KEY: COMMIT-FILES PANEL — show the file diff for the selected commit ===
+  - key: 'E'
+    command: 'emacs-gittree {{.SelectedLocalCommit.Sha}}^ {{.SelectedLocalCommit.Sha}} {{.SelectedCommitFile.Name}}'
+    description: 'Edit: diff this file at selected commit vs parent'
+    context: 'commitFiles'
     output: terminal
 
 refresher:
