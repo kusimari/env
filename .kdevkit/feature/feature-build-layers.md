@@ -18,7 +18,17 @@ onto a fresh machine and easy to extend with global AI tooling:
    clones it during bootstrap; activation into `$HOME` is driven by
    mAId's own `flake.nix` (`nix profile install`-style).
 
-## Why the two are bundled
+## Scope guardrails
+
+**This repo is public; this document stays site-agnostic.** Avoid
+naming specific employers, internal tools, private repos, auth
+systems, or clone URLs. Sibling repositories that carry machine-
+specific or site-specific concerns are referred to abstractly as
+*private sibling env repo(s)*. Concrete URLs and credentials live in
+the bootstrap scripts themselves (where they belong), not in design
+docs.
+
+## Why the two pieces are bundled
 mAId lives next to env. The cleanest way to have both cloned and
 present for bootstrap is to let the new `bootstrap-common.sh` clone
 both as part of Layer 2. Doing the bootstrap refactor without mAId
@@ -36,14 +46,16 @@ leaves an awkward "now also clone this other repo" step dangling.
 - **FR-B3**: `bootstrap-common.sh` scope: create `~/env-workplace`,
   check GitHub SSH reachability, clone/fetch `env`, clone/fetch
   `mAId`. Accept `--pre-nix <script>` / `--post-nix <script>` hooks so
-  Layer-1 and Layer-4 can inject without modifying env.
-- **FR-B4**: `Gorantls-env/desktop/bootstrap-al2.sh` and
-  `bootstrap-al2023.sh` (Layer 1) are pared to Amazon-only work
-  (midway, Amazon SSH, toolbox, Nix install, sudoers, SSL cert). They
-  delegate to `bootstrap-common.sh` at the end.
+  Layer 1 and Layer 4 can inject without modifying env.
+- **FR-B4**: Platform-specific prep that is machine- or site-specific
+  (e.g. credential enrollment, private auth flows, internal tool
+  installation, sudoers rules for Nix directory creation) lives in a
+  *private sibling env repo*, outside this public repo. Those
+  Layer-1 scripts delegate to `bootstrap-common.sh` at the end. The
+  public repo does not need to know they exist.
 - **FR-B5**: `env/build-nix/bootstrap-ubuntu.sh` is a new Layer-1
-  script for Ubuntu. Ubuntu isn't Amazon-specific so Layer 1 lives in
-  env.
+  script for Ubuntu. Plain Ubuntu setup is generic (no site-specific
+  auth), so its Layer 1 lives in env.
 - **FR-B6**: Layer-3 scripts (`build-nix/<platform>.sh`) stay pure:
   nix invocation only; no prep.
 - **FR-B7**: Layer 4 is a convention, not scripts-on-this-branch. The
@@ -51,10 +63,9 @@ leaves an awkward "now also clone this other repo" step dangling.
 - **FR-B8**: All bootstrap scripts idempotent.
 
 ### FR-mAId
-- **FR-M1**: Repo `kusimari/mAId` (already created, empty). Branch
-  `misc-updates` already checked out as a sibling. Work on a new
-  `feature-build-layers` branch in mAId; initial content committed
-  there.
+- **FR-M1**: Repo is a sibling of env on the same hosting platform.
+  Concrete org/owner and URL captured in `bootstrap-common.sh` — not
+  in this doc.
 - **FR-M2**: Initial layout:
   ```
   mAId/
@@ -89,10 +100,13 @@ leaves an awkward "now also clone this other repo" step dangling.
 - **NFR3**: No new flake inputs in env (mAId via flake input is a
   later branch).
 - **NFR4**: Bootstrap scripts shellcheck-clean.
+- **NFR5**: No site-specific or employer-specific identifiers in
+  scripts or docs that live in this public repo. If such coupling is
+  needed, it belongs in a private sibling env repo.
 
 ### Success criteria
-- Fresh AL2023 VM → `curl ... bootstrap-al2023.sh | bash` → bootstrap
-  completes → `./build-nix/al2023.sh` succeeds.
+- Fresh Linux VM → `curl ... bootstrap-<platform>.sh | bash` →
+  bootstrap completes → `./build-nix/<platform>.sh` succeeds.
 - `cd ~/env-workplace/mAId && nix profile install .` creates working
   symlinks pointing into the checkout (`ls -l ~/CLAUDE.md` resolves
   into the mAId clone).
@@ -103,11 +117,13 @@ leaves an awkward "now also clone this other repo" step dangling.
 ### Four-layer diagram
 ```
 Layer 1: machine prep                     Layer 2: generic sync
-  Gorantls-env/desktop/                     env/build-nix/
-    bootstrap-al2.sh                          bootstrap-common.sh
-    bootstrap-al2023.sh                       (env + mAId clones,
-  env/build-nix/                               GitHub SSH,
-    bootstrap-ubuntu.sh                        --pre-nix / --post-nix hooks)
+  Private sibling env repo                  env/build-nix/
+    bootstrap-<platform>.sh                   bootstrap-common.sh
+    (site-specific auth,                      (env + mAId clones,
+     internal tooling, etc.)                   GitHub SSH,
+  env/build-nix/                               --pre-nix / --post-nix hooks)
+    bootstrap-ubuntu.sh
+    (generic Ubuntu prep)
 
                     │
                     ▼
@@ -122,8 +138,8 @@ Layer 3: nix build                        Layer 4: post-nix machine-specific
   `~/env-workplace/env/`, assume clone mode. Else curl mode: clone env
   first, re-exec from the clone with a `--post-clone` sentinel to
   prevent re-exec loops.
-- Clone/fetch both `env` (`git@github.com:kusimari/env.git`) and
-  `mAId` (`git@github.com:kusimari/mAId.git`).
+- Clone/fetch both env and mAId from their GitHub URLs (URLs hard-
+  coded in the script, not in this doc).
 - Run optional `--pre-nix` and `--post-nix` scripts if provided.
 
 ### D-mAId flake
@@ -146,24 +162,32 @@ Layer 3: nix build                        Layer 4: post-nix machine-specific
 
 ## Automated testing
 
-1. `shellcheck -x` over `build-nix/*.sh` and (when mAId is cloned)
-   `Gorantls-env/desktop/bootstrap-*.sh`.
+1. `shellcheck -x` over env's `build-nix/*.sh`.
 2. `bootstrap-common.sh --dry-run` twice against a staging `HOME` to
    verify idempotency.
-3. Manual: one real AL2023 VM run before merge.
+3. Manual: one real Linux VM run before merge.
 4. Manual: `nix profile install` in mAId on a test host, verify
    `ls -l ~/CLAUDE.md` resolves into the checkout.
 
 ## Out of scope
 - gittree CLI / lazygit rework (on `issue-emacs-gittree`).
 - Test harness for emacs (part of `issue-emacs-gittree`).
+- Anything specific to a particular employer's infrastructure —
+  belongs in private sibling repos.
 
 ## Session Log
 <!-- Newest at top -->
 
+### 2026-04-30 - Scrub site-specific references
+- Removed employer-specific names, internal tool names, and specific
+  org/user handles from the doc. Replaced with abstract references
+  ("private sibling env repo", "site-specific auth"). Added NFR5 to
+  make the policy explicit. Concrete clone URLs stay in the
+  bootstrap scripts, not in this design doc.
+
 ### 2026-04-30 - Spun out from misc-updates
 - Split bootstrap + mAId work out of `misc-updates` into this new
-  feature doc. mAId sibling repo is already cloned empty at
+  feature doc. The mAId sibling repo is already cloned empty at
   `~/env-workplace/mAId` with local branch `misc-updates`; when work
   begins, rename / branch off to `feature-build-layers`.
 - No code written yet. First implementation task is the requirements
