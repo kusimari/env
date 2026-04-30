@@ -200,12 +200,21 @@ In both cases, :demand t is set to ensure the package is loaded."
 ;;; -----------------------------------------------------------------
 ;;; SECTION: Shell Environment Integration
 ;;;
-;;; WHY-CORE: Ensures that Emacs inherits the correct PATH and other
-;;; environment variables from the user's shell configuration. This is
-;;; crucial for external commands and tools to function correctly from
-;;; within Emacs. In particular, MELPA .tar packages (e.g. markdown-mode)
-;;; need `tar` on exec-path; on nix systems `tar` lives under
-;;; ~/.nix-profile/bin which isn't inherited by emacs without this.
+;;; WHY-CORE: Ensures Emacs inherits PATH (and friends) from the user's
+;;; login shell. Emacs subprocesses — e.g. package.el calling `tar` to
+;;; extract MELPA .tar archives, or `git` calls from gittree — use
+;;; `exec-path`, which starts empty-ish unless we populate it.
+;;;
+;;; exec-path-from-shell-initialize spawns `zsh -l` once at startup,
+;;; reads $PATH from it, and mirrors it into emacs `exec-path` / env.
+;;;
+;;; This block was originally gated to (mac ns) only — the typical
+;;; "macOS GUI emacs has a bare PATH" case. It now runs on every
+;;; platform. We discovered while adding markdown-mode (a multi-file
+;;; MELPA .tar package) that on Linux + Nix, emacs sometimes doesn't
+;;; inherit ~/.nix-profile/bin, so `tar` wasn't found and the install
+;;; failed. Running this unconditionally costs ~50ms at startup and
+;;; fixes that class of issue across OSes.
 ;;; -----------------------------------------------------------------
 (defun activate-shell-path-from-shell ()
   (my-use-package exec-path-from-shell
