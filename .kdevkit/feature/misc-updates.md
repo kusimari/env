@@ -26,12 +26,14 @@ Six grouped updates bundled on one branch:
 **Status Legend:** 📋 Not Started | ⏳ In Progress | ✅ Complete
 
 Per-group status:
-- Group 1 (gittree CLI): ✅
-- Group 2 (bootstrap four-layer): 📋
+- Group 1 (gittree CLI): ✅ (bug fixes for arbitrary refs + diff-based tree status added 2026-04-30)
 - Group 3 (headless linux): ✅
+- Group 5 (lazygit integration): ✅ — E binding rewritten for files / commits / commitFiles contexts
+- Group 6 (markdown-mode): ✅ (tar/gzip runtime deps added 2026-04-30)
 - Group 4 (mAId repo): 📋 — repo cloned empty at `~/env-workplace/mAId`, branch `misc-updates`
-- Group 5 (lazygit integration): 📋 (depends on 1)
-- Group 6 (markdown-mode): ✅
+- Group 2 (bootstrap four-layer): 📋
+
+**Reordered landing** (reflecting emacs-wave bundling): 1 & 6 & 3 & 5 (all emacs/diff related, landing together) → 4 (mAId) → 2 (bootstrap).
 
 ## Requirements Specification
 
@@ -115,8 +117,10 @@ Per-group status:
 - Script emits a single `emacs --eval "(...)"` call:
   - 0 args → `(gittree-mode 1)`.
   - 1+ args → new `gittree-launch` elisp wrapper that (a) activates `gittree-mode` so treemacs is present, (b) calls dual-panel logic for the right-hand window with the given refs/file.
-- **New elisp**: `gittree-launch (file ref-a ref-b)` in `emacs/core-gittree.el` — small wrapper. Delta from the two-buffer design: a bare `gittree-show-dual-panel` doesn't guarantee treemacs stays visible; the wrapper handles that.
-- Arg convention: positional only. Literals `working`, `:0`, `HEAD`, `empty` pass through; other tokens → `git show <ref>:<path>`.
+- **New elisp**: `gittree-launch (left-ref right-ref &optional file)` in `emacs/core-gittree.el` — thin wrapper over `gittree-mode` + `gittree-show-dual-panel`.
+- Arg convention: positional only. Literals `working`, `:0`, `empty` handled specially; any other token is passed to `git show <ref>:<path>` (so HEAD, HEAD~N, SHA, branch, tag all work).
+- **Bug fix (2026-04-30)**: `gittree--create-buffer` previously errored on non-literal refs ("Unknown ref: HEAD~1"). Default branch now routes arbitrary refs through `gittree--create-git-buffer`.
+- **Tree status under two refs (2026-04-30)**: when `gittree-launch-left-ref` and `gittree-launch-right-ref` are both set (and neither is `working`/`:0`), `gittree-refresh-status` sources file-change status from `git diff --name-status <left> <right>` instead of `git status --porcelain`. This makes the tree highlight files that changed *between the two commits* rather than the working-tree state. Added helper `gittree--get-ref-diff-status`.
 - **Reuse**: `gittree-show-dual-panel` (`core-gittree.el:256`), `gittree--create-buffer` (`core-gittree.el:243`), `gittree-mode` (`core-gittree.el:486`).
 
 ### D-bootstrap (Group 2) — four-layer model
@@ -176,7 +180,10 @@ Module lists:
 - **Future**: `mAId.nix` in env imports mAId as flake input.
 
 ### D-lazygit (Group 5)
-Inspect `gittree/lazygit-config.yml:46` after Group 1. If new CLI allows `command: emacs-gittree {{.SelectedCommit.Sha}} working {{.SelectedFile.Name}}` cleanly, rewrite. Else defer.
+Replaced the single `E` binding with three context-specific ones, all routing through the new `emacs-gittree` CLI (which means the tree on the left highlights changed files and the right panel vdiffs the selected file):
+- **files** context: `emacs-gittree {{.SelectedCommit.Sha}} working {{.SelectedFile.Name}}` — working tree vs a commit.
+- **commits** context: `emacs-gittree {{.SelectedLocalCommit.Sha}}^ {{.SelectedLocalCommit.Sha}}` — diff a commit against its parent; pick any changed file from the tree.
+- **commitFiles** context: `emacs-gittree {{.SelectedLocalCommit.Sha}}^ {{.SelectedLocalCommit.Sha}} {{.SelectedCommitFile.Name}}` — jump directly to a file's diff within a commit.
 
 ### D-markdown (Group 6)
 Add to `emacs/core.el` after the General Programming Support section:
@@ -187,7 +194,9 @@ Add to `emacs/core.el` after the General Programming Support section:
   (add-to-list 'auto-mode-alist '("\\.markdown\\'" . markdown-mode)))
 (activate-markdown)
 ```
-Remove `emacs/markdown-mode.el`. `visual-line-mode` is already global (`core.el:195`); yasnippet's `text-mode-hook` (`core.el:352`) fires because `markdown-mode` derives from `text-mode`. No system packages needed — pure elisp from MELPA.
+Remove `emacs/markdown-mode.el`. `visual-line-mode` is already global (`core.el:195`); yasnippet's `text-mode-hook` (`core.el:352`) fires because `markdown-mode` derives from `text-mode`.
+
+**Runtime deps (2026-04-30)**: `package.el` uses `tar xf` to extract MELPA tarballs. On minimal images (e.g., headless AL2023) the system `tar`/`gzip` may not be visible to emacs's subprocess PATH, producing "Failed to install markdown-mode: tar not found". Added `pkgs.gnutar` and `pkgs.gzip` to `home/emacs.nix`'s `home.packages` so they're on the nix profile PATH. No new flake inputs.
 
 ## Test Strategy Specification
 
@@ -229,6 +238,19 @@ Emacs UI / vdiff visual layout; lazygit keypress; darwin bootstrap.
 
 ## Session Log
 <!-- Instructions: Newest at top -->
+
+### 2026-04-30 - Session Focus: emacs wave fixes (Groups 1 + 6) and Group 5
+- **Group 1 fix**: `emacs-gittree <ref-a> <ref-b> [file]` was silently unusable:
+  1. `gittree--create-buffer` had `(t (error "Unknown ref: %s" ref))` — any non-literal ref (HEAD~1, SHAs, branches) threw, aborting the dual-panel. Fixed: default branch now delegates to `gittree--create-git-buffer` so arbitrary refs pass through to `git show`. Docstring rewritten to match.
+  2. Tree didn't highlight files changed between the two refs (status cache sourced from working-tree `git status`). Added `gittree--get-ref-diff-status` (wraps `git diff --name-status ref-a ref-b`) and a conditional in `gittree-refresh-status` that uses it when launch overrides are active.
+  3. Added a confirmation `message` inside `gittree-launch` so the user can see it took effect.
+- **Group 6 fix**: MELPA install of markdown-mode failed with "tar not found". Added `pkgs.gnutar` + `pkgs.gzip` to `home/emacs.nix` `home.packages` so emacs's subprocess PATH sees them on minimal images.
+- **Group 5 (lazygit)** ✅: replaced the single `E` binding with three context-specific bindings, all via `emacs-gittree`:
+  - `context: files` → `emacs-gittree <commit-sha> working <file>`
+  - `context: commits` → `emacs-gittree <sha>^ <sha>` (diff a commit vs its parent)
+  - `context: commitFiles` → `emacs-gittree <sha>^ <sha> <file>`
+- **Wave regrouping**: Groups 1 + 3 + 5 + 6 all touch emacs/diff UX and landed together. Landing order revised: emacs wave → Group 4 (mAId) → Group 2 (bootstrap).
+- Sanity: `./build-nix/test.sh` green on ubuntu-mane + al2-kelasa.
 
 ### 2026-04-27 - Session Focus: Groups 1, 3, 6 implementation
 - **Group 1 (gittree CLI)** ✅
