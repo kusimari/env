@@ -28,3 +28,12 @@ nix build "$FLAKE_DIR#homeConfigurations.al2-kelasa.activationPackage" --no-link
 
 echo ""
 echo "Flake OK."
+
+echo ""
+echo "Running emacs gittree tests..."
+if bash "$FLAKE_DIR/emacs/tests/run.sh"; then
+    echo "Emacs tests OK."
+else
+    echo "Emacs tests FAILED."
+    exit 1
+fi
