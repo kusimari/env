@@ -12,11 +12,11 @@
 
   home.file.".config/emacs".source = ../emacs;
 
-  # emacs-gittree: CLI wrapper that launches gittree-mode, optionally
-  # comparing two refs.
-  home.packages = [
-    (pkgs.writeShellScriptBin "emacs-gittree" (builtins.readFile ../gittree/emacs-gittree.sh))
-  ];
+  # emacs-gittree shell alias — preserves the main-branch behavior of
+  # launching emacs in gittree-mode. The committish-diff CLI lives on
+  # the separate `issue-emacs-gittree` feature branch while that
+  # feature is reworked (see .kdevkit/feature/issue-emacs-gittree.md).
+  home.shellAliases.emacs-gittree = ''emacs --eval "(gittree-mode 1)"'';
 
   # Wipe ~/.emacs.d/elpa when the emacs source in the repo changes, so
   # MELPA re-fetches packages freshly instead of fighting stale

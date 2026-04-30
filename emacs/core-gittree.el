@@ -52,14 +52,6 @@
 (defvar gittree--pending-refocus nil
   "When non-nil, vdiff post-refresh advice will return focus to treemacs.")
 
-(defvar gittree-launch-left-ref nil
-  "When non-nil, overrides the status-based left ref in `gittree-visit-node'.
-Set by `gittree-launch' so interactively-selected files get compared at the
-user-supplied refs instead of status-derived ones.")
-
-(defvar gittree-launch-right-ref nil
-  "When non-nil, overrides the status-based right ref in `gittree-visit-node'.")
-
 (defvar gittree--status-configs
   '(;; Clean/untracked files -> single panel
     (:pattern nil :left nil :right "working" :vdiff nil :desc "Clean file")
@@ -78,15 +70,6 @@ user-supplied refs instead of status-derived ones.")
 (defun gittree--git-root (file-path)
   "Find git root for FILE-PATH."
   (or (vc-find-root file-path ".git") default-directory))
-
-(defun gittree--ref-has-path-p (git-ref relative-path)
-  "Return non-nil when GIT-REF contains RELATIVE-PATH.
-Probes with `git cat-file -e <ref>:<path>' so we can detect
-added/deleted files before running `git show' and leaking error text
-into a diff buffer."
-  (zerop (call-process "git" nil nil nil
-                       "cat-file" "-e"
-                       (format "%s:%s" git-ref relative-path))))
 
 (defun gittree--short-commit (commit)
   "Return short version of COMMIT (max 7 chars)."
@@ -146,11 +129,29 @@ Creates side-by-side comparison with file contents at each commit."
   (if (string= commit1 commit2)
       (message "Warning: Both commits are the same (%s). No diff to show." commit1)
     (let* ((file-path (expand-file-name file-path))
-           (buf1 (gittree--create-git-buffer
-                  file-path commit1 (gittree--short-commit commit1)))
-           (buf2 (gittree--create-git-buffer
-                  file-path commit2 (gittree--short-commit commit2))))
-      (ediff-buffers buf1 buf2)
+           (git-root (gittree--git-root file-path))
+           (relative-path (file-relative-name file-path git-root))
+           (file-name (file-name-nondirectory file-path))
+           (buffer1-name (format "*%s@%s*" file-name (gittree--short-commit commit1)))
+           (buffer2-name (format "*%s@%s*" file-name (gittree--short-commit commit2)))
+           (default-directory git-root))
+      (with-current-buffer (get-buffer-create buffer1-name)
+        (erase-buffer)
+        (let ((git-cmd (format "git show %s:%s" commit1 relative-path)))
+          (call-process-shell-command git-cmd nil t nil))
+        (set-buffer-modified-p nil)
+        (read-only-mode 1)
+        (when (fboundp 'display-line-numbers-mode)
+          (display-line-numbers-mode 1)))
+      (with-current-buffer (get-buffer-create buffer2-name)
+        (erase-buffer)
+        (let ((git-cmd (format "git show %s:%s" commit2 relative-path)))
+          (call-process-shell-command git-cmd nil t nil))
+        (set-buffer-modified-p nil)
+        (read-only-mode 1)
+        (when (fboundp 'display-line-numbers-mode)
+          (display-line-numbers-mode 1)))
+      (ediff-buffers (get-buffer buffer1-name) (get-buffer buffer2-name))
       (message "GitTree: Ediff active - n/p navigate diffs, ? help, q quit"))))
 
 (defun gittree-compare-working (file-path commit)
@@ -158,12 +159,23 @@ Creates side-by-side comparison with file contents at each commit."
 Left: commit version (read-only), Right: working file (editable)."
   (interactive "fFile: \nsCompare against commit: ")
   (let* ((file-path (expand-file-name file-path))
-         (commit-buffer (gittree--create-git-buffer
-                         file-path commit (gittree--short-commit commit))))
+         (git-root (gittree--git-root file-path))
+         (relative-path (file-relative-name file-path git-root))
+         (file-name (file-name-nondirectory file-path))
+         (commit-buffer-name (format "*%s@%s*" file-name (gittree--short-commit commit)))
+         (default-directory git-root))
     (find-file file-path)
     (when (fboundp 'display-line-numbers-mode)
       (display-line-numbers-mode 1))
-    (vdiff-buffers commit-buffer (current-buffer) nil t)
+    (with-current-buffer (get-buffer-create commit-buffer-name)
+      (erase-buffer)
+      (let ((git-cmd (format "git show %s:%s" commit relative-path)))
+        (call-process-shell-command git-cmd nil t nil))
+      (set-buffer-modified-p nil)
+      (read-only-mode 1)
+      (when (fboundp 'display-line-numbers-mode)
+        (display-line-numbers-mode 1)))
+    (vdiff-buffers (get-buffer commit-buffer-name) (current-buffer) nil t)
     (message "GitTree: VDiff active - n/p navigate hunks, C-c g/s get/send changes, q quit")))
 
 (defun gittree-cleanup-file-buffers (file-path)
@@ -191,49 +203,27 @@ Left: commit version (read-only), Right: working file (editable)."
 ;; ============================================================
 
 (defun gittree--create-git-buffer (file-path git-ref display-name)
-  "Create buffer with git content from GIT-REF for FILE-PATH.
-If GIT-REF does not contain the path (added/deleted across commits,
-or the ref itself doesn't exist), return an empty read-only buffer
-labeled with the missing ref — NOT the git error text."
+  "Create buffer with git content from GIT-REF for FILE-PATH."
   (let* ((git-root (gittree--git-root file-path))
          (relative-path (file-relative-name file-path git-root))
          (file-name (file-name-nondirectory file-path))
+         (buffer-name (format "*%s@%s*" file-name display-name))
          (default-directory git-root))
-    (if (gittree--ref-has-path-p git-ref relative-path)
-        (let ((buffer-name (format "*%s@%s*" file-name display-name)))
-          (with-current-buffer (get-buffer-create buffer-name)
-            ;; Buffer may be read-only from a prior populated call;
-            ;; temporarily allow writes so we can refresh.
-            (let ((inhibit-read-only t))
-              (read-only-mode -1)
-              (erase-buffer)
-              ;; Direct call-process (not call-process-shell-command) — a shell
-              ;; here would run interactive zsh init (atuin, oh-my-zsh, etc.)
-              ;; which tries to create state dirs and fails when PWD is a nix
-              ;; store path.
-              (call-process "git" nil t nil "show"
-                            (format "%s:%s" git-ref relative-path))
-              (let ((buffer-file-name file-path)) (set-auto-mode))
-              (set-buffer-modified-p nil)
-              (read-only-mode 1)
-              (when (fboundp 'display-line-numbers-mode)
-                (display-line-numbers-mode 1)))
-            (current-buffer)))
-      ;; Path is not present at this ref — return an empty labeled buffer.
-      ;; Visually this shows up in vdiff as empty-vs-content (added file) or
-      ;; content-vs-empty (deleted file), which is the correct rendering.
-      (gittree--create-empty-buffer
-       (format "%s@%s (missing)" file-name display-name)))))
+    (with-current-buffer (get-buffer-create buffer-name)
+      (erase-buffer)
+      (call-process-shell-command (format "git show %s:%s" git-ref relative-path) nil t nil)
+      (let ((buffer-file-name file-path)) (set-auto-mode))
+      (set-buffer-modified-p nil)
+      (read-only-mode 1)
+      (when (fboundp 'display-line-numbers-mode) (display-line-numbers-mode 1))
+      (current-buffer))))
 
 (defun gittree--create-empty-buffer (file-name)
   "Create empty read-only buffer for FILE-NAME."
-  (let ((buffer-name (format "*%s (empty)*" file-name)))
-    (with-current-buffer (get-buffer-create buffer-name)
-      (let ((inhibit-read-only t))
-        (read-only-mode -1)
-        (erase-buffer)
-        (read-only-mode 1))
-      (current-buffer))))
+  (with-current-buffer (get-buffer-create (format "*%s (empty)*" file-name))
+    (erase-buffer)
+    (read-only-mode 1)
+    (current-buffer)))
 
 (defun gittree--prepare-working-file (file-path)
   "Open working file and set up display."
@@ -251,19 +241,13 @@ labeled with the missing ref — NOT the git error text."
    (t ref)))
 
 (defun gittree--create-buffer (file-path ref)
-  "Create appropriate buffer for REF.
-REF may be:
-  `working' — the file on disk
-  `:0'      — the staged version (git index)
-  `empty'   — an empty buffer (for deleted files)
-  any other string — treated as a git ref (commit SHA, branch, tag,
-                     HEAD, HEAD~N, etc.) and passed to
-                     `git show <ref>:<path>'."
+  "Create appropriate buffer for REF type."
   (cond
+   ((string= ref "HEAD") (gittree--create-git-buffer file-path "HEAD" "HEAD"))
    ((string= ref ":0") (gittree--create-git-buffer file-path ":" "staged"))
    ((string= ref "working") (gittree--prepare-working-file file-path))
    ((string= ref "empty") (gittree--create-empty-buffer (file-name-nondirectory file-path)))
-   (t (gittree--create-git-buffer file-path ref ref))))
+   (t (error "Unknown ref: %s" ref))))
 
 ;; ============================================================
 ;; Panel Display Functions
@@ -316,11 +300,8 @@ Refs can be 'HEAD', ':0' (staged), 'working', 'empty', or git references."
             (select-window keep-win)
             (switch-to-buffer "*scratch*")))
         (unless content-windows
-          ;; Create a new pane to the RIGHT of treemacs without mutating
-          ;; the treemacs buffer itself. `with-selected-window' scopes the
-          ;; split, then `other-window' jumps into the fresh pane.
-          (with-selected-window treemacs-win
-            (split-window-right))
+          (select-window treemacs-win)
+          (split-window-right)
           (other-window 1)
           (switch-to-buffer "*scratch*"))))))
 
@@ -377,45 +358,6 @@ Returns alist of (filepath . status-string)."
               (forward-line 1))))))
     results))
 
-(defun gittree--get-ref-diff-status (ref-a ref-b)
-  "Get files changed between REF-A and REF-B via `git diff --name-status'.
-Returns alist of (filepath . status-string) where status-string is a
-two-char porcelain-style prefix (e.g., ` M' for modified, ` A' for
-added, ` D' for deleted) so it renders via `gittree--status-to-prefix'."
-  (let ((git-root (gittree--git-root default-directory))
-        (results nil))
-    (when (and git-root ref-a ref-b
-               (not (string= ref-a "working"))
-               (not (string= ref-b "working"))
-               (not (string= ref-a ":0"))
-               (not (string= ref-b ":0")))
-      (let ((default-directory git-root))
-        (with-temp-buffer
-          (when (= 0 (call-process "git" nil t nil
-                                   "diff" "--name-status"
-                                   ref-a ref-b))
-            (goto-char (point-min))
-            (while (not (eobp))
-              (let* ((line (buffer-substring-no-properties
-                            (line-beginning-position) (line-end-position)))
-                     (parts (split-string line "\t" t))
-                     (code (car parts))
-                     ;; --name-status emits rename/copy with two paths; take the last.
-                     (filename (car (last parts)))
-                     (status (pcase (and code (substring code 0 1))
-                               ("A" " A")
-                               ("M" " M")
-                               ("D" " D")
-                               ("R" " R")
-                               ("C" " C")
-                               ("T" " T")
-                               (_ "  ")))
-                     (filepath (and filename (expand-file-name filename git-root))))
-                (when filepath
-                  (push (cons filepath status) results)))
-              (forward-line 1))))))
-    results))
-
 (defun gittree--file-name-transformer (filename)
   "Transform FILENAME to include git status prefix."
   (let* ((status (gethash filename gittree--status-cache))
@@ -423,20 +365,10 @@ added, ` D' for deleted) so it renders via `gittree--status-to-prefix'."
     (concat prefix filename)))
 
 (defun gittree-refresh-status ()
-  "Refresh git status cache and treemacs display.
-When launch-refs are active, source file-change status from
-`git diff <ref-a> <ref-b>' instead of working-tree `git status'."
+  "Refresh git status cache and treemacs display."
   (interactive)
   (clrhash gittree--status-cache)
-  (let* ((launch-refs (and gittree-launch-left-ref
-                           gittree-launch-right-ref
-                           (not (string= gittree-launch-left-ref "working"))
-                           (not (string= gittree-launch-right-ref "working"))))
-         (status-alist (if launch-refs
-                           (gittree--get-ref-diff-status
-                            gittree-launch-left-ref
-                            gittree-launch-right-ref)
-                         (gittree--get-all-git-status)))
+  (let ((status-alist (gittree--get-all-git-status))
         (count 0))
     (dolist (item status-alist)
       (let ((filename (file-name-nondirectory (car item)))
@@ -464,13 +396,10 @@ When launch-refs are active, source file-change status from
              (config (gittree--find-status-config git-status))
              (filename (file-name-nondirectory path))
              (treemacs-win (treemacs-get-local-window))
-             (override (or gittree-launch-left-ref gittree-launch-right-ref))
-             (left-ref (or gittree-launch-left-ref (plist-get config :left)))
-             (right-ref (or gittree-launch-right-ref (plist-get config :right)))
-             (use-vdiff (if override t (plist-get config :vdiff)))
-             (desc (if override
-                       (format "Launch: %s vs %s" left-ref right-ref)
-                     (plist-get config :desc))))
+             (left-ref (plist-get config :left))
+             (right-ref (plist-get config :right))
+             (use-vdiff (plist-get config :vdiff))
+             (desc (plist-get config :desc)))
         (message "GitTree: %s | status='%s' | %s" filename git-status desc)
         (gittree-cleanup-panels)
         (gittree-cleanup-file-buffers path)
@@ -547,40 +476,7 @@ When launch-refs are active, source file-change status from
   ;; Clean up status cache
   (clrhash gittree--status-cache)
 
-  ;; Clear any launch overrides
-  (setq gittree-launch-left-ref nil
-        gittree-launch-right-ref nil)
-
   (message "GitTree: Interface deactivated"))
-
-;; ============================================================
-;; CLI Launch Entry Point
-;; ============================================================
-
-;;;###autoload
-(defun gittree-launch (left-ref right-ref &optional file)
-  "Start gittree-mode with LEFT-REF vs RIGHT-REF diff for FILE.
-When FILE is nil, gittree-mode opens with the tree active and the tree
-is populated from `git diff --name-status LEFT-REF RIGHT-REF'; the user
-picks a file and the right panel shows the LEFT-REF vs RIGHT-REF diff.
-When FILE is non-nil, also open that file's diff immediately.
-Either ref may be 'working', ':0', or any git ref (HEAD, HEAD~N, SHA,
-branch, tag — passed to `git show <ref>:<path>')."
-  (setq gittree-launch-left-ref (and left-ref (not (string-empty-p left-ref)) left-ref)
-        gittree-launch-right-ref (and right-ref (not (string-empty-p right-ref)) right-ref))
-  (gittree-mode 1)
-  (message "GitTree: launched with %s vs %s"
-           gittree-launch-left-ref gittree-launch-right-ref)
-  (when (and file (not (string-empty-p file)))
-    (let ((expanded (expand-file-name file)))
-      (when (file-exists-p expanded)
-        (gittree-cleanup-panels)
-        (gittree-cleanup-file-buffers expanded)
-        (gittree-show-dual-panel
-         expanded
-         gittree-launch-left-ref
-         gittree-launch-right-ref
-         t)))))
 
 ;; ============================================================
 ;; Minor Mode Definition
