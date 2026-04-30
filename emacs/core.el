@@ -199,16 +199,18 @@ In both cases, :demand t is set to ensure the package is loaded."
 
 ;;; -----------------------------------------------------------------
 ;;; SECTION: Shell Environment Integration
-;;; 
+;;;
 ;;; WHY-CORE: Ensures that Emacs inherits the correct PATH and other
-;;; environment variables from the user's shell configuration. This is crucial
-;;; for external commands and tools to function correctly from within Emacs.
+;;; environment variables from the user's shell configuration. This is
+;;; crucial for external commands and tools to function correctly from
+;;; within Emacs. In particular, MELPA .tar packages (e.g. markdown-mode)
+;;; need `tar` on exec-path; on nix systems `tar` lives under
+;;; ~/.nix-profile/bin which isn't inherited by emacs without this.
 ;;; -----------------------------------------------------------------
 (defun activate-shell-path-from-shell ()
   (my-use-package exec-path-from-shell
     :config
-    (when (memq window-system '(mac ns))
-      (exec-path-from-shell-initialize)))
+    (exec-path-from-shell-initialize))
   (setq shell-command-switch "-ic"))
 (activate-shell-path-from-shell)
 
@@ -367,16 +369,11 @@ In both cases, :demand t is set to ensure the package is loaded."
 ;;; markdown-mode by default ensures every session gets syntax
 ;;; highlighting, list navigation, and table editing for markdown
 ;;; without per-project configuration.
-;;;
-;;; markdown-mode is installed declaratively via nix
-;;; (programs.emacs.extraPackages in home/emacs.nix), so it's already
-;;; on load-path. We skip my-use-package (which would try to reach
-;;; MELPA) and just wire auto-mode-alist.
 ;;; -----------------------------------------------------------------
 (defun activate-markdown ()
-  (when (require 'markdown-mode nil t)
-    (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
-    (add-to-list 'auto-mode-alist '("\\.markdown\\'" . markdown-mode))))
+  (my-use-package markdown-mode)
+  (add-to-list 'auto-mode-alist '("\\.md\\'" . markdown-mode))
+  (add-to-list 'auto-mode-alist '("\\.markdown\\'" . markdown-mode)))
 (activate-markdown)
 
 
