@@ -249,13 +249,19 @@ Left: commit version (read-only), Right: working file (editable)."
    (t ref)))
 
 (defun gittree--create-buffer (file-path ref)
-  "Create appropriate buffer for REF type."
+  "Create appropriate buffer for REF.
+REF may be:
+  `working' — the file on disk
+  `:0'      — the staged version (git index)
+  `empty'   — an empty buffer (for deleted files)
+  any other string — treated as a git ref (commit SHA, branch, tag,
+                     HEAD, HEAD~N, etc.) and passed to
+                     `git show <ref>:<path>'."
   (cond
-   ((string= ref "HEAD") (gittree--create-git-buffer file-path "HEAD" "HEAD"))
    ((string= ref ":0") (gittree--create-git-buffer file-path ":" "staged"))
    ((string= ref "working") (gittree--prepare-working-file file-path))
    ((string= ref "empty") (gittree--create-empty-buffer (file-name-nondirectory file-path)))
-   (t (error "Unknown ref: %s" ref))))
+   (t (gittree--create-git-buffer file-path ref ref))))
 
 ;; ============================================================
 ;; Panel Display Functions
@@ -366,6 +372,45 @@ Returns alist of (filepath . status-string)."
               (forward-line 1))))))
     results))
 
+(defun gittree--get-ref-diff-status (ref-a ref-b)
+  "Get files changed between REF-A and REF-B via `git diff --name-status'.
+Returns alist of (filepath . status-string) where status-string is a
+two-char porcelain-style prefix (e.g., ` M' for modified, ` A' for
+added, ` D' for deleted) so it renders via `gittree--status-to-prefix'."
+  (let ((git-root (gittree--git-root default-directory))
+        (results nil))
+    (when (and git-root ref-a ref-b
+               (not (string= ref-a "working"))
+               (not (string= ref-b "working"))
+               (not (string= ref-a ":0"))
+               (not (string= ref-b ":0")))
+      (let ((default-directory git-root))
+        (with-temp-buffer
+          (when (= 0 (call-process "git" nil t nil
+                                   "diff" "--name-status"
+                                   ref-a ref-b))
+            (goto-char (point-min))
+            (while (not (eobp))
+              (let* ((line (buffer-substring-no-properties
+                            (line-beginning-position) (line-end-position)))
+                     (parts (split-string line "\t" t))
+                     (code (car parts))
+                     ;; --name-status emits rename/copy with two paths; take the last.
+                     (filename (car (last parts)))
+                     (status (pcase (and code (substring code 0 1))
+                               ("A" " A")
+                               ("M" " M")
+                               ("D" " D")
+                               ("R" " R")
+                               ("C" " C")
+                               ("T" " T")
+                               (_ "  ")))
+                     (filepath (and filename (expand-file-name filename git-root))))
+                (when filepath
+                  (push (cons filepath status) results)))
+              (forward-line 1))))))
+    results))
+
 (defun gittree--file-name-transformer (filename)
   "Transform FILENAME to include git status prefix."
   (let* ((status (gethash filename gittree--status-cache))
@@ -373,10 +418,20 @@ Returns alist of (filepath . status-string)."
     (concat prefix filename)))
 
 (defun gittree-refresh-status ()
-  "Refresh git status cache and treemacs display."
+  "Refresh git status cache and treemacs display.
+When launch-refs are active, source file-change status from
+`git diff <ref-a> <ref-b>' instead of working-tree `git status'."
   (interactive)
   (clrhash gittree--status-cache)
-  (let ((status-alist (gittree--get-all-git-status))
+  (let* ((launch-refs (and gittree-launch-left-ref
+                           gittree-launch-right-ref
+                           (not (string= gittree-launch-left-ref "working"))
+                           (not (string= gittree-launch-right-ref "working"))))
+         (status-alist (if launch-refs
+                           (gittree--get-ref-diff-status
+                            gittree-launch-left-ref
+                            gittree-launch-right-ref)
+                         (gittree--get-all-git-status)))
         (count 0))
     (dolist (item status-alist)
       (let ((filename (file-name-nondirectory (car item)))
@@ -500,13 +555,17 @@ Returns alist of (filepath . status-string)."
 ;;;###autoload
 (defun gittree-launch (left-ref right-ref &optional file)
   "Start gittree-mode with LEFT-REF vs RIGHT-REF diff for FILE.
-When FILE is nil, gittree-mode opens with the tree active; the user picks
-a file and the right panel shows the LEFT-REF vs RIGHT-REF diff for it.
-When FILE is non-nil, open gittree-mode and immediately show the diff for
-FILE. Either ref may be 'working', ':0', 'HEAD', or any git ref."
+When FILE is nil, gittree-mode opens with the tree active and the tree
+is populated from `git diff --name-status LEFT-REF RIGHT-REF'; the user
+picks a file and the right panel shows the LEFT-REF vs RIGHT-REF diff.
+When FILE is non-nil, also open that file's diff immediately.
+Either ref may be 'working', ':0', or any git ref (HEAD, HEAD~N, SHA,
+branch, tag — passed to `git show <ref>:<path>')."
   (setq gittree-launch-left-ref (and left-ref (not (string-empty-p left-ref)) left-ref)
         gittree-launch-right-ref (and right-ref (not (string-empty-p right-ref)) right-ref))
   (gittree-mode 1)
+  (message "GitTree: launched with %s vs %s"
+           gittree-launch-left-ref gittree-launch-right-ref)
   (when (and file (not (string-empty-p file)))
     (let ((expanded (expand-file-name file)))
       (when (file-exists-p expanded)
