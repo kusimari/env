@@ -239,6 +239,20 @@ Emacs UI / vdiff visual layout; lazygit keypress; darwin bootstrap.
 ## Session Log
 <!-- Instructions: Newest at top -->
 
+### 2026-04-30 - Session Focus: emacs-wave iteration 2 (D-1..D-4)
+Context: after iteration 1 landed, field testing on AL2023 surfaced
+two real bugs (bad refs showed `fatal:` text in vdiff; cleanup-panels
+squeezed treemacs) plus the workflow gap of no automated way to
+exercise the elisp. Plan file: `we-use-env-for-elegant-blum.md` on the
+claude plans dir.
+
+- **D-3 (test harness)** ✅ first — created `env/emacs/tests/{run.sh,stubs.el,helpers.el,test-gittree.el}`. Builds a throwaway two-commit fixture repo (`alpha.md` modified, `beta.md` deleted, `gamma.md` added). Runs `emacs --batch` with stubs.el providing `my-use-package` + treemacs/vdiff no-ops, so `core-gittree.el` loads cleanly. 6 test cases covering zero-arg mode toggle, added-file empty-left, deleted-file empty-right, modified-file both-populated, `gittree--get-ref-diff-status` A/M/D shape, and short-SHA equivalence. First run against pre-fix code correctly reproduced the `"fatal: path 'gamma.md' exists on disk, but not in 'HEAD~1'"` error the user reported.
+- **D-1 (empty-on-missing)** ✅ added `gittree--ref-has-path-p` using `git cat-file -e`; `gittree--create-git-buffer` now routes "path not at ref" to a labeled empty buffer (`<file>@<ref> (missing)`). Same refactor applied to latent callsites `gittree-compare-commits` + `gittree-compare-working`. Also fixed the buffer-reuse case (buffers are read-only after first creation) with `inhibit-read-only` + `read-only-mode -1` inside the buffer context.
+- **D-2 (cleanup-panels split)** ✅ wrapped the empty-content-windows split in `with-selected-window treemacs-win (split-window-right)` so a fresh gittree session doesn't squeeze treemacs itself.
+- **D-4 (elpa wipe on source change)** ✅ added `home.activation.emacsElpaRefresh` in `home/emacs.nix`. Hashes `~/.config/emacs` (`find -print0 | sort -z | sha256sum`), stores in `~/.emacs.d/.emacs-source-hash`. Wipes `~/.emacs.d/elpa` only when the hash differs, so routine switches stay fast but stale-byte-compile recoveries are automatic.
+- Hooked `emacs/tests/run.sh` into `build-nix/test.sh` — failing tests now fail the top-level nix test script.
+- Result: 6/6 gittree tests green. `./build-nix/test.sh` exits 0 end-to-end.
+
 ### 2026-04-30 - Session Focus: emacs wave fixes (Groups 1 + 6) and Group 5
 - **Group 1 fix**: `emacs-gittree <ref-a> <ref-b> [file]` was silently unusable:
   1. `gittree--create-buffer` had `(t (error "Unknown ref: %s" ref))` — any non-literal ref (HEAD~1, SHAs, branches) threw, aborting the dual-panel. Fixed: default branch now delegates to `gittree--create-git-buffer` so arbitrary refs pass through to `git show`. Docstring rewritten to match.
