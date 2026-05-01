@@ -73,11 +73,19 @@
       security.pam.services.sudo_local.reattach = true;
     };
 
-    # Linux base: nixGL, google-chrome, rofi desktop files.
-    # rofi requires a desktop environment — works on ubuntu-mane, not applicable on al2-kelasa.
-    linuxConfiguration = { pkgs, lib, ... }: {
+    # Linux base: shared by headless and graphical targets.
+    # nixGL provides host OpenGL drivers for GUI apps on non-NixOS distros;
+    # headless kelasa machines don't actually use it at runtime but pulling in
+    # the overlay is essentially free and keeps the module tree symmetric.
+    linuxBaseConfiguration = { pkgs, ... }: {
       nix.package = pkgs.nix;
       nixpkgs.overlays = [ inputs.nixgl.overlays.default ];
+    };
+
+    # Graphical Linux add-on: chrome + rofi + rofi desktop files.
+    # Applied only to ubuntu-mane. AL2/AL2023 kelasa are headless SSH-only
+    # and have no desktop environment for these to act on.
+    linuxGraphicalConfiguration = { pkgs, lib, ... }: {
       home.packages = [ pkgs.google-chrome ];
       home.file = lib.mapAttrs' (name: _: {
         name  = ".local/share/applications/${name}";
@@ -100,6 +108,16 @@
         '');
       };
     };
+
+    # Shared module list for headless Amazon Linux kelasa machines.
+    # al2-kelasa and al2023-kelasa have identical nix configs today; if they
+    # diverge later, fork this into separate lists.
+    al2KelasaModules = [
+      commonConfiguration
+      linuxBaseConfiguration
+      al2KelasaConfiguration
+      ./home/home.nix
+    ];
 
     # Shared configuration for AL2/AL2023 kelasa machines
     al2KelasaConfiguration = { pkgs, ... }: {
@@ -142,13 +160,14 @@
 
     darwinPackages = self.darwinConfigurations.darwin-kelasa.pkgs;
 
-    # ubuntu-mane: home Ubuntu machine
+    # ubuntu-mane: home Ubuntu machine (graphical desktop)
     homeConfigurations.ubuntu-mane = home-manager.lib.homeManagerConfiguration {
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
       extraSpecialArgs = { envKind = "mane"; };
       modules = [
         commonConfiguration
-        linuxConfiguration
+        linuxBaseConfiguration
+        linuxGraphicalConfiguration
         {
           home.username = "${user}";
           home.homeDirectory = "/home/${user}";
@@ -157,28 +176,18 @@
       ];
     };
 
-    # al2-kelasa: office Amazon Linux 2 machine
+    # al2-kelasa: office Amazon Linux 2 machine (headless SSH)
     homeConfigurations.al2-kelasa = home-manager.lib.homeManagerConfiguration {
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
       extraSpecialArgs = { envKind = "kelasa"; };
-      modules = [
-        commonConfiguration
-        linuxConfiguration
-        al2KelasaConfiguration
-        ./home/home.nix
-      ];
+      modules = al2KelasaModules;
     };
 
-    # al2023-kelasa: office Amazon Linux 2023 machine
+    # al2023-kelasa: office Amazon Linux 2023 machine (headless SSH)
     homeConfigurations.al2023-kelasa = home-manager.lib.homeManagerConfiguration {
       pkgs = nixpkgs.legacyPackages.x86_64-linux;
       extraSpecialArgs = { envKind = "kelasa"; };
-      modules = [
-        commonConfiguration
-        linuxConfiguration
-        al2KelasaConfiguration
-        ./home/home.nix
-      ];
+      modules = al2KelasaModules;
     };
   };
 }
