@@ -76,6 +76,13 @@ if [[ -n "$2" ]]; then
     fi
 fi
 
+# Clean up stray target-dir templates from `home-manager init`.
+# Passing a flake-ref like `.#al2023-kelasa` as init's positional arg makes
+# it create a literal `.#al2023-kelasa/` directory with template home.nix
+# and flake.nix inside — the activation uses the repo flake, not those
+# templates, so they're cruft. Scoped to the flake dir at depth 1.
+find "$FLAKE_DIR" -maxdepth 1 -type d -name '.#*' -exec rm -rf {} +
+
 echo "Restoring placeholders..."
 if [[ "${SED_INPLACE_FLAG+x}" = "x" ]]; then
     # macOS: SED_INPLACE_FLAG is set (even if empty)

@@ -1,4 +1,21 @@
 {
+  # Package layering — read before adding packages.
+  #
+  #   Tier 1 — nix-managed, every env
+  #     Where: home/home.nix (home.packages list and programs.*.enable)
+  #     How:   pkgs.<name> in the list, or a home-manager module.
+  #
+  #   Tier 2 — every env, nix on some, external bootstrap on others
+  #     Where: same files as tier 1, wrapped in
+  #              `lib.optionals (<envKind-predicate>) [...]`
+  #     How:   envs the predicate admits get the nix install; excluded envs
+  #            must provide the same binary on PATH through their own
+  #            post-install tooling. `nix run .#env-verify` checks PATH.
+  #
+  #   Tier 3 — per-env differences
+  #     Where: home/envKind-<name>.nix (user-level) or the <envKind>Configuration
+  #            attrset in this file (system-level).
+  #     How:   only the env(s) that want it see it. No verifier coverage.
   description = "Juice's unified darwin/ubuntu system";
 
   inputs = {
@@ -159,6 +176,11 @@
     };
 
     darwinPackages = self.darwinConfigurations.darwin-kelasa.pkgs;
+
+    # env-verify: on-demand PATH check for tier-1 + tier-2 invariants.
+    # Implementation in ./env-verify.nix; kept out of this flake to keep
+    # install-time and verification-time concerns separate.
+    apps = import ./env-verify.nix { inherit nixpkgs home-manager inputs; };
 
     # ubuntu-mane: home Ubuntu machine (graphical desktop)
     homeConfigurations.ubuntu-mane = home-manager.lib.homeManagerConfiguration {

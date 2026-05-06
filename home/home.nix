@@ -2,11 +2,11 @@
 {
   # Import custom modules and environment-specific config.
   # envKind is "mane" or "kelasa", passed via extraSpecialArgs in flake.nix.
-  # Edit home/mane.nix or home/kelasa.nix to add environment-specific packages.
+  # Edit home/envKind-mane.nix or home/envKind-kelasa.nix to add tier-3 (env-specific) packages.
   imports = [
     ../gittree/gittree-module.nix
     ../tmux/tmux.nix
-    ./${envKind}.nix
+    ./envKind-${envKind}.nix
     ./ssh-setup.nix
     ./emacs.nix
   ];
@@ -25,7 +25,11 @@
 
   # https://github.com/nix-community/home-manager/issues/1341#issuecomment-2049723843
 
+  # Tier 1/2/3 package layering is documented in flake.nix. Tier 1 goes here
+  # unconditionally; tier 2 goes here wrapped in `lib.optionals (<predicate>) [...]`;
+  # tier 3 lives in home/envKind-<name>.nix.
   home.packages = with pkgs; [
+    # Tier 1 — always installed via nix.
     tree
     git
     htop
@@ -47,7 +51,11 @@
 
     # nix-init: init a nix flake with direnv in the current directory
     (pkgs.writeShellScriptBin "nix-init" (builtins.readFile ../nix-init/nix-init.sh))
-  ];
+  ]
+  # Tier 2 — wanted on every env but not installable via nix on some envs.
+  # No entries today. Example shape when adding one:
+  #   ++ lib.optionals (envKind != "kelasa") [ some-pkg ]
+  ;
 
 
   programs.alacritty = {
