@@ -11,11 +11,12 @@
 # Runs either from a checkout or via curl pipe; auto-detects.
 #
 # Options:
-#   --env-branch NAME    Branch to clone env from (default: main).
-#                        Only affects the first clone; ignored if
-#                        ~/env-workplace/env already exists.
-#   --maid-branch NAME   Branch to clone mAId from (default: main).
-#                        Same semantics as --env-branch.
+#   --env-branch NAME    Branch to use for env (default: main).
+#                        On initial clone: cloned at that branch.
+#                        On re-run: switches to it if the clone is on
+#                        a different branch. Fails if the working
+#                        tree has uncommitted changes.
+#   --maid-branch NAME   Same semantics for mAId.
 #   --dry-run            Log planned actions; make no changes.
 #   --help, -h           Show this header and exit.
 # END-USAGE
@@ -120,16 +121,11 @@ EOF
 clone_or_fetch() {
     local name="$1" url="$2" dest="$3" branch="${4:-}"
     if [[ -d "$dest/.git" ]]; then
-        # Don't pull/merge or switch branches: the user may be on a
-        # feature branch with unpushed or diverged commits. Re-running
-        # the bootstrap should never surprise you by moving HEAD. A
-        # --*-branch flag at this point is informational only; log and
-        # skip.
-        if [[ -n "$branch" ]]; then
-            log "$name: checkout exists; --branch $branch ignored (switch manually if needed)"
-        fi
-        log "$name: fetching updates (working tree untouched)"
+        log "$name: fetching updates"
         run git -C "$dest" fetch --quiet origin
+        if [[ -n "$branch" ]]; then
+            switch_branch "$name" "$dest" "$branch"
+        fi
     elif [[ -e "$dest" ]]; then
         die "$dest exists and is not a git checkout"
     else
@@ -141,6 +137,24 @@ clone_or_fetch() {
             run git clone --quiet "$url" "$dest"
         fi
     fi
+}
+
+# Switch an existing clone to $branch if it isn't already on it.
+# Refuses to clobber uncommitted tracked changes — the user must
+# commit or stash first. Untracked files are left alone.
+switch_branch() {
+    local name="$1" dest="$2" branch="$3"
+    local current
+    current="$(git -C "$dest" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '<detached>')"
+    if [[ "$current" = "$branch" ]]; then
+        log "$name: already on $branch"
+        return
+    fi
+    if [[ -n "$(git -C "$dest" status --porcelain --untracked-files=no 2>/dev/null)" ]]; then
+        die "$dest has uncommitted changes on '$current'; commit or stash before switching to $branch"
+    fi
+    log "$name: switching from $current to $branch"
+    run git -C "$dest" checkout --quiet "$branch"
 }
 
 # Pin commit identity for public repos (env + mAId). Without this,

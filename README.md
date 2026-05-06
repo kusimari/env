@@ -73,11 +73,12 @@ curl -fsSL https://raw.githubusercontent.com/kusimari/env/main/build-nix/bootstr
 ~/env-workplace/<kelasa-specific env repo>/desktop/post-nix-run.sh
 ```
 
-### Cloning a feature branch instead of the default
+### Cloning or switching to a feature branch
 
-Both L1 (kelasa) and L2 accept branch flags on initial clone. They
-apply only when the repo doesn't exist yet; once cloned, the branch
-is managed manually (re-runs never move HEAD).
+Both L1 (kelasa) and L2 accept branch flags. On initial clone, the
+clone targets that branch. On re-run, the scripts switch to the
+named branch if the working tree is clean — they refuse to clobber
+uncommitted changes, and prompt you to commit or stash first.
 
 ```bash
 # L1 — pass --branch to check out a Gorantls-env feature branch
