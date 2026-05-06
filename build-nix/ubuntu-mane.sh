@@ -17,4 +17,4 @@ export NIX_ECHO_MESSAGE="Running home-manager switch..."
 # export NIX_COMMAND='nix run home-manager/master -- init --switch ".#ubuntu-mane"'
 
 # Execute common functionality
-source "$(dirname "${BASH_SOURCE[0]}")/_common.sh" "$@"
+source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"

@@ -1080,6 +1080,152 @@ Run before opening PR(s):
 ## Session Log
 <!-- Newest at top -->
 
+### 2026-05-06 - Iter 1 refinement: decouple the four layers
+- **No chaining.** Each layer is a distinct, single-purpose script
+  that exits when its job is done. User runs four commands in
+  sequence on a fresh machine, or just Layer 3 for day-2 rebuilds.
+  Runner/orchestrator deferred until a concrete need appears.
+- Trimmed `env/build-nix/bootstrap-common.sh` to L2-only: removed
+  `--envKind`, `--pre-nix`, `--post-nix`, `--post-clone`,
+  `invoke_layer_3`, `print_next_steps`, and the curl-mode re-exec
+  into Layer 3. Still curl-able and clone-runnable; auto-detects
+  both modes. Keeps `--dry-run`, `--help`, mode detection,
+  `ensure_workspace`, `ensure_github_ssh`, `clone_or_fetch`.
+- Trimmed all four Layer-1 scripts (`bootstrap-ubuntu-mane.sh`,
+  `bootstrap-al2-kelasa.sh`, `bootstrap-al2023-kelasa.sh`,
+  `bootstrap-darwin-kelasa.sh`): removed `ensure_envkind_default`,
+  `hand_off_to_layer_2`, and their invocations. Each script ends
+  cleanly after its last `ensure_*` step with a "Layer 1 done"
+  log.
+- Trimmed `env/build-nix/_common.sh`: removed the pre-nix/post-nix
+  `$1`/`$2` source-around-nix plumbing. From 98 → ~55 lines; flow
+  is now: replace placeholders → cd flake → eval `NIX_COMMAND` →
+  clean stray template dirs → restore placeholders → print
+  setup-notes. Refactored the two placeholder-sed blocks into a
+  single `replace_placeholders` helper.
+- Dropped `"$@"` from each Layer-3 script's
+  `source _common.sh` line. L3 scripts now take no args.
+- Made `Gorantls-env/desktop/post-nix/flake.nix` multi-system via
+  `forAllSystems` over `x86_64-linux`, `aarch64-linux`,
+  `x86_64-darwin`, `aarch64-darwin`. The installScript body is
+  unchanged; only the outputs are now per-system. Darwin users can
+  now `nix run .../post-nix#install` without the flake failing to
+  evaluate.
+- Rewrote `env/README.md` around decoupled layers:
+  Layer design (no chaining, four scripts, curl-ability by
+  layer), envKinds (L1/L4 location per envKind using
+  `<kelasa-specific env repo>` placeholder), Shell-hook extension
+  points (how L3 hooks L1 and L4 via `~/.pre-nix-rc` and
+  `~/.post-nix-rc`), Tiered package model.
+- Updated `env/setup-notes.md` to show the four-command sequence
+  instead of chaining prose. Added hook-extension-point section.
+
+### 2026-05-06 - Iter 1 refactor: envKind-aligned naming + kelasa split
+- Source of truth for names is `flake.nix`. All layers renamed to
+  the full envKind:
+  - Layer 3: `build-nix/{ubuntu,darwin,al2,al2023}.sh` →
+    `build-nix/{ubuntu-mane,darwin-kelasa,al2-kelasa,al2023-kelasa}.sh`
+    (via `git mv`; content unchanged).
+  - Layer 1 public: `build-nix/bootstrap-ubuntu.sh` →
+    `build-nix/bootstrap-ubuntu-mane.sh`, now auto-injects
+    `--envKind ubuntu-mane`.
+  - Layer 2: `bootstrap-common.sh` flag `--platform` → `--envKind`
+    (accepts both `--envKind NAME` and `--envKind=NAME`).
+- Kelasa Layer 1 moved to `Gorantls-env`:
+  - `desktop/bootstrap-al2.sh` → `bootstrap-al2-kelasa.sh` (git mv
+    + refactor).
+  - `desktop/bootstrap-al2023.sh` → `bootstrap-al2023-kelasa.sh`
+    (git mv + refactor).
+  - New `desktop/bootstrap-darwin-kelasa.sh` (minimal; docs brew +
+    Determinate installer as manual prereqs, self-clones
+    Gorantls-env, delegates to Layer 2).
+  - Each script: dropped generic steps (workspace, GitHub SSH,
+    env clone) now owned by Layer 2; kept kelasa-specific
+    (Amazon SSH/mwinit, self-clone, toolbox, sudoers [al2023],
+    single-user Nix, nix.conf, zsh/chsh [al2], ~/.pre-nix-rc
+    writer). Every step is verify-and-skip idempotent. Ends with
+    local-preferred / curl-fallback hand-off to Layer 2,
+    auto-injecting `--envKind <name>`.
+  - New `desktop/post-nix-run.sh`: thin wrapper around
+    `nix run desktop/post-nix#install`, sourceable by Layer 2 as
+    `--post-nix`. Flake itself unchanged; `nix run` directly still
+    works standalone.
+  - Deleted `desktop/pre-nix.sh` — its job (write ~/.pre-nix-rc
+    with toolbox PATH) now lives in each AL bootstrap as an
+    idempotent `ensure_pre_nix_rc` step. The `--pre-nix` hook
+    plumbing in `_common.sh` + Layer 2 stays as a generic
+    extension point.
+- env/README.md rewritten with four sections: Layer design +
+  responsibility table, envKind bootstrap table (using
+  `<kelasa-specific env repo>` placeholder, no names leak),
+  Shell-hook extension points (~/.pre-nix-rc / ~/.post-nix-rc),
+  Tiered package model (summarized from flake.nix:1-18).
+- env/setup-notes.md updated: "private sibling env repo" →
+  "envKind repo (public or private)"; curl path uses new
+  bootstrap-ubuntu-mane.sh; adds shell-hook extension-points
+  section.
+- Code review (two passes). Fixed: `post-nix-run.sh` used `exec`
+  inside a script that gets `source`d from `_common.sh:69` —
+  would've killed the caller. Now plain `nix run`. AL2
+  `ensure_toolbox`: `-fsS` on curl so HTML error pages don't
+  become the Authorization header; explicit cleanup in error
+  branches instead of RETURN trap. Wrapped `mkdir`/`chmod` on
+  `~/.ssh` and `~/.config/nix/` in `run` so `--dry-run` is truly
+  mutation-free. Improved `print_next_steps` placeholder wording.
+- Tests: `shellcheck -x` clean across all 6 scripts. Clone-mode,
+  curl-mode, and AL2023 dry-runs all trace L1→L2→L3 correctly
+  with zero mutations (staging HOME stays empty after two runs).
+  NFR5 grep on public env: only hits are legitimate abstract uses
+  (`corp`/`internal` as nouns, "Amazon Linux" as OS name,
+  `kusimari` as repo owner — spec FR-B3/NFR5 allows repo URLs in
+  scripts).
+
+### 2026-05-06 - Iteration 1 landed: four-layer bootstrap
+- Created `env/build-nix/bootstrap-common.sh` (Layer 2). Detects
+  curl-vs-clone mode via `--post-clone` sentinel + `$ENV_CLONE/.git`
+  check (not path-compare — handles symlinks and non-default clone
+  paths). Ensures workspace, checks GitHub SSH, clones/fetches env
+  + mAId, validates `--pre-nix` / `--post-nix` hooks, forwards them
+  to Layer 3 as positional $1 / $2 per `_common.sh`'s existing
+  contract. Accepts `--platform` to chain into `build-nix/<name>.sh`
+  or prints next-step instructions. `--dry-run` is fully honored
+  (no mutations, no ssh-keygen, re-exec is logged-only).
+  Arg parser accepts both `--flag value` and `--flag=value`.
+- Created `env/build-nix/bootstrap-ubuntu.sh` (Layer 1 Ubuntu).
+  Checks `ID=ubuntu`, installs apt prereqs (build-essential, curl,
+  git, xz-utils, ca-certificates, openssh-client), installs Nix via
+  Determinate installer (multi-user, `--no-confirm`), then hands
+  off to Layer 2 — preferring a local clone and falling back to
+  curl. Auto-injects `--platform ubuntu` so `curl | bash` runs
+  end-to-end through Layer 3. `--dry-run` honored throughout.
+- Updated `env/setup-notes.md` with the four-layer cheat-sheet, a
+  fresh-machine curl example, the `--pre-nix`/`--post-nix` flag
+  shape, and the private-sibling-env-repo delegation contract.
+  Added a forward-reference to `nix profile install .` + `maid
+  deploy` for once iter 2 lands.
+- Rewrote `env/README.md` as a four-layer overview with a
+  quick-start, per-platform table, and pointers onward. Darwin row
+  explicitly notes "no Layer-1 script; see darwin.sh header".
+- NFR5: all new files scrubbed of site/employer/internal-tool
+  identifiers. Only repo URLs present: `github.com/kusimari/env`
+  and `github.com/kusimari/mAId`.
+- Code review (two passes, external agent). Fixed: curl path not
+  auto-continuing to Layer 3; `--dry-run` mutating SSH state;
+  brittle `sed -n` usage(); symlink-unsafe mode detection;
+  silent `chmod +x` on tracked files; GNU-style `--flag=value`
+  previously rejected; `ssh-keygen` hang on non-TTY when path
+  existed as non-key; Ubuntu Layer 1 ignoring `--dry-run`.
+- Tests passed: `shellcheck -x` clean over both new scripts.
+  Idempotent dry-run: two runs against a staging HOME produce
+  byte-identical output and leave the HOME untouched (only the
+  tmpdir inode remains). End-to-end dry-run from faked Ubuntu
+  os-release shows L1 → L2 → L3 chain with zero mutations.
+  `env/build-nix/test.sh` not run here (requires a real nix build;
+  user's domain).
+- Not yet done: writing-style draft, intent keyword list, symlink
+  relative-vs-absolute decision — all deferred to Iter 2 where
+  they're load-bearing.
+
 ### 2026-05-05 - Spec/design/impl/test plan locked
 - Restructured the doc into spec (§1), design (§2), skills content
   drafts (§3), implementation plan with strict TDD ordering (§4),
