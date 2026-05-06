@@ -11,8 +11,13 @@
 # Runs either from a checkout or via curl pipe; auto-detects.
 #
 # Options:
-#   --dry-run  Log planned actions; make no changes.
-#   --help, -h Show this header and exit.
+#   --env-branch NAME    Branch to clone env from (default: main).
+#                        Only affects the first clone; ignored if
+#                        ~/env-workplace/env already exists.
+#   --maid-branch NAME   Branch to clone mAId from (default: main).
+#                        Same semantics as --env-branch.
+#   --dry-run            Log planned actions; make no changes.
+#   --help, -h           Show this header and exit.
 # END-USAGE
 
 set -euo pipefail
@@ -27,6 +32,8 @@ DEFAULT_KEY="$HOME/.ssh/id_ed25519"
 
 # ── Defaults ─────────────────────────────────────────────────────────
 DRY_RUN=0
+ENV_BRANCH=""
+MAID_BRANCH=""
 
 log()  { printf '==> %s\n' "$*"; }
 warn() { printf '!!! %s\n' "$*" >&2; }
@@ -46,10 +53,17 @@ usage() {
 }
 
 # ── Arg parsing ──────────────────────────────────────────────────────
+# Accepts both `--flag VALUE` and `--flag=VALUE` (GNU style).
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --dry-run)  DRY_RUN=1; shift ;;
-        --help|-h)  usage; exit 0 ;;
+        --env-branch)     [[ $# -ge 2 ]] || die "--env-branch requires a name"
+                          ENV_BRANCH="$2";      shift 2 ;;
+        --env-branch=*)   ENV_BRANCH="${1#*=}"; shift   ;;
+        --maid-branch)    [[ $# -ge 2 ]] || die "--maid-branch requires a name"
+                          MAID_BRANCH="$2";      shift 2 ;;
+        --maid-branch=*)  MAID_BRANCH="${1#*=}"; shift   ;;
+        --dry-run)        DRY_RUN=1; shift ;;
+        --help|-h)        usage; exit 0 ;;
         *) die "Unknown argument: $1 (use --help)" ;;
     esac
 done
@@ -104,18 +118,28 @@ EOF
 }
 
 clone_or_fetch() {
-    local name="$1" url="$2" dest="$3"
+    local name="$1" url="$2" dest="$3" branch="${4:-}"
     if [[ -d "$dest/.git" ]]; then
-        # Don't pull/merge: the user may be on a feature branch with
-        # unpushed or diverged commits. Re-running the bootstrap
-        # should never surprise you by moving HEAD.
+        # Don't pull/merge or switch branches: the user may be on a
+        # feature branch with unpushed or diverged commits. Re-running
+        # the bootstrap should never surprise you by moving HEAD. A
+        # --*-branch flag at this point is informational only; log and
+        # skip.
+        if [[ -n "$branch" ]]; then
+            log "$name: checkout exists; --branch $branch ignored (switch manually if needed)"
+        fi
         log "$name: fetching updates (working tree untouched)"
         run git -C "$dest" fetch --quiet origin
     elif [[ -e "$dest" ]]; then
         die "$dest exists and is not a git checkout"
     else
-        log "$name: cloning $url -> $dest"
-        run git clone --quiet "$url" "$dest"
+        if [[ -n "$branch" ]]; then
+            log "$name: cloning $url (branch: $branch) -> $dest"
+            run git clone --quiet --branch "$branch" "$url" "$dest"
+        else
+            log "$name: cloning $url -> $dest"
+            run git clone --quiet "$url" "$dest"
+        fi
     fi
 }
 
@@ -146,8 +170,8 @@ ensure_git_identity() {
 log "Layer 2: sync$( (( DRY_RUN )) && echo ' (dry-run)')"
 ensure_workspace
 ensure_github_ssh
-clone_or_fetch "env"  "$ENV_REPO"  "$ENV_CLONE"
-clone_or_fetch "mAId" "$MAID_REPO" "$MAID_CLONE"
+clone_or_fetch "env"  "$ENV_REPO"  "$ENV_CLONE"  "$ENV_BRANCH"
+clone_or_fetch "mAId" "$MAID_REPO" "$MAID_CLONE" "$MAID_BRANCH"
 ensure_git_identity "$ENV_CLONE"
 ensure_git_identity "$MAID_CLONE"
 log "Layer 2 done."

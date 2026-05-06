@@ -73,6 +73,23 @@ curl -fsSL https://raw.githubusercontent.com/kusimari/env/main/build-nix/bootstr
 ~/env-workplace/<kelasa-specific env repo>/desktop/post-nix-run.sh
 ```
 
+### Cloning a feature branch instead of the default
+
+Both L1 (kelasa) and L2 accept branch flags on initial clone. They
+apply only when the repo doesn't exist yet; once cloned, the branch
+is managed manually (re-runs never move HEAD).
+
+```bash
+# L1 — pass --branch to check out a Gorantls-env feature branch
+curl -fsSL -b ~/.midway/cookie \
+  'https://code.amazon.com/packages/Gorantls-env/blobs/heads/feature-build-layers/--/desktop/bootstrap-<envKind>.sh?raw=1' \
+  | bash -s -- --branch feature-build-layers
+
+# L2 — pass --env-branch / --maid-branch to pick non-main branches
+curl -fsSL https://raw.githubusercontent.com/kusimari/env/feature-build-layers/build-nix/bootstrap-common.sh \
+  | bash -s -- --env-branch feature-build-layers --maid-branch feature-build-layers
+```
+
 To check the flake without building: `./build-nix/test.sh`.
 
 ---
