@@ -20,6 +20,7 @@ with pkgs;
   rclone
   exiftool
 
+  claude-code
   gemini-cli-bin
   gh
 
@@ -34,7 +35,9 @@ with pkgs;
   # nix-init: init a nix flake with direnv in the current directory
   (pkgs.writeShellScriptBin "nix-init" (builtins.readFile ../nix-init/nix-init.sh))
 ]
-# Tier 2 — kelasa provides claude-code via its own post-install tooling.
-++ lib.optionals (envKind != "kelasa") [
-  claude-code
-]
+# Tier 2 — wanted on every env but not installable via nix on some envs.
+# No entries today. When the next such package appears, wrap it in
+# `lib.optionals (<envKind-predicate>) [ ... ]` here and install it via
+# that env's own post-install tooling. `env-verify` picks it up automatically.
+# Example shape:
+#   ++ lib.optionals (envKind != "kelasa") [ some-pkg ]
