@@ -25,7 +25,37 @@
 
   # https://github.com/nix-community/home-manager/issues/1341#issuecomment-2049723843
 
-  home.packages = import ./home-packages.nix { inherit pkgs lib envKind; };
+  # Tier 1/2/3 package layering is documented in flake.nix. Tier 1 goes here
+  # unconditionally; tier 2 goes here wrapped in `lib.optionals (<predicate>) [...]`;
+  # tier 3 lives in home/envKind-<name>.nix.
+  home.packages = with pkgs; [
+    # Tier 1 — always installed via nix.
+    tree
+    git
+    htop
+
+    rclone
+    exiftool
+
+    claude-code
+    gemini-cli-bin
+    gh
+
+    # Terminal utilities
+    ripgrep  # fast regex search across files (rg), also used by emacs consult
+    fd       # fast file finder, also used by emacs consult
+    jq       # JSON processor, used by rclone-env backends
+
+    # rclone-env: list, browse, check, copy, sync across rclone remotes
+    (pkgs.writeShellScriptBin "rclone-env" (builtins.readFile ../rclone-env/rclone-env.sh))
+
+    # nix-init: init a nix flake with direnv in the current directory
+    (pkgs.writeShellScriptBin "nix-init" (builtins.readFile ../nix-init/nix-init.sh))
+  ]
+  # Tier 2 — wanted on every env but not installable via nix on some envs.
+  # No entries today. Example shape when adding one:
+  #   ++ lib.optionals (envKind != "kelasa") [ some-pkg ]
+  ;
 
 
   programs.alacritty = {
