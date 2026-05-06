@@ -1,4 +1,21 @@
 {
+  # Package layering — read before adding packages.
+  #
+  #   Tier 1 — nix-managed, every env
+  #     Where: home/home.nix (programs.*.enable) and home/home-packages.nix
+  #     How:   home-manager modules or pkgs.<name> in the list.
+  #
+  #   Tier 2 — every env, nix on some, external bootstrap on others
+  #     Where: same files as tier 1, wrapped in
+  #              `lib.optionals (<envKind-predicate>) [...]`
+  #     How:   envs the predicate admits get the nix install; excluded envs
+  #            must provide the same binary on PATH through their own
+  #            post-install tooling. `nix run .#env-verify` checks PATH.
+  #
+  #   Tier 3 — per-env differences
+  #     Where: home/envKind-<name>.nix (user-level) or the <envKind>Configuration
+  #            attrset in this file (system-level).
+  #     How:   only the env(s) that want it see it. No verifier coverage.
   description = "Juice's unified darwin/ubuntu system";
 
   inputs = {
@@ -159,6 +176,91 @@
     };
 
     darwinPackages = self.darwinConfigurations.darwin-kelasa.pkgs;
+
+    # env-verify: on-demand check that every tier-1 + tier-2 invariant is on PATH.
+    #
+    # Invariant list is derived — not hand-maintained — by evaluating the
+    # home-manager configuration for each envKind and subtracting what the
+    # per-env (tier-3) files contribute. Anything added through
+    # programs.*.enable in home.nix or into home-packages.nix is picked up
+    # automatically; anything added only in home/envKind-*.nix is excluded.
+    apps = let
+      systems = [ "x86_64-linux" "aarch64-darwin" ];
+
+      mkPkgs = system: import nixpkgs {
+        inherit system;
+        overlays = [
+          inputs.nix-vscode-extensions.overlays.default
+          inputs.alacritty-theme.overlays.default
+          inputs.claude-code.overlays.default
+        ];
+        config.allowUnfree = true;
+      };
+
+      mkApp = system: let
+        pkgs = mkPkgs system;
+        lib  = pkgs.lib;
+
+        # Never activated; we only read config.home.packages. Stubs keep
+        # homeManagerConfiguration happy regardless of target user.
+        mkConfig = envKind: home-manager.lib.homeManagerConfiguration {
+          inherit pkgs;
+          extraSpecialArgs = { inherit envKind; };
+          modules = [
+            ./home/home.nix
+            {
+              home.username      = "env-verify";
+              home.homeDirectory = "/tmp/env-verify";
+              home.stateVersion  = "25.05";
+            }
+          ];
+        };
+
+        # Only check packages that declare an executable we can look up by name.
+        # Packages without meta.mainProgram (e.g. oh-my-zsh, nix-zsh-completions,
+        # purely runtime/data packages) are skipped — there's nothing to `command -v`.
+        nameOf  = p: p.meta.mainProgram or "";
+        toNames = ps: lib.unique (builtins.filter (n: n != "") (map nameOf ps));
+
+        manePkgs   = (mkConfig "mane").config.home.packages;
+        kelasaPkgs = (mkConfig "kelasa").config.home.packages;
+
+        tier3      = envFile: (import envFile { inherit pkgs; }).home.packages or [];
+        maneOnly   = tier3 ./home/envKind-mane.nix;
+        kelasaOnly = tier3 ./home/envKind-kelasa.nix;
+
+        invariants = lib.subtractLists
+          (toNames maneOnly ++ toNames kelasaOnly)
+          (toNames (manePkgs ++ kelasaPkgs));
+
+        script = pkgs.writeShellApplication {
+          name = "env-verify";
+          runtimeInputs = [ pkgs.coreutils ];
+          text = ''
+            echo "Checking ${toString (builtins.length invariants)} invariant(s)..."
+            missing=0
+            for name in ${lib.concatStringsSep " " invariants}; do
+              if path=$(command -v "$name" 2>/dev/null); then
+                printf "  ok  %-24s -> %s\n" "$name" "$path"
+              else
+                printf "  MISS %-24s -> not found\n" "$name"
+                missing=$((missing + 1))
+              fi
+            done
+            if [ "$missing" -gt 0 ]; then
+              echo ""
+              echo "$missing invariant(s) missing."
+              echo "Tier-2 invariants are installed by your environment's own"
+              echo "post-install tooling - re-run that, or ensure the binaries"
+              echo "are on PATH, then re-run this check."
+              exit 1
+            fi
+            echo "All invariants present."
+          '';
+        };
+      in { type = "app"; program = "${script}/bin/env-verify"; };
+    in builtins.listToAttrs
+         (map (s: { name = s; value = { env-verify = mkApp s; }; }) systems);
 
     # ubuntu-mane: home Ubuntu machine (graphical desktop)
     homeConfigurations.ubuntu-mane = home-manager.lib.homeManagerConfiguration {
