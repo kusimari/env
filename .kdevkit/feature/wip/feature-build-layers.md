@@ -1080,6 +1080,38 @@ Run before opening PR(s):
 ## Session Log
 <!-- Newest at top -->
 
+### 2026-05-07 - L4 de-nixified; README philosophy-first
+- `Gorantls-env/desktop/post-nix/flake.nix` removed along with
+  `post-nix-run.sh` wrapper. Replaced by a plain bash script
+  `Gorantls-env/desktop/post-nix-kelasa.sh`. Rationale: the flake
+  had zero nix dependencies at runtime — it shells out to
+  `toolbox` for every install, and its `installScript` body was
+  already pure bash templated through `writeShellScript`. The
+  `forAllSystems` wrapping and `packages.default` buildEnv were
+  ceremony nothing consumed. Collapsing to bash loses zero
+  functionality and removes the nixpkgs-unstable input dependency.
+- New script: same `AMAZON_TOOLS` list, same `~/.post-nix-rc`
+  content, same conflict-check with `readlink -f` trick. Key
+  behavior change per user direction: **hard-fail instead of
+  warn-and-continue** on `toolbox install` and `devspaces setup`
+  errors. Current flake swallowed errors with `|| echo warning`;
+  that's gone. `set -euo pipefail` + each command under `run`
+  surfaces genuine failures. Shared across all kelasa envKinds
+  for now (AL2/AL2023/darwin all use toolbox, no OS branches
+  needed in the body); split later if they diverge.
+- `env/README.md` Layer-design section rewritten to lead with the
+  philosophy instead of the mechanical script list. Four short
+  paragraphs describe L1/L2/L3/L4's *responsibility and why*, plus
+  a "why separate scripts" rationale about different change rates
+  (L1/L2 rare, L3 frequent, L4 out-of-band). The Layer table stays,
+  now under "At a glance" heading. Other README sections
+  (envKinds, branch flags, shell-hook extension points, tiered
+  packages, further reading) unchanged.
+- Verification on this AL2023 host: shellcheck clean, `--help`
+  and `--dry-run` both render correctly, unknown args error
+  cleanly. Real-run deferred to the user to avoid triggering a
+  `brazilcli` install + `devspaces setup` in the agent session.
+
 ### 2026-05-06 - Iter 1 refinement: decouple the four layers
 - **No chaining.** Each layer is a distinct, single-purpose script
   that exits when its job is done. User runs four commands in

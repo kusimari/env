@@ -7,34 +7,51 @@ Linux (2 / 2023). One flake, several envKinds.
 
 ## Layer design
 
-A machine becomes a working dev environment in four layers. Each
-is a distinct, single-purpose script; nothing chains. You run them
-in sequence on a fresh machine, or run just Layer 3 for day-2
-rebuilds.
+Four layers, one job each. No chaining. Run in sequence on a fresh
+machine; run only Layer 3 for day-2 rebuilds.
 
-```
-Layer 1 — bootstrap-<envKind>.sh     Machine prep (curl-able).
-                                     apt/brew/dnf + Nix installer +
-                                     envKind-specific auth.
+### The philosophy
 
-Layer 2 — bootstrap-common.sh        Generic sync (curl-able).
-                                     ~/env-workplace, env + mAId
-                                     clones, GitHub SSH check.
+- **Layer 1 — make the machine nix-ready, and clone non-nixable
+  envKind repos.** Runs before nix exists, so everything here is
+  bash + the OS's native package manager. Site-specific auth,
+  sudoers, cert installs, and clones of the envKind-specific repos
+  (for kelasa envKinds) live here. Public envKinds get their L1
+  from `env`; private envKinds get it from their envKind repo.
 
-Layer 3 — <envKind>.sh               Nix build (direct from clone).
-                                     home-manager / nix-darwin switch.
+- **Layer 2 — pull the nix-managed environment source.** Generic
+  across all envKinds: no machine prep, no envKind assumptions.
+  Clones `env` and `mAId` into `~/env-workplace/`, confirms GitHub
+  SSH, pins commit identity, exits.
 
-Layer 4 — post-nix-run.sh            Post-nix tool install (direct
-                                     from clone). Out-of-band;
-                                     runs any time after Nix exists.
-```
+- **Layer 3 — build the nix environment.** `home-manager switch`
+  or `nix-darwin switch` from the cloned source. Nixifies
+  everything that belongs in nix. Exposes two extension points —
+  `~/.pre-nix-rc` and `~/.post-nix-rc` — so Layer 1 and Layer 4
+  can inject shell state that doesn't belong in the flake. See
+  [Shell-hook extension points](#shell-hook-extension-points--how-layer-3-hooks-layer-1-and-layer-4)
+  below.
+
+- **Layer 4 — non-nixable post-install via the envKind repo.**
+  Site-specific tool installs (via vendor tooling like `toolbox`,
+  not nix), one-time setup commands, shell aliases keyed to
+  non-nix binaries. Writes `~/.post-nix-rc`; never builds nix
+  artifacts.
+
+Why four distinct scripts, no chaining? L1 and L2 run rarely (new
+machine, major env refresh). L3 runs often. L4 is out-of-band and
+not always needed. Grouping them into an orchestrator would bundle
+different change rates and risks. Separate scripts keep each
+layer's scope obvious and debuggable alone.
+
+### At a glance
 
 | Layer | Script | Repo | Curl-able | Purpose |
 |---|---|---|---|---|
 | 1 | `bootstrap-<envKind>.sh` | `env` (public envKinds) or a `<kelasa-specific env repo>` | yes | Machine ready for nix |
 | 2 | `build-nix/bootstrap-common.sh` | `env` | yes | env + mAId cloned |
 | 3 | `build-nix/<envKind>.sh` | `env` | no | nix build |
-| 4 | `post-nix-run.sh` | `<kelasa-specific env repo>` | no | non-nixable post-install |
+| 4 | `post-nix-kelasa.sh` | `<kelasa-specific env repo>` | no | non-nixable post-install |
 
 Day-2 rebuild: just run Layer 3.
 
@@ -70,7 +87,7 @@ curl -fsSL https://raw.githubusercontent.com/kusimari/env/main/build-nix/bootstr
 ~/env-workplace/env/build-nix/<envKind>.sh
 
 # Layer 4 (if your envKind has one) — standalone post-nix install
-~/env-workplace/<kelasa-specific env repo>/desktop/post-nix-run.sh
+~/env-workplace/<kelasa-specific env repo>/desktop/post-nix-kelasa.sh
 ```
 
 ### Cloning or switching to a feature branch
