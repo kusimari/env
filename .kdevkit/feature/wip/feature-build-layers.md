@@ -1,63 +1,43 @@
-# feature-build-layers — spec, design, implementation, tests
+# feature-build-layers — mAId (agentic resources CLI)
 
 ## Status
 
 🚧 **Spec locked; implementation not started.** This doc is the
 review artifact: spec, design, implementation order, and test plan
-for the full mAId system plus the four-layer bootstrap. Edit in
-place. The implementation loop reads this file as its instruction
-set.
+for the `mAId` repo. Edit in place. The implementation loop reads
+this file as its instruction set.
 
-> **Scope on branch `feature-build-layers`:** iterations 1 + 2 only.
-> Iterations 3–6 are captured here so the design is evaluated whole,
-> even though this branch doesn't implement them.
+**Prereq landed in a previous iteration:** a four-layer bootstrap
+that leaves both `env` and `mAId` cloned at
+`~/env-workplace/{env,mAId}` on any supported machine. That work
+is documented at `../feature-build-layers.md` (sibling of this
+file) — reference it only if you need the bootstrap context. This
+doc is self-contained for mAId.
+
+**Branch plan:** this iteration lands on a fresh branch
+(`feature-maid` or similar) off post-merge `main` in both repos.
 
 ## Scope guardrails
 
-**This repo is public; this document stays site-agnostic.** Avoid
-naming specific employers, internal tools, private repos, auth
-systems, or clone URLs. Sibling repositories that carry machine-
-specific or site-specific concerns are referred to abstractly as
-*private sibling env repo(s)*. Concrete URLs and credentials live in
-the bootstrap scripts themselves, not in design docs. (NFR5.)
+`env` is a public repo. `mAId` will also be public. Both stay
+site-agnostic — no employer names, internal tools, private repos,
+auth systems, or clone URLs in source or docs. Concrete URLs live
+in bootstrap scripts (which already exist; not this iteration's
+concern). Machine- or site-specific concerns belong in private
+sibling envKind repos, outside this scope.
 
 ---
 
-## 0 · Context
+## 0 · Context — what mAId is and why
 
-Two bundled pieces of work:
+One tool-agnostic source of truth for agentic resources
+(**skills**, **agents**, **commands**, **MCPs**) that compiles to
+per-tool views under `$HOME` via symlinks — either directly
+(`mode: link`) or after a transform (`mode: build`). The `maid`
+CLI turns the authored `sources/` tree into tool-native paths that
+Claude Code, Gemini CLI, Kiro, and future tools all consume.
 
-1. **Four-layer bootstrap** — separate machine prep (Layer 1) from
-   generic sync (Layer 2, new `bootstrap-common.sh`) from nix build
-   (Layer 3, unchanged) from post-nix machine-specific steps
-   (Layer 4, convention via hook). Lets env bootstrap identically on
-   any machine, with site-specific prep delegated to a *private
-   sibling env repo*.
-
-2. **mAId sibling repo** — a tool-agnostic source of truth for
-   agentic resources (skills, agents, MCPs, commands) that compiles
-   to whatever AI tool is in use (Claude Code, Gemini CLI, Kiro,
-   Claude Desktop, AWS Q, claude.ai, future tools). Lives at
-   `~/env-workplace/mAId`, cloned by Layer 2.
-
-The two ship together because Layer 2 is the natural place to clone
-mAId; splitting them leaves a dangling "now also clone this other
-repo" step.
-
----
-
-## 1 · Spec
-
-### 1.1 What mAId is
-
-mAId holds generic, tool-agnostic authorship of agentic resources:
-**skills** (prose guidance), **agents** (invocable specialists),
-**commands** (slash commands), **MCPs** (server definitions + deps).
-The `maid` CLI turns that source tree into per-tool views under
-`$HOME` via symlinks, either directly (`mode: link`) or after a
-transform (`mode: build`).
-
-### 1.2 Core properties
+Properties we want:
 
 | Property | Mechanism |
 |---|---|
@@ -68,94 +48,66 @@ transform (`mode: build`).
 | Home stays empty | `$HOME/CLAUDE.md`, `$HOME/.claude/skills`, etc. are all symlinks into the mAId checkout. Single versioned source |
 | Nix is OS-wiring only | mAId is a Deno/TypeScript project. `flake.nix` is a minimal wrapper that puts `maid` on `$PATH` |
 
-### 1.3 Functional requirements (bootstrap)
+---
 
-- **FR-B1** Every Layer-3 build (`build-nix/<platform>.sh`) must be
-  preceded by a Layer-1 script. Layer-1 may be empty but must exist
-  so the flow is uniform.
-- **FR-B2** `env/build-nix/bootstrap-common.sh` (Layer 2) is
-  curl-able AND runnable from a clone; the same script auto-detects
-  its mode.
-- **FR-B3** `bootstrap-common.sh` scope: create `~/env-workplace`,
-  check GitHub SSH reachability, clone/fetch `env`, clone/fetch
-  `mAId`. Accept `--pre-nix <script>` / `--post-nix <script>` hooks
-  so Layer 1 and Layer 4 can inject without modifying env.
-- **FR-B4** Platform-specific prep that is machine- or site-specific
-  (e.g. credential enrollment, private auth flows, internal tool
-  installation, sudoers rules for Nix directory creation) lives in
-  a *private sibling env repo*, outside this public repo. Those
-  Layer-1 scripts delegate to `bootstrap-common.sh` at the end. The
-  public repo does not need to know they exist.
-- **FR-B5** `env/build-nix/bootstrap-ubuntu.sh` is a new Layer-1
-  script for Ubuntu. Plain Ubuntu setup is generic (no site-specific
-  auth), so its Layer 1 lives in env.
-- **FR-B6** Layer-3 scripts (`build-nix/<platform>.sh`) stay pure:
-  nix invocation only; no prep.
-- **FR-B7** Layer 4 is a convention, not scripts-on-this-branch. The
-  `--post-nix` hook path in Layer 2 is the extension point.
-- **FR-B8** All bootstrap scripts idempotent.
+## 1 · Spec
 
-### 1.4 Functional requirements (mAId)
+### 1.1 Functional requirements
 
-- **FR-M1** `maid deploy` creates symlinks from tool-native paths in
-  `$HOME` to the mAId checkout. Idempotent; re-running is a no-op.
+- **FR-M1** `maid deploy` creates symlinks from tool-native paths
+  in `$HOME` to the mAId checkout. Idempotent; re-running is a
+  no-op.
 - **FR-M2** `maid deploy` NEVER overwrites existing non-symlink
   files in `$HOME`. On collision: print a warning, skip the file,
   continue. User resolves manually.
-- **FR-M3** `maid deploy` NEVER touches files outside the registered
-  set (`~/.claude/settings.json`, `~/.claude/projects/`,
+- **FR-M3** `maid deploy` NEVER touches files outside the
+  registered set (`~/.claude/settings.json`, `~/.claude/projects/`,
   `~/.claude/sessions/`, `~/.claude/plans/` are all off-limits).
 - **FR-M4** `maid build` resolves `source: external` and `source:
   patch` files into `build/<tool>/<name>.md`. `build/` is
   gitignored. `maid deploy` symlinks into `build/` for those files.
 - **FR-M5** `maid intent <first-user-message>` returns JSON with
   `{ classified_intent, selected_skills, ambiguous_with }`. Used
-  both by AI tools (via the top-level CLAUDE.md instruction) and by
-  humans for debugging the router.
+  both by AI tools (via the top-level CLAUDE.md instruction) and
+  by humans for debugging the router.
 - **FR-M6** `maid inbox add <title> [--body <text>]` appends a
   markdown file under `inbox/issues/<YYYY-MM-DD>-<slug>.md`. AI
   tools follow the same protocol when asked to file a change
   request.
 - **FR-M7** Every source file has YAML frontmatter with at least
-  `kind:`, `source:`, and `intent:`. `mode:` defaults from `source:`
-  (original → link, external/patch → build). Missing mandatory
-  fields = hard error on build/deploy.
+  `kind:`, `source:`, and `intent:`. `mode:` defaults from
+  `source:` (original → link, external/patch → build). Missing
+  mandatory fields = hard error on build/deploy.
 - **FR-M8** Frontmatter is validated against a schema (one place:
   `maid/schema.ts`). Schema violations print which field, which
   file, which line.
 - **FR-M9** `maid` exit code is non-zero on any failure. Output is
   human-readable by default; `--json` flag switches to JSON for
   tooling.
-- **FR-M10** mAId's own flake exports a `packages.<system>.default`
-  that wraps `deno run --allow-read --allow-write --allow-run`
-  pointing at `maid/main.ts` with the mAId checkout embedded as a
-  runtime path. No TS compilation at build time — source is live.
+- **FR-M10** mAId's own flake exports a
+  `packages.<system>.default` that wraps `deno run --allow-read
+  --allow-write --allow-run` pointing at `maid/main.ts` with the
+  mAId checkout embedded as a runtime path. No TS compilation at
+  build time — source is live.
 
-### 1.5 Non-functional requirements
+### 1.2 Non-functional requirements
 
-- **NFR1** `./build-nix/test.sh` stays green.
-- **NFR2** Bootstrap surfaces clear error messages for manual-
-  action cases (e.g., "add this key to GitHub").
-- **NFR3** No new flake inputs in env (mAId via flake input is a
-  later branch).
-- **NFR4** Bootstrap scripts shellcheck-clean.
-- **NFR5** No site-specific or employer-specific identifiers in
-  scripts or docs that live in this public repo. If such coupling
-  is needed, it belongs in a private sibling env repo.
 - **NFR-M1** `maid deploy` completes under 2 seconds on warm cache
   (read sources, create symlinks).
 - **NFR-M2** `maid` has zero runtime deps outside Deno stdlib
   (no npm, no node_modules).
 - **NFR-M3** All schema violations fail fast with a pointer to the
   offending line (`path/to/file.md:12: missing 'kind:'`).
-- **NFR-M4** Deterministic output order — deploying on two machines
-  from the same commit produces byte-identical link targets.
+- **NFR-M4** Deterministic output order — deploying on two
+  machines from the same commit produces byte-identical link
+  targets.
 - **NFR-M5** Tests (`deno test`) run in under 10 seconds total on
   an empty deno cache.
 
-### 1.6 Out of scope for this branch
+### 1.3 Out of scope for this branch
 
-- Multi-tool transforms (gemini-cli, kiro, claude-desktop) — iter 3+
+- Multi-tool transforms (gemini-cli, kiro, claude-desktop) —
+  iter 3+
 - Agents implementation — iter 4
 - MCP dependency system — iter 5
 - Meeting-prep scheduler — iter 6
@@ -164,54 +116,24 @@ transform (`mode: build`).
 - Anything specific to a particular employer's infrastructure —
   belongs in private sibling repos
 
-### 1.7 Success criteria
+### 1.4 Success criteria
 
-- Fresh Linux VM → `curl ... bootstrap-<platform>.sh | bash` →
-  bootstrap completes → `./build-nix/<platform>.sh` succeeds.
 - `cd ~/env-workplace/mAId && nix profile install .` creates
-  working symlinks pointing into the checkout
-  (`ls -l ~/CLAUDE.md` resolves into the mAId clone).
-- Re-running the bootstrap on the same machine is a no-op.
+  working symlinks pointing into the checkout (`ls -l ~/CLAUDE.md`
+  resolves into the mAId clone).
+- `maid deploy` is idempotent: second run is a no-op.
+- `maid intent "help me fix the bug in foo.py"` returns
+  `{ intent: "bug-fix", skills: ["development", "git"] }`.
+- `maid intent "help me write a blog post"` returns
+  `{ intent: "narrative", skills: ["writing-style"] }`.
+- A real AI session surfaces only the intent-matched skills for a
+  given first user message.
 
 ---
 
 ## 2 · Design
 
-### 2.1 Four-layer diagram
-
-```
-Layer 1: machine prep                     Layer 2: generic sync
-  Private sibling env repo                  env/build-nix/
-    bootstrap-<platform>.sh                   bootstrap-common.sh
-    (site-specific auth,                      (env + mAId clones,
-     internal tooling, etc.)                   GitHub SSH,
-  env/build-nix/                               --pre-nix / --post-nix hooks)
-    bootstrap-ubuntu.sh
-    (generic Ubuntu prep)
-
-                    │
-                    ▼
-Layer 3: nix build                        Layer 4: post-nix machine-specific
-  env/build-nix/                            (convention; hook in Layer 2)
-    al2.sh / al2023.sh /
-    darwin.sh / ubuntu.sh
-```
-
-Darwin Layer-1 is intentionally skipped on this branch.
-`env/build-nix/darwin.sh:3-7` already carries inline setup notes
-(brew/toolbox/Determinate installer); no new TODO required.
-
-### 2.2 `bootstrap-common.sh` behavior
-
-- Detect curl-vs-clone via `readlink -f "${BASH_SOURCE[0]}"`. If
-  inside `~/env-workplace/env/`, assume clone mode. Else curl mode:
-  clone env first, re-exec from the clone with a `--post-clone`
-  sentinel to prevent re-exec loops.
-- Clone/fetch both env and mAId from their GitHub URLs (URLs hard-
-  coded in the script, not in this doc).
-- Run optional `--pre-nix` and `--post-nix` scripts if provided.
-
-### 2.3 mAId layout
+### 2.1 mAId layout
 
 ```
 mAId/
@@ -220,7 +142,7 @@ mAId/
 ├── .gitignore               # build/, .deno_cache/, etc.
 ├── README.md                # quickstart; points at .kdevkit/
 │
-├── CLAUDE.md                # TOP-LEVEL instruction file — see §2.9
+├── CLAUDE.md                # TOP-LEVEL instruction file — see §2.7
 ├── GEMINI.md                # same instructions, Gemini flavor
 ├── KIRO.md                  # same instructions, Kiro flavor
 │
@@ -230,7 +152,7 @@ mAId/
 │   ├── registry.ts          # (tool × kind) → (path, transform, mode)
 │   ├── sources.ts           # read + parse sources/ tree
 │   ├── deploy.ts            # symlink manager
-│   ├── build.ts             # transform runner (stub in iter 2)
+│   ├── build.ts             # transform runner (stub this iter)
 │   ├── intent.ts            # session-intent classifier
 │   └── inbox.ts             # issue + session-log writer
 │
@@ -261,7 +183,7 @@ mAId/
         └── mAId-bootstrap.md   # pointer to this doc
 ```
 
-### 2.4 Frontmatter schema
+### 2.2 Frontmatter schema
 
 Single source of truth for what's valid:
 
@@ -296,10 +218,10 @@ base:
 ---
 ```
 
-Validation lives in `maid/schema.ts`. Invalid files fail fast with a
-file+line error message.
+Validation lives in `maid/schema.ts`. Invalid files fail fast with
+a file+line error message.
 
-### 2.5 Source types (provenance, not mode)
+### 2.3 Source types (provenance, not mode)
 
 | Type | `source:` | Authoring | Runtime | When to use |
 |---|---|---|---|---|
@@ -307,10 +229,10 @@ file+line error message.
 | **B** | `external` | Just frontmatter; content fetched | `build` (fetch + cache) | Public skill you use verbatim; upstream stable |
 | **C** | `patch` | Frontmatter + delta in body | `build` (fetch base, apply delta) | Public thing is mostly right, need named override |
 
-On this branch, all skills are Type A. Type B/C land in iter 3+ when
-`build` transforms work.
+On this branch, all skills are Type A. Type B/C land in iter 3+
+when `build` transforms work.
 
-### 2.6 Link mode vs. build mode
+### 2.4 Link mode vs. build mode
 
 **`mode: link`**
 - `maid deploy` creates `~/<tool-path>/<name>.md` as a symlink
@@ -324,7 +246,7 @@ On this branch, all skills are Type A. Type B/C land in iter 3+ when
   the registered transform.
 - `maid deploy` then symlinks `~/<tool-path>/<name>.md` to the
   build output.
-- Stubbed in iter 2 (`maid build` prints "no build-mode sources
+- Stubbed this iter (`maid build` prints "no build-mode sources
   yet" and exits 0 if no `source: external|patch` files exist).
 
 **Rule for AI sessions:**
@@ -333,7 +255,7 @@ Changes that affect build-mode sources, the registry, or `maid/`
 source code must be filed as inbox issues — they require a
 deliberate rebuild.
 
-### 2.7 Registry (the one place tool-shape knowledge lives)
+### 2.5 Registry (the one place tool-shape knowledge lives)
 
 Conceptual shape (actual code not included here):
 
@@ -346,7 +268,7 @@ registry[tool][kind] = {
 }
 ```
 
-Iter 2 registry content:
+Registry content for this branch:
 
 | tool | kind | path | transform | notes |
 |---|---|---|---|---|
@@ -357,13 +279,13 @@ Iter 2 registry content:
 | gemini-cli | * | * | — | **commented stub**, iter 3 |
 | kiro | * | * | — | commented stub |
 
-Top-level symlinks (outside the per-kind grid, because they're the
-root pointer files):
+Top-level symlinks (outside the per-kind grid, because they're
+the root pointer files):
 - `~/CLAUDE.md` → `mAId/CLAUDE.md`
 - `~/GEMINI.md` → `mAId/GEMINI.md`
 - `~/KIRO.md`   → `mAId/KIRO.md`
 
-### 2.8 Intent routing
+### 2.6 Intent routing
 
 **Decision locked: the router lives in top-level `CLAUDE.md`, not
 as a skill.** Rationale: always-on instructions that *decide what
@@ -388,11 +310,11 @@ intent tags from the user's message against each skill's `intent:`
 frontmatter, applies `activates-with:` transitive closure, returns
 JSON.
 
-Implementation of the classifier itself is rules-based in iter 2
+Implementation of the classifier itself is rules-based this iter
 (keyword matching against intent tags), not LLM-powered. Keeps it
 deterministic and testable. An LLM-powered upgrade can come later.
 
-### 2.9 Top-level CLAUDE.md / GEMINI.md / KIRO.md
+### 2.7 Top-level CLAUDE.md / GEMINI.md / KIRO.md
 
 These are short instruction sheets, identical in intent across
 tools. Shape:
@@ -427,7 +349,7 @@ See ~/.claude/skills, ~/.claude/agents, ~/.claude/commands.
 
 Same content, different filename, for GEMINI.md and KIRO.md.
 
-### 2.10 Self-update loop — what each case looks like
+### 2.8 Self-update loop — what each case looks like
 
 | Scenario | Mechanism | File written |
 |---|---|---|
@@ -444,7 +366,7 @@ raw observations during a narrative session; at `wrap up`, the AI
 promotes the useful ones into `writing-style.md` and removes the
 log.
 
-### 2.11 Inbox protocol
+### 2.9 Inbox protocol
 
 Issue file shape:
 
@@ -472,7 +394,7 @@ affects: maid/intent.ts, sources/skills/
 lists open issues. `maid inbox resolve <id>` moves the file to
 `inbox/issues/_resolved/`.
 
-### 2.12 Flake.nix shape
+### 2.10 Flake.nix shape
 
 Minimal. Pseudocode of what it exposes:
 
@@ -497,7 +419,7 @@ Two install paths the user can pick later:
 On this branch we don't wire it into env's flake yet; user runs
 `nix profile install .` once in mAId after bootstrap.
 
-### 2.13 Deno choice — scope of permissions
+### 2.11 Deno choice — scope of permissions
 
 `maid` runs with explicit `--allow-read --allow-write --allow-run
 --allow-env`. Net access (`--allow-net`) is only needed for iter 3
@@ -508,7 +430,7 @@ the fetch step lands.
 
 ## 3 · Skills content (drafts for review)
 
-These are the skills to seed in iter 2. All Type A. Content below
+These are the skills to seed this iter. All Type A. Content below
 is a starting point — edit in place; what's here ships.
 
 ### 3.1 `sources/skills/git.md`
@@ -677,70 +599,20 @@ Body: the full scrubbed style guide (voice & tone, sentence
 structure, punctuation, vocabulary, paragraph structure, POV,
 emphasis, other patterns), with the How-To-Use section at the top
 and Session Log at the bottom. Specific content draft happens
-during iter 2 alongside the code; scrub pass is a diff of the
-existing personal draft. Final text replaces the draft here before
-deploy.
+during implementation alongside the code; scrub pass is a diff of
+the existing personal draft. Final text replaces the draft here
+before deploy. See §7 open item (d).
 
 ### 3.4 Top-level `CLAUDE.md` (routing instruction)
 
-Content as specified in §2.9. Same file content mirrors into
+Content as specified in §2.7. Same file content mirrors into
 `GEMINI.md` and `KIRO.md` with only the tool-name substitutions.
 
 ---
 
 ## 4 · Implementation plan
 
-### 4.1 Branches
-
-The `env` and `mAId` repos each get a `feature-build-layers`
-branch on this round. A private sibling env repo gets its own
-branch separately, outside this public doc, per NFR5.
-
-| Repo | Remote | Base | New branch |
-|---|---|---|---|
-| env | github.com:kusimari/env.git | main | feature-build-layers |
-| mAId | github.com:kusimari/mAId.git | (empty) | feature-build-layers (seeded after an initial main commit) |
-
-Branch creation is the first implementation step — confirm with
-user before pushing to remote.
-
-### 4.2 Iteration 1 — four-layer bootstrap (this branch)
-
-**Deliverables (env repo)**
-
-- `env/build-nix/bootstrap-common.sh` (Layer 2). Curl-aware:
-  `readlink -f "${BASH_SOURCE[0]}"` detects clone-vs-curl mode. In
-  curl mode, clones env, re-execs from the clone with a
-  `--post-clone` sentinel. Clones mAId too. Accepts
-  `--pre-nix <script>` / `--post-nix <script>` hooks. Idempotent.
-  Shellcheck-clean.
-- `env/build-nix/bootstrap-ubuntu.sh` (Layer 1 for Ubuntu).
-  Minimal prep (generic, no site-specific auth). Delegates to
-  Layer 2 at the end.
-- `env/setup-notes.md` update: document the four-layer flow, the
-  `maid deploy` step, and how to add a Layer 1 script in a private
-  sibling repo.
-- `env/.kdevkit/feature/feature-build-layers.md` (this file):
-  session log entries as work lands.
-
-**Layer 3 and Layer 4: no changes.**
-
-Private-sibling Layer-1 scripts (e.g. for site-specific auth,
-internal tooling, sudoers for Nix) live outside this repo and are
-updated in that repo's own branch. They delegate to
-`bootstrap-common.sh` once env has been fetched.
-
-**Acceptance (iter 1)**
-- `shellcheck -x env/build-nix/*.sh` exits 0.
-- `env/build-nix/test.sh` still builds both Linux configs.
-- `bootstrap-common.sh --dry-run` twice against a staging `HOME`
-  prints "nothing to do" on run 2.
-- Manual VM: curl a Layer-1 bootstrap → both repos cloned →
-  `env/build-nix/<platform>.sh` completes.
-
-### 4.3 Iteration 2 — mAId core (this branch)
-
-**Order (strict; each step's tests land with the step):**
+### 4.1 TDD order (strict; each step's tests land with the step)
 
 1. **Scaffolding.**
    - `flake.nix`, `deno.json`, `.gitignore`, `README.md`.
@@ -757,7 +629,7 @@ updated in that repo's own branch. They delegate to
      values for enums, per-source-type field requirements.
 
 3. **Registry.**
-   - `maid/registry.ts`: the table from §2.7. Only claude-code
+   - `maid/registry.ts`: the table from §2.5. Only claude-code
      populated; gemini-cli/kiro as commented stubs.
    - Tests: `tests/registry_test.ts` — every (tool, kind) lookup
      returns a path template or `unsupported`; path templates
@@ -766,8 +638,8 @@ updated in that repo's own branch. They delegate to
 4. **Deploy (link mode only).**
    - `maid/deploy.ts`: for each source, compute destination path
      via registry, create a symlink from destination → source.
-     Skip (with warning) if destination exists and is a non-
-     symlink or points elsewhere unexpectedly.
+     Skip (with warning) if destination exists and is a
+     non-symlink or points elsewhere unexpectedly.
    - Top-level `CLAUDE.md`/`GEMINI.md`/`KIRO.md` symlinks handled
      explicitly outside the kind grid.
    - Tests: `tests/deploy_test.ts` — fixture source tree + fake
@@ -810,7 +682,7 @@ updated in that repo's own branch. They delegate to
      copied over.
    - Port `sources/skills/writing-style.md` from the personal
      draft, scrubbed. Scrub checklist in the file header.
-   - Write `CLAUDE.md`, `GEMINI.md`, `KIRO.md` per §2.9.
+   - Write `CLAUDE.md`, `GEMINI.md`, `KIRO.md` per §2.7.
 
 10. **End-to-end smoke test.**
     - `tests/smoke_test.ts`: spawn a fake HOME, run
@@ -822,7 +694,8 @@ updated in that repo's own branch. They delegate to
       session with "help me write a blog post" loads only
       writing-style, not git/development.
 
-**Acceptance (iter 2)**
+### 4.2 Acceptance
+
 - `deno task test` exits 0; all tests pass.
 - `deno task check` (typecheck) exits 0.
 - `maid deploy --dry-run` on a fresh HOME prints the planned
@@ -833,15 +706,15 @@ updated in that repo's own branch. They delegate to
   `{ intent: "narrative", skills: ["writing-style"] }`.
 - `maid intent "something"` returns `ambiguous_with` populated.
 
-### 4.4 Test-driven loop
+### 4.3 TDD loop
 
-Each step in §4.3 follows: **write failing test → implement →
+Each step in §4.1 follows: **write failing test → implement →
 run test → commit**.
 
-Loop driver (to be used in the follow-up implementation session):
+Loop driver:
 
 ```
-while not all steps in §4.3 complete:
+while not all steps in §4.1 complete:
   1. Pick the next step.
   2. Write the test fixtures + test cases in tests/<name>_test.ts.
   3. Run `deno task test` — confirm failure is on this step.
@@ -852,12 +725,12 @@ while not all steps in §4.3 complete:
   8. Update inbox/session-log/ if anything surprising came up.
 ```
 
-### 4.5 Iterations 3–6 (captured; not this branch)
+### 4.4 Future iterations (captured; not this branch)
 
-- **Iter 3 — build-mode + gemini-cli target.** Implement transform
-  runner; fetch+cache for Type B; base-fetch + delta apply for
-  Type C; gemini-cli rows in registry; prove a skill flows
-  through.
+- **Iter 3 — build-mode + gemini-cli target.** Implement
+  transform runner; fetch+cache for Type B; base-fetch + delta
+  apply for Type C; gemini-cli rows in registry; prove a skill
+  flows through.
 - **Iter 4 — agents + inbox write-back integration.** Agent
   source format (markdown + `invocation:`, `tools:`). First
   agent: notes-capture. AI-side protocol for appending to inbox
@@ -867,9 +740,9 @@ while not all steps in §4.3 complete:
 - **Iter 6 — meeting-prep scheduler.** Outlook/equivalent MCP →
   cross-ref notes → produce brief. Wake-up trigger design.
 
-Each iteration lands on its own branch off `main` (post iter 2
-merge), and gets its own spec/design/test section added to this
-doc.
+Each future iteration lands on its own branch off `main` and gets
+its own spec/design/test section (either appended here or spun
+out).
 
 ---
 
@@ -886,12 +759,14 @@ doc.
 
 ### 5.2 Test fixtures (`tests/fixtures/`)
 
-- `valid_sources/` — one skill per type (in iter 2, only Type A);
-  every kind (skill/agent/command/mcp stubs); known frontmatter.
-- `invalid_sources/` — missing required fields; wrong enum values;
-  conflicting source-type fields; `kind: skill` with no `name`.
-- `fake_home/` — directory skeleton to be used as `$HOME` override
-  during deploy tests.
+- `valid_sources/` — one skill per type (this branch, only Type
+  A); every kind (skill/agent/command/mcp stubs); known
+  frontmatter.
+- `invalid_sources/` — missing required fields; wrong enum
+  values; conflicting source-type fields; `kind: skill` with no
+  `name`.
+- `fake_home/` — directory skeleton to be used as `$HOME`
+  override during deploy tests.
 - `expected_symlinks.json` — golden map of destination → source
   for the valid fixture. Deploy test compares actual to golden.
 
@@ -912,14 +787,15 @@ doc.
 **Registry**
 - `(claude-code, skill)` returns a `link` entry with the right
   path template.
-- `(gemini-cli, skill)` returns `unsupported` in iter 2.
+- `(gemini-cli, skill)` returns `unsupported` this branch.
 - Path template `{HOME}/.claude/skills/{name}.md` renders with
   substitutions.
 
 **Deploy**
 - Creates symlinks for every registered (source, tool, kind).
 - Symlinks are relative where possible (or document absolute —
-  decide during implementation; tests encode the choice).
+  decide during implementation; tests encode the choice; see
+  §7 open item (b)).
 - Second run = no-op (no output lines that would suggest a
   change).
 - Destination exists as regular file → warning, skip, non-zero
@@ -942,8 +818,8 @@ doc.
 - `activates-with:` transitive closure handled correctly.
 
 **Inbox**
-- `add "title"` creates `inbox/issues/<YYYY-MM-DD>-<slug>.md` with
-  the frontmatter shape from §2.11.
+- `add "title"` creates `inbox/issues/<YYYY-MM-DD>-<slug>.md`
+  with the frontmatter shape from §2.9.
 - `list` returns only open issues.
 - `resolve <id>` moves the file to `_resolved/`.
 
@@ -958,7 +834,7 @@ doc.
 - `ls -l` on `~/CLAUDE.md` resolves into the repo.
 
 **Manual**
-- Fresh VM: curl → bootstrap → build → deploy → session.
+- `nix profile install .` in a real mAId checkout.
 - Claude session with narrative prompt loads only writing-style.
 - Claude session with coding prompt loads development + git.
 - Ambiguous prompt triggers disambiguation question.
@@ -966,8 +842,8 @@ doc.
 ### 5.4 Coverage target
 
 Not enforced numerically. Every exported function in `maid/*.ts`
-has at least one test case; every FR from §1.3 / §1.4 has a test
-case that maps to it.
+has at least one test case; every FR from §1.1 has a test case
+that maps to it.
 
 ---
 
@@ -985,63 +861,23 @@ case that maps to it.
    intent` helper; NOT a skill (avoids the chicken-and-egg with
    intent-gating).
 7. `inbox/` committed; `build/` gitignored.
-8. Darwin Layer-1 skipped; existing notes in `darwin.sh:3-7`
-   suffice.
-9. Writing-style moves to mAId/sources/skills/writing-style.md,
+8. Writing-style moves to `mAId/sources/skills/writing-style.md`,
    scrubbed of site-specific content.
-10. Classifier in `maid intent` is rules-based in iter 2;
-    LLM-based upgrade parked for later.
-11. Branch scope = iterations 1 + 2 only.
-12. Private-sibling uncommitted work stays outside this branch.
+9. Classifier in `maid intent` is rules-based this iter;
+   LLM-based upgrade parked for later.
 
 ---
 
-## 7 · Files to create/modify on this branch
-
-### env (branch: feature-build-layers)
-- CREATE `env/build-nix/bootstrap-common.sh`
-- CREATE `env/build-nix/bootstrap-ubuntu.sh`
-- UPDATE `env/setup-notes.md`
-- UPDATE `env/.kdevkit/feature/feature-build-layers.md` (this
-  file)
-
-### mAId (branch: feature-build-layers, seeded from empty main)
-- CREATE `flake.nix`, `deno.json`, `.gitignore`, `README.md`
-- CREATE `CLAUDE.md`, `GEMINI.md`, `KIRO.md`
-- CREATE
-  `maid/{main,schema,sources,registry,deploy,build,intent,inbox}.ts`
-- CREATE `sources/skills/{git,development,writing-style}.md`
-- CREATE `sources/{agents,commands,mcp}/.gitkeep`
-- CREATE `inbox/{README.md,issues/.gitkeep,session-log/.gitkeep}`
-- CREATE
-  `tests/{schema,sources,registry,deploy,build,intent,inbox,main,smoke}_test.ts`
-- CREATE `tests/fixtures/{valid_sources,invalid_sources,fake_home}/…`
-- CREATE `.kdevkit/feature/mAId-bootstrap.md`
-
-### Private sibling env repo (separate branch, not tracked here)
-- UPDATE site-specific Layer-1 bootstrap scripts to delegate to
-  `env/build-nix/bootstrap-common.sh`.
-- Uncommitted work unrelated to this feature: leave alone.
-
-### Critical existing files to reuse
-- `env/build-nix/_common.sh:10-11,35-56,65-77` — pre/post-nix hook
-  plumbing Layer 3 already supports.
-- `env/build-nix/test.sh` — nix eval + build verification.
-- `env/build-nix/darwin.sh:3-7` — already has bootstrap notes for
-  macOS; no new TODO needed.
-
----
-
-## 8 · Open items (for user to decide before implementation loop)
+## 7 · Open items (to decide before the implementation loop)
 
 None blocking. Items to mark before kicking off:
 
 - (a) **Intent keyword list** — `maid intent` ships with a small
   rule set. Seed the initial list in this doc for review, or
   draft during implementation and iterate?
-- (b) **Symlink relative vs absolute** — §5.3 notes this is decided
-  at implementation. Relative symlinks are more portable across
-  checkouts; absolute are more debuggable. Preference?
+- (b) **Symlink relative vs absolute** — §5.3 notes this is
+  decided at implementation. Relative symlinks are more portable
+  across checkouts; absolute are more debuggable. Preference?
 - (c) **`inbox/session-log/` lifecycle** — current design says
   skills append during a session and the AI promotes useful bits
   at wrap-up. Provide `maid log append <skill> <observation>`, or
@@ -1055,245 +891,45 @@ reads this file as the spec.
 
 ---
 
+## 8 · Files to create on this branch
+
+### mAId repo (branch off post-merge main)
+
+- CREATE `flake.nix`, `deno.json`, `.gitignore`, `README.md`
+- CREATE `CLAUDE.md`, `GEMINI.md`, `KIRO.md`
+- CREATE `maid/{main,schema,sources,registry,deploy,build,intent,inbox}.ts`
+- CREATE `sources/skills/{git,development,writing-style}.md`
+- CREATE `sources/{agents,commands,mcp}/.gitkeep`
+- CREATE `inbox/{README.md,issues/.gitkeep,session-log/.gitkeep}`
+- CREATE
+  `tests/{schema,sources,registry,deploy,build,intent,inbox,main,smoke}_test.ts`
+- CREATE `tests/fixtures/{valid_sources,invalid_sources,fake_home}/…`
+- CREATE `.kdevkit/feature/mAId-bootstrap.md`
+
+### env repo
+
+No changes on this branch. A future iteration may wire mAId in as
+a flake input.
+
+---
+
 ## 9 · Verification checklist (end-of-branch)
 
-Run before opening PR(s):
+Run before opening the PR:
 
-- [ ] `shellcheck -x env/build-nix/*.sh` clean
-- [ ] `env/build-nix/test.sh` green (nix eval + build)
-- [ ] `env/build-nix/bootstrap-common.sh --dry-run` idempotent
 - [ ] `cd mAId && deno task test` all green
 - [ ] `cd mAId && deno task check` typecheck clean
-- [ ] `nix profile install ./mAId` produces `maid` on `$PATH`
+- [ ] `nix profile install ./mAId` puts `maid` on `$PATH`
 - [ ] `maid deploy` creates every expected symlink from §5.3
 - [ ] `maid deploy` a second time is a no-op
 - [ ] `maid intent` returns the documented results for the three
   canonical prompts
 - [ ] Real Claude session loads only the intent-matched skills
-- [ ] Fresh VM: curl bootstrap → build → deploy → session works
-  end-to-end
-- [ ] `env/.kdevkit/feature/feature-build-layers.md` session log
-  updated with the work done
+- [ ] This file's session log updated with the work done
 
 ---
 
 ## Session Log
 <!-- Newest at top -->
 
-### 2026-05-07 - L4 de-nixified; README philosophy-first
-- `Gorantls-env/desktop/post-nix/flake.nix` removed along with
-  `post-nix-run.sh` wrapper. Replaced by a plain bash script
-  `Gorantls-env/desktop/post-nix-kelasa.sh`. Rationale: the flake
-  had zero nix dependencies at runtime — it shells out to
-  `toolbox` for every install, and its `installScript` body was
-  already pure bash templated through `writeShellScript`. The
-  `forAllSystems` wrapping and `packages.default` buildEnv were
-  ceremony nothing consumed. Collapsing to bash loses zero
-  functionality and removes the nixpkgs-unstable input dependency.
-- New script: same `AMAZON_TOOLS` list, same `~/.post-nix-rc`
-  content, same conflict-check with `readlink -f` trick. Key
-  behavior change per user direction: **hard-fail instead of
-  warn-and-continue** on `toolbox install` and `devspaces setup`
-  errors. Current flake swallowed errors with `|| echo warning`;
-  that's gone. `set -euo pipefail` + each command under `run`
-  surfaces genuine failures. Shared across all kelasa envKinds
-  for now (AL2/AL2023/darwin all use toolbox, no OS branches
-  needed in the body); split later if they diverge.
-- `env/README.md` Layer-design section rewritten to lead with the
-  philosophy instead of the mechanical script list. Four short
-  paragraphs describe L1/L2/L3/L4's *responsibility and why*, plus
-  a "why separate scripts" rationale about different change rates
-  (L1/L2 rare, L3 frequent, L4 out-of-band). The Layer table stays,
-  now under "At a glance" heading. Other README sections
-  (envKinds, branch flags, shell-hook extension points, tiered
-  packages, further reading) unchanged.
-- Verification on this AL2023 host: shellcheck clean, `--help`
-  and `--dry-run` both render correctly, unknown args error
-  cleanly. Real-run deferred to the user to avoid triggering a
-  `brazilcli` install + `devspaces setup` in the agent session.
-
-### 2026-05-06 - Iter 1 refinement: decouple the four layers
-- **No chaining.** Each layer is a distinct, single-purpose script
-  that exits when its job is done. User runs four commands in
-  sequence on a fresh machine, or just Layer 3 for day-2 rebuilds.
-  Runner/orchestrator deferred until a concrete need appears.
-- Trimmed `env/build-nix/bootstrap-common.sh` to L2-only: removed
-  `--envKind`, `--pre-nix`, `--post-nix`, `--post-clone`,
-  `invoke_layer_3`, `print_next_steps`, and the curl-mode re-exec
-  into Layer 3. Still curl-able and clone-runnable; auto-detects
-  both modes. Keeps `--dry-run`, `--help`, mode detection,
-  `ensure_workspace`, `ensure_github_ssh`, `clone_or_fetch`.
-- Trimmed all four Layer-1 scripts (`bootstrap-ubuntu-mane.sh`,
-  `bootstrap-al2-kelasa.sh`, `bootstrap-al2023-kelasa.sh`,
-  `bootstrap-darwin-kelasa.sh`): removed `ensure_envkind_default`,
-  `hand_off_to_layer_2`, and their invocations. Each script ends
-  cleanly after its last `ensure_*` step with a "Layer 1 done"
-  log.
-- Trimmed `env/build-nix/_common.sh`: removed the pre-nix/post-nix
-  `$1`/`$2` source-around-nix plumbing. From 98 → ~55 lines; flow
-  is now: replace placeholders → cd flake → eval `NIX_COMMAND` →
-  clean stray template dirs → restore placeholders → print
-  setup-notes. Refactored the two placeholder-sed blocks into a
-  single `replace_placeholders` helper.
-- Dropped `"$@"` from each Layer-3 script's
-  `source _common.sh` line. L3 scripts now take no args.
-- Made `Gorantls-env/desktop/post-nix/flake.nix` multi-system via
-  `forAllSystems` over `x86_64-linux`, `aarch64-linux`,
-  `x86_64-darwin`, `aarch64-darwin`. The installScript body is
-  unchanged; only the outputs are now per-system. Darwin users can
-  now `nix run .../post-nix#install` without the flake failing to
-  evaluate.
-- Rewrote `env/README.md` around decoupled layers:
-  Layer design (no chaining, four scripts, curl-ability by
-  layer), envKinds (L1/L4 location per envKind using
-  `<kelasa-specific env repo>` placeholder), Shell-hook extension
-  points (how L3 hooks L1 and L4 via `~/.pre-nix-rc` and
-  `~/.post-nix-rc`), Tiered package model.
-- Updated `env/setup-notes.md` to show the four-command sequence
-  instead of chaining prose. Added hook-extension-point section.
-
-### 2026-05-06 - Iter 1 refactor: envKind-aligned naming + kelasa split
-- Source of truth for names is `flake.nix`. All layers renamed to
-  the full envKind:
-  - Layer 3: `build-nix/{ubuntu,darwin,al2,al2023}.sh` →
-    `build-nix/{ubuntu-mane,darwin-kelasa,al2-kelasa,al2023-kelasa}.sh`
-    (via `git mv`; content unchanged).
-  - Layer 1 public: `build-nix/bootstrap-ubuntu.sh` →
-    `build-nix/bootstrap-ubuntu-mane.sh`, now auto-injects
-    `--envKind ubuntu-mane`.
-  - Layer 2: `bootstrap-common.sh` flag `--platform` → `--envKind`
-    (accepts both `--envKind NAME` and `--envKind=NAME`).
-- Kelasa Layer 1 moved to `Gorantls-env`:
-  - `desktop/bootstrap-al2.sh` → `bootstrap-al2-kelasa.sh` (git mv
-    + refactor).
-  - `desktop/bootstrap-al2023.sh` → `bootstrap-al2023-kelasa.sh`
-    (git mv + refactor).
-  - New `desktop/bootstrap-darwin-kelasa.sh` (minimal; docs brew +
-    Determinate installer as manual prereqs, self-clones
-    Gorantls-env, delegates to Layer 2).
-  - Each script: dropped generic steps (workspace, GitHub SSH,
-    env clone) now owned by Layer 2; kept kelasa-specific
-    (Amazon SSH/mwinit, self-clone, toolbox, sudoers [al2023],
-    single-user Nix, nix.conf, zsh/chsh [al2], ~/.pre-nix-rc
-    writer). Every step is verify-and-skip idempotent. Ends with
-    local-preferred / curl-fallback hand-off to Layer 2,
-    auto-injecting `--envKind <name>`.
-  - New `desktop/post-nix-run.sh`: thin wrapper around
-    `nix run desktop/post-nix#install`, sourceable by Layer 2 as
-    `--post-nix`. Flake itself unchanged; `nix run` directly still
-    works standalone.
-  - Deleted `desktop/pre-nix.sh` — its job (write ~/.pre-nix-rc
-    with toolbox PATH) now lives in each AL bootstrap as an
-    idempotent `ensure_pre_nix_rc` step. The `--pre-nix` hook
-    plumbing in `_common.sh` + Layer 2 stays as a generic
-    extension point.
-- env/README.md rewritten with four sections: Layer design +
-  responsibility table, envKind bootstrap table (using
-  `<kelasa-specific env repo>` placeholder, no names leak),
-  Shell-hook extension points (~/.pre-nix-rc / ~/.post-nix-rc),
-  Tiered package model (summarized from flake.nix:1-18).
-- env/setup-notes.md updated: "private sibling env repo" →
-  "envKind repo (public or private)"; curl path uses new
-  bootstrap-ubuntu-mane.sh; adds shell-hook extension-points
-  section.
-- Code review (two passes). Fixed: `post-nix-run.sh` used `exec`
-  inside a script that gets `source`d from `_common.sh:69` —
-  would've killed the caller. Now plain `nix run`. AL2
-  `ensure_toolbox`: `-fsS` on curl so HTML error pages don't
-  become the Authorization header; explicit cleanup in error
-  branches instead of RETURN trap. Wrapped `mkdir`/`chmod` on
-  `~/.ssh` and `~/.config/nix/` in `run` so `--dry-run` is truly
-  mutation-free. Improved `print_next_steps` placeholder wording.
-- Tests: `shellcheck -x` clean across all 6 scripts. Clone-mode,
-  curl-mode, and AL2023 dry-runs all trace L1→L2→L3 correctly
-  with zero mutations (staging HOME stays empty after two runs).
-  NFR5 grep on public env: only hits are legitimate abstract uses
-  (`corp`/`internal` as nouns, "Amazon Linux" as OS name,
-  `kusimari` as repo owner — spec FR-B3/NFR5 allows repo URLs in
-  scripts).
-
-### 2026-05-06 - Iteration 1 landed: four-layer bootstrap
-- Created `env/build-nix/bootstrap-common.sh` (Layer 2). Detects
-  curl-vs-clone mode via `--post-clone` sentinel + `$ENV_CLONE/.git`
-  check (not path-compare — handles symlinks and non-default clone
-  paths). Ensures workspace, checks GitHub SSH, clones/fetches env
-  + mAId, validates `--pre-nix` / `--post-nix` hooks, forwards them
-  to Layer 3 as positional $1 / $2 per `_common.sh`'s existing
-  contract. Accepts `--platform` to chain into `build-nix/<name>.sh`
-  or prints next-step instructions. `--dry-run` is fully honored
-  (no mutations, no ssh-keygen, re-exec is logged-only).
-  Arg parser accepts both `--flag value` and `--flag=value`.
-- Created `env/build-nix/bootstrap-ubuntu.sh` (Layer 1 Ubuntu).
-  Checks `ID=ubuntu`, installs apt prereqs (build-essential, curl,
-  git, xz-utils, ca-certificates, openssh-client), installs Nix via
-  Determinate installer (multi-user, `--no-confirm`), then hands
-  off to Layer 2 — preferring a local clone and falling back to
-  curl. Auto-injects `--platform ubuntu` so `curl | bash` runs
-  end-to-end through Layer 3. `--dry-run` honored throughout.
-- Updated `env/setup-notes.md` with the four-layer cheat-sheet, a
-  fresh-machine curl example, the `--pre-nix`/`--post-nix` flag
-  shape, and the private-sibling-env-repo delegation contract.
-  Added a forward-reference to `nix profile install .` + `maid
-  deploy` for once iter 2 lands.
-- Rewrote `env/README.md` as a four-layer overview with a
-  quick-start, per-platform table, and pointers onward. Darwin row
-  explicitly notes "no Layer-1 script; see darwin.sh header".
-- NFR5: all new files scrubbed of site/employer/internal-tool
-  identifiers. Only repo URLs present: `github.com/kusimari/env`
-  and `github.com/kusimari/mAId`.
-- Code review (two passes, external agent). Fixed: curl path not
-  auto-continuing to Layer 3; `--dry-run` mutating SSH state;
-  brittle `sed -n` usage(); symlink-unsafe mode detection;
-  silent `chmod +x` on tracked files; GNU-style `--flag=value`
-  previously rejected; `ssh-keygen` hang on non-TTY when path
-  existed as non-key; Ubuntu Layer 1 ignoring `--dry-run`.
-- Tests passed: `shellcheck -x` clean over both new scripts.
-  Idempotent dry-run: two runs against a staging HOME produce
-  byte-identical output and leave the HOME untouched (only the
-  tmpdir inode remains). End-to-end dry-run from faked Ubuntu
-  os-release shows L1 → L2 → L3 chain with zero mutations.
-  `env/build-nix/test.sh` not run here (requires a real nix build;
-  user's domain).
-- Not yet done: writing-style draft, intent keyword list, symlink
-  relative-vs-absolute decision — all deferred to Iter 2 where
-  they're load-bearing.
-
-### 2026-05-05 - Spec/design/impl/test plan locked
-- Restructured the doc into spec (§1), design (§2), skills content
-  drafts (§3), implementation plan with strict TDD ordering (§4),
-  and test plan (§5). Added §6 resolved decisions, §7 file list,
-  §8 open items, §9 verification checklist.
-- Locked design decisions through interview: Deno runtime (not
-  Nix for transforms), minimal flake wrapper, link-vs-build mode
-  via frontmatter, three source types (original / external /
-  patch), central registry, intent routing lives in top-level
-  `CLAUDE.md` (not as a skill), `inbox/` committed, darwin Layer-1
-  skipped.
-- Branch scope bounded to iterations 1 + 2. Iterations 3–6
-  captured so the system is evaluated whole but not implemented
-  here.
-- Skills drafted inline: `git.md` (branches, commits, staging,
-  destructive-op guardrails, PRs); `development.md` (scope
-  discipline, verification habits, reversibility, planning;
-  inspired-by kdevkit/feature-dev.md and kdevkit/agent-dev-loop.md
-  as attribution only); `writing-style.md` (scrub + port pending).
-- Public-repo scrub pass: replaced employer/site/tool-specific
-  identifiers with abstract "private sibling env repo" references
-  per NFR5.
-
-### 2026-04-30 - Scrub site-specific references
-- Removed employer-specific names, internal tool names, and
-  specific org/user handles from the doc. Replaced with abstract
-  references ("private sibling env repo", "site-specific auth").
-  Added NFR5 to make the policy explicit. Concrete clone URLs stay
-  in the bootstrap scripts, not in this design doc.
-
-### 2026-04-30 - Spun out from misc-updates
-- Split bootstrap + mAId work out of `misc-updates` into this new
-  feature doc. The mAId sibling repo is already cloned empty at
-  `~/env-workplace/mAId`; when work begins, branch off to
-  `feature-build-layers`.
-- No code written yet. First implementation task is the
-  requirements pass with the user (interactive skills content,
-  nail down activator mechanism, decide on build-script
-  unification question).
+<!-- Populated as implementation happens. -->
