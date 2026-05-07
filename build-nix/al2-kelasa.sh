@@ -1,9 +1,8 @@
 #!/bin/bash
 
-# Prerequisites for Amazon Linux 2:
-# - Nix installed with SINGLE-USER mode: sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --no-daemon
-# - SSL certificates fixed (run bootstrap-al2.sh)
-# - zsh with chsh of user (run bootstrap-al2.sh)
+# Prerequisites for al2-kelasa: run Layer 1 (bootstrap-al2-kelasa.sh
+# in a kelasa-specific env repo) first. It installs single-user Nix,
+# sets up SSL certificates, and chsh's to zsh.
 
 # nix setup
   # run home-manager - temporarily replace placeholder values, run nix, then revert with sed
@@ -20,4 +19,4 @@ export NIX_ECHO_MESSAGE="Running home-manager init with backup..."
 # export NIX_ECHO_MESSAGE="Running home-manager switch..."
 
 # Execute common functionality
-source "$(dirname "${BASH_SOURCE[0]}")/_common.sh" "$@"
+source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"

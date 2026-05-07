@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Prerequisites for Amazon Linux 2023:
-# - Nix installed: sh <(curl --proto '=https' --tlsv1.2 -L https://nixos.org/nix/install) --no-daemon
-# - SSL certificates fixed (run bootstrap-al2023.sh)
-# - zsh with chsh of user (run bootstrap-al2023.sh)
+# Prerequisites for al2023-kelasa: run Layer 1
+# (bootstrap-al2023-kelasa.sh in a kelasa-specific env repo) first.
+# It installs single-user Nix, sets up SSL certificates, and
+# configures sudoers for /nix dir creation.
 
 # nix setup
   # run home-manager - temporarily replace placeholder values, run nix, then revert with sed
@@ -20,4 +20,4 @@ export NIX_ECHO_MESSAGE="Running home-manager init with backup..."
 # export NIX_ECHO_MESSAGE="Running home-manager switch..."
 
 # Execute common functionality
-source "$(dirname "${BASH_SOURCE[0]}")/_common.sh" "$@"
+source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
