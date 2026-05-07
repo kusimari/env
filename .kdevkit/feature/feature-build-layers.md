@@ -3,7 +3,7 @@
 ## Status
 
 ✅ **Iteration 1 complete.** Four-layer bootstrap design shipped
-across `env` (public) and `Gorantls-env` (private, kelasa
+across `env` (public) and a private kelasa env repo (private
 envKinds). Iter 2 (`mAId`) continues in
 `.kdevkit/feature/wip/feature-build-layers.md` — that doc
 references this one for the layered context it now builds on.
@@ -28,27 +28,28 @@ bash-only, using the OS's native package manager.
 
 - `env/build-nix/bootstrap-ubuntu-mane.sh` — apt prereqs +
   Determinate Nix installer. Public envKind.
-- `Gorantls-env/desktop/bootstrap-al2-kelasa.sh` — Amazon SSH +
-  mwinit check, self-clone Gorantls-env, toolbox install, single-
-  user Nix install (auth-sync-safe), `/etc/nix/nix.conf`, chsh
-  to zsh, idempotent `~/.pre-nix-rc` writer.
-- `Gorantls-env/desktop/bootstrap-al2023-kelasa.sh` — same pattern
-  as al2-kelasa; AL2023-specific SSL cert path, sudoers NOPASSWD
-  for `/nix` creation, no chsh step (AL2023 ships with zsh).
-- `Gorantls-env/desktop/bootstrap-darwin-kelasa.sh` — minimal:
-  require_nix, self-clone Gorantls-env, pin git identity. brew is
-  NOT required here (nix-darwin manages it via
+- `<kelasa-env-repo>/desktop/bootstrap-al2-kelasa.sh` — corp SSH +
+  auth check, self-clone the kelasa env repo, vendor-tool install,
+  single-user Nix install (auth-sync-safe), `/etc/nix/nix.conf`,
+  chsh to zsh, idempotent `~/.pre-nix-rc` writer.
+- `<kelasa-env-repo>/desktop/bootstrap-al2023-kelasa.sh` — same
+  pattern as al2-kelasa; AL2023-specific SSL cert path, sudoers
+  NOPASSWD for `/nix` creation, no chsh step (AL2023 ships with
+  zsh).
+- `<kelasa-env-repo>/desktop/bootstrap-darwin-kelasa.sh` — minimal:
+  require_nix, self-clone the kelasa env repo, pin git identity.
+  brew is NOT required here (nix-darwin manages it via
   `homebrew.enable`).
 
 Every L1 script:
 - Is curl-able and clone-runnable.
 - Accepts `--dry-run` (mutation-free) and `--help`.
 - Accepts `--branch NAME` and `--branch=NAME` on kelasa L1s to
-  clone or switch the Gorantls-env checkout to a feature branch;
+  clone or switch the kelasa env repo checkout to a feature branch;
   refuses to clobber uncommitted changes.
 - Is step-level idempotent (`ensure_*` helpers verify-and-skip).
-- Pins commit identity on the clone it makes — kelasa L1s set
-  `$USER@amazon.com` on Gorantls-env; L2 sets
+- Pins commit identity on the clone it makes — kelasa L1s set a
+  corp identity on the kelasa env repo; L2 sets
   `kusimari <kusimari@gmail.com>` on env + mAId. Local config
   only; global git config is never touched.
 
@@ -91,18 +92,18 @@ L3 exposes two shell-hook extension points
 
 ### Layer 4 — non-nixable post-install (envKind-specific)
 
-Runs any time after nix exists. Installs tools via vendor tooling
-(toolbox for kelasa); writes `~/.post-nix-rc` with PATH / aliases
-that depend on L3 artifacts.
+Runs any time after nix exists. Installs tools via whatever vendor
+tooling the kelasa env needs; writes `~/.post-nix-rc` with PATH /
+aliases that depend on L3 artifacts.
 
-- `Gorantls-env/desktop/post-nix-kelasa.sh` — plain bash script
-  (no nix flake, no `nix run` indirection). Checks toolbox is
-  present, conflict-checks each `AMAZON_TOOLS` entry against non-
-  toolbox installs (resolving symlinks), installs missing tools
-  via toolbox, runs `devspaces setup`, writes `~/.post-nix-rc`.
+- `<kelasa-env-repo>/desktop/post-nix-kelasa.sh` — plain bash script
+  (no nix flake, no `nix run` indirection). Checks the vendor tool
+  is present, conflict-checks each corp-tool entry against non-
+  vendor installs (resolving symlinks), installs missing tools via
+  the vendor tool, runs its setup hook, writes `~/.post-nix-rc`.
 - Hard-fails on any error. No silent `|| echo warning` swallowing.
 - Shared across all kelasa envKinds (AL2 / AL2023 / darwin —
-  toolbox abstracts OS differences).
+  the vendor tool abstracts OS differences).
 
 ---
 
@@ -167,8 +168,9 @@ know what's in them — it just sources them.
 - `flake.nix` (added `doCheck = false` overlay for direnv after
   aarch64-darwin test-suite hang)
 
-**Gorantls-env** (`feature-build-layers` branch, merged-to-mainline
-pending)
+**Kelasa env repo** (`feature-build-layers` branch, merged-to-
+mainline pending; site-specific prep lives here, not in this
+public repo)
 - `desktop/bootstrap-al2-kelasa.sh` (renamed + refactored)
 - `desktop/bootstrap-al2023-kelasa.sh` (renamed + refactored)
 - `desktop/bootstrap-darwin-kelasa.sh` (new)
@@ -193,10 +195,10 @@ pending)
   that logs planned actions without touching disk.
 - **Hard-fail on real errors.** L4 stopped swallowing errors with
   `|| echo warning` — genuine failures now surface.
-- **Commit identity pinning.** L1 pins `$USER@amazon.com` on
-  Gorantls-env; L2 pins `kusimari <kusimari@gmail.com>` on env +
-  mAId. Local git config only. Prevents dev-desktop hostname
-  leaks into commit metadata of public repos.
+- **Commit identity pinning.** L1 pins a corp identity on the
+  kelasa env repo; L2 pins `kusimari <kusimari@gmail.com>` on
+  env + mAId. Local git config only. Prevents dev-desktop
+  hostname leaks into commit metadata of public repos.
 
 ---
 
@@ -205,24 +207,24 @@ pending)
 <!-- Newest at top. Iter-2 log lives in the WIP doc. -->
 
 ### 2026-05-07 - L4 de-nixified; README philosophy-first
-- `Gorantls-env/desktop/post-nix/flake.nix` removed along with
-  `post-nix-run.sh` wrapper. Replaced by a plain bash script
-  `Gorantls-env/desktop/post-nix-kelasa.sh`. Rationale: the flake
-  had zero nix dependencies at runtime — it shells out to
-  `toolbox` for every install, and its `installScript` body was
-  already pure bash templated through `writeShellScript`. The
-  `forAllSystems` wrapping and `packages.default` buildEnv were
-  ceremony nothing consumed. Collapsing to bash loses zero
+- The L4 flake in the kelasa env repo (`desktop/post-nix/flake.nix`)
+  was removed along with its `post-nix-run.sh` wrapper. Replaced
+  by a plain bash script `desktop/post-nix-kelasa.sh`. Rationale:
+  the flake had zero nix dependencies at runtime — it shells out
+  to the vendor tool for every install, and its `installScript`
+  body was already pure bash templated through `writeShellScript`.
+  The `forAllSystems` wrapping and `packages.default` buildEnv
+  were ceremony nothing consumed. Collapsing to bash loses zero
   functionality and removes the nixpkgs-unstable input dependency.
-- New script: same `AMAZON_TOOLS` list, same `~/.post-nix-rc`
-  content, same conflict-check with `readlink -f` trick. Key
-  behavior change per user direction: **hard-fail instead of
-  warn-and-continue** on `toolbox install` and `devspaces setup`
-  errors. Current flake swallowed errors with `|| echo warning`;
-  that's gone. `set -euo pipefail` + each command under `run`
-  surfaces genuine failures. Shared across all kelasa envKinds
-  for now (AL2/AL2023/darwin all use toolbox, no OS branches
-  needed in the body); split later if they diverge.
+- New script: same corp-tool list, same `~/.post-nix-rc` content,
+  same conflict-check with `readlink -f` trick. Key behavior
+  change per user direction: **hard-fail instead of warn-and-
+  continue** on vendor install / setup errors. The flake swallowed
+  errors with `|| echo warning`; that's gone. `set -euo pipefail`
+  + each command under `run` surfaces genuine failures. Shared
+  across all kelasa envKinds for now (AL2/AL2023/darwin all use
+  the same vendor tool, no OS branches needed in the body); split
+  later if they diverge.
 - `env/README.md` Layer-design section rewritten to lead with the
   philosophy instead of the mechanical script list. Four short
   paragraphs describe L1/L2/L3/L4's *responsibility and why*, plus
@@ -274,25 +276,25 @@ pending)
     (via `git mv`; content unchanged).
   - Layer 1 public: `build-nix/bootstrap-ubuntu.sh` →
     `build-nix/bootstrap-ubuntu-mane.sh`.
-- Kelasa Layer 1 moved to `Gorantls-env`:
+- Kelasa Layer 1 moved to the kelasa env repo:
   - `desktop/bootstrap-al2.sh` → `bootstrap-al2-kelasa.sh`.
   - `desktop/bootstrap-al2023.sh` → `bootstrap-al2023-kelasa.sh`.
   - New `desktop/bootstrap-darwin-kelasa.sh` (minimal).
   - Each: dropped generic steps (workspace, GitHub SSH, env clone)
-    now owned by Layer 2; kept kelasa-specific (Amazon SSH/mwinit,
-    self-clone, toolbox, sudoers [al2023], single-user Nix,
-    nix.conf, zsh/chsh [al2], `~/.pre-nix-rc` writer).
+    now owned by Layer 2; kept kelasa-specific (corp SSH/auth,
+    self-clone, vendor tool install, sudoers [al2023], single-
+    user Nix, nix.conf, zsh/chsh [al2], `~/.pre-nix-rc` writer).
   - Deleted `desktop/pre-nix.sh` — its job (write `~/.pre-nix-rc`
-    with toolbox PATH) now lives in each AL bootstrap as an
+    with vendor-tool PATH) now lives in each AL bootstrap as an
     idempotent `ensure_pre_nix_rc` step.
 - Code review (two passes). Fixed: `post-nix-run.sh` used `exec`
   inside a script that gets `source`d from `_common.sh:69` —
   would've killed the caller. Now plain `nix run` (since removed).
-  AL2 `ensure_toolbox`: `-fsS` on curl so HTML error pages don't
-  become the Authorization header; explicit cleanup in error
-  branches instead of RETURN trap. Wrapped `mkdir`/`chmod` on
-  `~/.ssh` and `~/.config/nix/` in `run` so `--dry-run` is truly
-  mutation-free.
+  AL2 vendor-tool install: `-fsS` on curl so HTML error pages
+  don't become the Authorization header; explicit cleanup in
+  error branches instead of RETURN trap. Wrapped `mkdir`/`chmod`
+  on `~/.ssh` and `~/.config/nix/` in `run` so `--dry-run` is
+  truly mutation-free.
 
 ### 2026-05-06 - Iteration 1 landed: four-layer bootstrap
 - Created `env/build-nix/bootstrap-common.sh` (Layer 2). Initial

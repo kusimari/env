@@ -33,10 +33,10 @@ machine; run only Layer 3 for day-2 rebuilds.
   below.
 
 - **Layer 4 — non-nixable post-install via the envKind repo.**
-  Site-specific tool installs (via vendor tooling like `toolbox`,
-  not nix), one-time setup commands, shell aliases keyed to
-  non-nix binaries. Writes `~/.post-nix-rc`; never builds nix
-  artifacts.
+  Site-specific tool installs (via whatever vendor tooling the
+  site requires, not nix), one-time setup commands, shell aliases
+  keyed to non-nix binaries. Writes `~/.post-nix-rc`; never
+  builds nix artifacts.
 
 Why four distinct scripts, no chaining? L1 and L2 run rarely (new
 machine, major env refresh). L3 runs often. L4 is out-of-band and
@@ -98,9 +98,11 @@ named branch if the working tree is clean — they refuse to clobber
 uncommitted changes, and prompt you to commit or stash first.
 
 ```bash
-# L1 — pass --branch to check out a Gorantls-env feature branch
-curl -fsSL -b ~/.midway/cookie \
-  'https://code.amazon.com/packages/Gorantls-env/blobs/heads/feature-build-layers/--/desktop/bootstrap-<envKind>.sh?raw=1' \
+# L1 — pass --branch to check out a feature branch of a kelasa-
+# specific env repo. The curl URL (and any auth it needs) is
+# whatever your private hosting provider uses; see that repo's
+# own README.
+curl <L1-url-from-your-kelasa-env-repo> \
   | bash -s -- --branch feature-build-layers
 
 # L2 — pass --env-branch / --maid-branch to pick non-main branches

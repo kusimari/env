@@ -3,30 +3,28 @@
 ## Status
 
 📋 **Not started.** Captured during `feature-build-layers` work
-when a commit was about to go out with the corporate dev-desktop
-hostname email (`gorantls@dev-dsk-<...>.amazon.com`) into a public
-GitHub repo. Amended once by hand; want a durable fix so it never
-happens again.
+when a commit was about to go out with a corporate dev-desktop
+hostname email into a public GitHub repo. Amended once by hand;
+want a durable fix so it never happens again.
 
 ## Problem
 
-Git picks the committer identity from the first place it finds one:
-repo-local config → global config → environment → hostname-derived
-default. On fresh machines or freshly cloned repos with no local
-identity set, git silently falls back to
+Git picks the committer identity from the first place it finds
+one: repo-local config → global config → environment → hostname-
+derived default. On fresh machines or freshly cloned repos with no
+local identity set, git silently falls back to
 `<user>@<hostname>`, which on corporate dev desktops leaks an
 employer-identifying string into the commit log of public repos.
 
 Concrete incident (2026-05-05): a commit on public
 `github.com/kusimari/env` was about to go out as
-`gorantls@dev-dsk-gorantls-2b-b4bddea0.us-west-2.amazon.com`
-before amend. The public commit history already has some of these
-from earlier sessions — acceptable but not desirable going
-forward.
+`<user>@<dev-desktop-FQDN>` before amend. The public commit
+history already has some of these from earlier sessions —
+acceptable but not desirable going forward.
 
-Mirror concern: corporate-hosted repos want the corporate email
-(`gorantls@amazon.com`), not the public one (`kusimari@gmail.com`).
-A single global default can't satisfy both.
+Mirror concern: corporate-hosted repos want the corporate email,
+not the public one (`kusimari@gmail.com`). A single global default
+can't satisfy both.
 
 ## Goal
 
@@ -50,10 +48,12 @@ working directory:
     path = ~/.gitconfig-corporate
 ```
 
-With `~/.gitconfig-public` setting `user.email = kusimari@gmail.com`
-and `~/.gitconfig-corporate` setting `user.email =
-gorantls@amazon.com`. Works automatically by directory location.
-Nix/home-manager can render these files.
+With `~/.gitconfig-public` setting `user.email =
+kusimari@gmail.com` and `~/.gitconfig-corporate` setting
+`user.email` to the corporate identity. Works automatically by
+directory location. Nix/home-manager can render these files —
+*except* the concrete corporate email value, which stays out of
+this public repo (see Implementation notes).
 
 Trade-off: depends on the user placing repos in the right
 directory tree. `env-workplace/` is the standard location for
@@ -78,7 +78,9 @@ fully declarative and home-manager-renderable. Add Option 2
 ## Scope
 
 - Add home-manager-managed `~/.gitconfig-public` and
-  `~/.gitconfig-corporate` (or equivalent split).
+  `~/.gitconfig-corporate` (or equivalent split). Public-side file
+  may carry the public email; corporate-side file is rendered from
+  a value kept outside this public repo.
 - Update `~/.gitconfig` to use `includeIf` based on directory.
 - Document the directory convention in `env/setup-notes.md`.
 - Consider: should the email configuration move to the `mAId`
@@ -97,8 +99,8 @@ fully declarative and home-manager-renderable. Add Option 2
 - `env/home/` is where home-manager modules live. A small
   `home/git-identity.nix` module would render the three config
   files and wire `programs.git.includes`.
-- The public/corporate identity values should NOT live in this
-  public `env` repo. They belong in:
+- Concrete identity values (corporate email, corp-user handle) do
+  NOT live in this public repo. They belong in:
   - The `mAId` repo (if we treat identity as agentic-env config), or
   - A *private sibling env repo* (more likely), or
   - A `~/.gitconfig.local` pointed at by a public `include =
@@ -111,8 +113,9 @@ fully declarative and home-manager-renderable. Add Option 2
 
 - Commit in `~/env-workplace/<any-repo>/` uses
   `kusimari@gmail.com` without any manual config.
-- Commit in a corporate-repo directory uses
-  `gorantls@amazon.com` without any manual config.
+- Commit in a corporate-repo directory uses the corporate
+  identity (resolved from the private config file) without any
+  manual config.
 - Fresh machine bootstrap (via `feature-build-layers`
   `bootstrap-common.sh`) leaves the identity wiring in place.
 
