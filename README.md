@@ -24,19 +24,21 @@ machine; run only Layer 3 for day-2 rebuilds.
   Clones `env` and `mAId` into `~/env-workplace/`, confirms GitHub
   SSH, pins commit identity, exits.
 
-- **Layer 3 — build the nix environment.** `home-manager switch`
-  or `nix-darwin switch` from the cloned source. Nixifies
-  everything that belongs in nix. Exposes two extension points —
-  `~/.pre-nix-rc` and `~/.post-nix-rc` — so Layer 1 and Layer 4
-  can inject shell state that doesn't belong in the flake. See
+- **Layer 3 — build the nix environment, then run universal
+  post-nix tail.** `home-manager switch` or `nix-darwin switch`
+  from the cloned source, followed by `build-nix/post-nix-common.sh`.
+  The tail is envKind-agnostic; anything envKind-specific belongs
+  in Layer 4. Layer 3 also exposes two extension points —
+  `~/.pre-nix-rc` and `~/.post-nix-rc` — so Layer 1 and Layer 4 can
+  inject shell state that doesn't belong in the flake. See
   [Shell-hook extension points](#shell-hook-extension-points--how-layer-3-hooks-layer-1-and-layer-4)
   below.
 
-- **Layer 4 — non-nixable post-install via the envKind repo.**
+- **Layer 4 — envKind-specific non-nixable post-install.**
   Site-specific tool installs (via whatever vendor tooling the
   site requires, not nix), one-time setup commands, shell aliases
-  keyed to non-nix binaries. Writes `~/.post-nix-rc`; never
-  builds nix artifacts.
+  keyed to non-nix binaries. Lives in the envKind's own repo.
+  Writes `~/.post-nix-rc`; never builds nix artifacts.
 
 Why four distinct scripts, no chaining? L1 and L2 run rarely (new
 machine, major env refresh). L3 runs often. L4 is out-of-band and
@@ -50,8 +52,8 @@ layer's scope obvious and debuggable alone.
 |---|---|---|---|---|
 | 1 | `bootstrap-<envKind>.sh` | `env` (public envKinds) or a `<kelasa-specific env repo>` | yes | Machine ready for nix |
 | 2 | `build-nix/bootstrap-common.sh` | `env` | yes | env + mAId cloned |
-| 3 | `build-nix/<envKind>.sh` | `env` | no | nix build |
-| 4 | `post-nix-kelasa.sh` | `<kelasa-specific env repo>` | no | non-nixable post-install |
+| 3 | `build-nix/<envKind>.sh` → `build-nix/post-nix-common.sh` | `env` | no | nix build + universal post-nix nudges |
+| 4 | `post-nix-kelasa.sh` | `<kelasa-specific env repo>` | no | envKind-specific non-nixable post-install |
 
 Day-2 rebuild: just run Layer 3.
 

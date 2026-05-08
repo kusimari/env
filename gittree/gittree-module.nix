@@ -44,6 +44,14 @@ in
         # Launch lazygit with our config
         ${lazygit}/bin/lazygit "$@"
       '')
+
+      # gitrec - run a git subcommand across every repo under cwd in parallel.
+      # Wraps ./gitrec.py in a python3 with toolz on sys.path; pyflakes runs
+      # at build time so a typo fails the home-manager switch, not the shell.
+      (writers.writePython3Bin "gitrec" {
+        libraries = [ python3Packages.toolz ];
+        flakeIgnore = [ "E501" "W503" ];
+      } (builtins.readFile ./gitrec.py))
     ];
   };
 }
