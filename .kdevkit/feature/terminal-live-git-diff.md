@@ -508,7 +508,7 @@ home.file.".config/emacs".source = ../emacs;
 ✅ **Fixed lazygit-config.yml**: Removed hardcoded emacs path and `-q -l` flags
 ```yaml
 # Before: Used hardcoded path and minimal emacs config
-command: 'emacs -q -l "/Users/gorantls/env/feature/terminal-live-git-diff/emacs/core.el" "{{.SelectedFile.Name}}" -eval "..."'
+command: 'emacs -q -l "~/env/feature/terminal-live-git-diff/emacs/core.el" "{{.SelectedFile.Name}}" -eval "..."'
 
 # After: Uses user's normal emacs configuration
 command: 'emacs "{{.SelectedFile.Name}}" -eval "(condition-case nil (ediff-revision (buffer-file-name) \"\") (error (magit-diff-buffer-file)))"'

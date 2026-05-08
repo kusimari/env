@@ -13,7 +13,7 @@ You are a coding agent helping to capture an existing project workspace into a r
 
 2. **Output metadata directory** - Where to store the captured configuration
    - Ask: "Where should I store the project metadata?"
-   - Example: `~/env-workplace/Gorantls-env/projects` or `/local/home/user/env-workplace/Gorantls-env/projects`
+   - Example: `~/env-workplace/<env-repo>/projects` or `/local/home/<user>/env-workplace/<env-repo>/projects`
    - Validate: Check that directory exists
 
 3. **Project name** (optional) - Name for this project

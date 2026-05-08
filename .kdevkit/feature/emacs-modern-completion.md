@@ -2,7 +2,7 @@
 
 ## ✅ STATUS: Phase 3 Partial - Embark Added for Contextual Actions
 **Goal:** Replace Ivy/Helm → Modern Vertico + Consult + Marginalia + Embark stack
-**Config:** `/Users/gorantls/env/home/emacs.el`
+**Config:** `~/env/home/emacs.el`
 **Branch:** `feature/emacs-modern-completion`
 
 ### What's Working ✅
