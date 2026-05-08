@@ -33,8 +33,10 @@ pn_prime_path() {
 
 # gh auth: the token lives in ~/.config/gh/hosts.yml (or the OS keychain
 # if gh was compiled with support). Either way it's per-user, portable
-# via that file, and outside the nix store. We just make sure the user
-# has logged in once; we never write the token ourselves.
+# via that file, and outside the nix store. Mirrors the shape of
+# ensure_github_ssh in bootstrap-common.sh — check silently, do the
+# automatable part ourselves (invoke `gh auth login`), then let the
+# user complete the manual step (paste the device code) interactively.
 pn_ensure_gh_auth() {
     if ! command -v gh >/dev/null 2>&1; then
         pn_warn "gh not on PATH yet; skipping auth check (re-run this script after the next shell opens)"
@@ -46,21 +48,29 @@ pn_ensure_gh_auth() {
         return 0
     fi
 
+    pn_warn "gh not authenticated for github.com — launching 'gh auth login'"
     cat >&2 <<'EOF'
 
-⚠️  Manual action required
-    gh is installed but not authenticated. On this headless-friendly box,
-    run:
+    You'll be prompted to:
+      - open https://github.com/login/device on any browser (laptop/phone/…)
+      - paste the one-time code gh is about to print
+      - approve the device
 
-        gh auth login -h github.com -p ssh -w
+    Token will persist in ~/.config/gh/hosts.yml across shells and reboots.
+    Ctrl-C skips (the rest of post-nix continues).
 
-    Pick "Login with a web browser"; gh prints a one-time code and URL.
-    Open the URL on any device (laptop/phone), paste the code, approve.
-    Token persists in ~/.config/gh/hosts.yml across shells and reboots.
-
-    Re-run the build script when done to re-verify.
 EOF
-    return 1
+
+    # -h github.com : target host
+    # -p ssh        : match the existing git remote protocol
+    # -w            : device-code web flow (works on headless)
+    if gh auth login -h github.com -p ssh -w; then
+        pn_log "gh auth login succeeded"
+        return 0
+    fi
+
+    pn_warn "gh auth login did not complete; re-run this script (or \`gh auth login -h github.com -p ssh -w\`) later"
+    return 0
 }
 
 # ── Flow ──────────────────────────────────────────────────────────────
