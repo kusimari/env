@@ -200,4 +200,11 @@
   '';
   home.file.".zfunc/_rclone-env".source = ../rclone-env/_rclone-env;
 
+  # Overwrite any pre-existing ~/.config/nix/nix.conf instead of backing it up.
+  # Layer 1 bootstrap scripts also write this file; without force, home-manager
+  # tries to rename the existing file to .bak and aborts when a stale .bak
+  # lingers from a prior activation. Contents are fully reproducible from
+  # Layer 1 + this flake, so nothing is worth preserving in a backup.
+  xdg.configFile."nix/nix.conf".force = true;
+
 }
