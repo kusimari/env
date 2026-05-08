@@ -44,7 +44,7 @@ Enhanced tmux configuration with distinctive visual highlighting of the active p
   - ✅ Fixed configuration conflict by commenting out old basic settings that conflicted with enhanced version
   - ✅ Reorganized tmux.conf with clear documentation of active configuration
   - ✅ Confirmed all tmux functionality is merged into master (manual integration via commit a04ae46)
-  - ✅ **Cleaned up feature branch**: Removed `/Users/gorantls/env/feature/tmux-pane-highlight` worktree and deleted `feature/tmux-pane-highlight` branch
+  - ✅ **Cleaned up feature branch**: Removed `~/env/feature/tmux-pane-highlight` worktree and deleted `feature/tmux-pane-highlight` branch
 - **Current State**: Clean repository with only master branch containing all tmux enhancements - ready for testing
 - **Next Step**: Test configuration with `darwin-rebuild switch` followed by tmux reload
 

@@ -37,7 +37,6 @@
     rclone
     exiftool
 
-    claude-code
     gemini-cli-bin
     gh
 
@@ -53,9 +52,10 @@
     (pkgs.writeShellScriptBin "nix-init" (builtins.readFile ../nix-init/nix-init.sh))
   ]
   # Tier 2 — wanted on every env but not installable via nix on some envs.
-  # No entries today. Example shape when adding one:
-  #   ++ lib.optionals (envKind != "kelasa") [ some-pkg ]
-  ;
+  ++ lib.optionals (envKind != "kelasa") [
+    # kelasa envs provide claude through their own post-install tooling.
+    claude-code
+  ];
 
 
   programs.alacritty = {

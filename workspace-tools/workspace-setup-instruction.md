@@ -8,7 +8,7 @@ You are a coding agent helping to recreate a project workspace from its workspac
 
 1. **Project metadata directory** - Path to the project's metadata containing workspace.md
    - Ask: "Which project should I setup? (provide path to project metadata directory)"
-   - Example: `~/env-workplace/Gorantls-env/projects/trace`
+   - Example: `~/env-workplace/<env-repo>/projects/trace`
    - Validate: Check that directory exists and contains workspace.md
 
 2. **Target workspace directory** (optional) - Where to create the workspace
