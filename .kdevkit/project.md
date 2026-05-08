@@ -32,17 +32,13 @@ discussion; the table below is the operational summary.
 |---|---|---|---|---|
 | 1 | `bootstrap-<envKind>.sh` | `env` (public) or `<kelasa-specific env repo>` | New machine | Native OS prep: auth, certs, sudoers, package mirrors. Makes machine nix-ready. |
 | 2 | `build-nix/bootstrap-common.sh` | `env` | New machine | Clones `env` + `mAId` into `~/env-workplace/`, pins git identity. |
-| 3 | `build-nix/<envKind>.sh` → sources `build-nix/post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then universal (envKind-agnostic) post-nix nudges: prime PATH, check `gh auth`. |
-| 4 | `post-nix-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa | envKind-specific non-nixable post-install. Installs corporate tooling via vendor tooling; writes `~/.post-nix-rc`. |
+| 3 | `build-nix/<envKind>.sh` → sources `build-nix/post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
+| 4 | `post-nix-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
 
-**L3 vs L4 post-nix split.** Layer 3's `post-nix-common.sh` runs on
-every envKind and only does work that applies universally — nothing
-site-specific. Layer 4 is the home for envKind-specific non-nixable
-work, lives in a different repo, and can legitimately differ per
-envKind. If a post-nix check would be useful on every envKind
-(e.g. `gh auth status`, credential checks for broadly-used tools),
-it belongs in L3's `post-nix-common.sh`. If it's only meaningful on
-`kelasa` (or any single envKind), it belongs in L4.
+**L3 vs L4 post-nix split.** L3's `post-nix-common.sh` is
+envKind-agnostic; L4 is envKind-specific. If a post-nix step is
+useful on every envKind, it belongs in L3. If it's meaningful only
+on one envKind, it belongs in L4.
 
 **Shell hook bridge.** Layers 1 and 4 are not nix-managed, but they can
 inject shell state into the nix-managed zsh by writing to

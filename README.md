@@ -25,17 +25,12 @@ machine; run only Layer 3 for day-2 rebuilds.
   SSH, pins commit identity, exits.
 
 - **Layer 3 — build the nix environment, then run universal
-  post-nix nudges.** `home-manager switch` or `nix-darwin switch`
-  from the cloned source, followed by `build-nix/post-nix-common.sh`
-  — a universal tail sourced by every envKind's L3 script. That
-  tail handles non-nixable work that applies to **every** envKind
-  (currently: `gh auth` status check, PATH priming for the
-  just-switched shell). It's explicitly *not* envKind-specific;
-  anything that is belongs in Layer 4.
-
-  Layer 3 also exposes two extension points — `~/.pre-nix-rc` and
-  `~/.post-nix-rc` — so Layer 1 and Layer 4 can inject shell state
-  that doesn't belong in the flake. See
+  post-nix tail.** `home-manager switch` or `nix-darwin switch`
+  from the cloned source, followed by `build-nix/post-nix-common.sh`.
+  The tail is envKind-agnostic; anything envKind-specific belongs
+  in Layer 4. Layer 3 also exposes two extension points —
+  `~/.pre-nix-rc` and `~/.post-nix-rc` — so Layer 1 and Layer 4 can
+  inject shell state that doesn't belong in the flake. See
   [Shell-hook extension points](#shell-hook-extension-points--how-layer-3-hooks-layer-1-and-layer-4)
   below.
 
@@ -43,9 +38,7 @@ machine; run only Layer 3 for day-2 rebuilds.
   Site-specific tool installs (via whatever vendor tooling the
   site requires, not nix), one-time setup commands, shell aliases
   keyed to non-nix binaries. Lives in the envKind's own repo.
-  Writes `~/.post-nix-rc`; never builds nix artifacts. Contrast
-  with Layer 3's post-nix tail: L3 post-nix is universal,
-  L4 is per-envKind.
+  Writes `~/.post-nix-rc`; never builds nix artifacts.
 
 Why four distinct scripts, no chaining? L1 and L2 run rarely (new
 machine, major env refresh). L3 runs often. L4 is out-of-band and
