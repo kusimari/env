@@ -51,5 +51,11 @@ replace_placeholders "$USER_VALUE" "replace-user" "$HOSTNAME_VALUE" "replace-hos
 
 echo "Done!"
 
+# Post-nix checks (gh auth, PATH priming for this shell).
+# Sourced rather than execed so any PATH mutations survive into the
+# remainder of this script.
+# shellcheck disable=SC1091
+source "$(dirname "${BASH_SOURCE[0]}")/post-nix-common.sh"
+
 printf '\n\033[1;33m=== Post-install setup notes ===\033[0m\n'
 cat "$FLAKE_DIR/setup-notes.md"
