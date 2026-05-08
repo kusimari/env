@@ -30,10 +30,10 @@ discussion; the table below is the operational summary.
 
 | Layer | Script | Repo | Runs when | Purpose |
 |---|---|---|---|---|
-| 1 | `bootstrap-<envKind>.sh` | `env` (public) or kelasa-specific env repo | New machine | Native OS prep: auth, certs, sudoers, package mirrors. Makes machine nix-ready. |
+| 1 | `bootstrap-<envKind>.sh` | `env` (public) or `<kelasa-specific env repo>` | New machine | Native OS prep: auth, certs, sudoers, package mirrors. Makes machine nix-ready. |
 | 2 | `build-nix/bootstrap-common.sh` | `env` | New machine | Clones `env` + `mAId` into `~/env-workplace/`, pins git identity. |
 | 3 | `build-nix/<envKind>.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch` from the cloned source. |
-| 4 | `post-nix-kelasa.sh` | kelasa-specific env repo | After L3 on kelasa | Installs non-nixable corporate tooling (Amazon `toolbox`), writes `~/.post-nix-rc`. |
+| 4 | `post-nix-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa | Installs non-nixable corporate tooling via whatever vendor tooling the site requires; writes `~/.post-nix-rc`. |
 
 **Shell hook bridge.** Layers 1 and 4 are not nix-managed, but they can
 inject shell state into the nix-managed zsh by writing to
@@ -51,7 +51,7 @@ Three tiers, documented at the top of `flake.nix` and enforced by
 | Tier | Where it lives | Install path | Verifier covers? |
 |---|---|---|---|
 | 1 — always installed via nix | `home/home.nix` unconditional `home.packages` list, or `programs.*.enable` | nix on every envKind | yes |
-| 2 — wanted everywhere, nix on some envs only | `home/home.nix`, wrapped in `++ lib.optionals (<envKind-predicate>) [...]` | nix where predicate admits; external tooling (e.g. Layer 4 toolbox install) elsewhere | yes — checks binary is on PATH regardless of source |
+| 2 — wanted everywhere, nix on some envs only | `home/home.nix`, wrapped in `++ lib.optionals (<envKind-predicate>) [...]` | nix where predicate admits; external tooling (e.g. Layer 4 post-install) elsewhere | yes — checks binary is on PATH regardless of source |
 | 3 — per-env differences | `home/envKind-<name>.nix` (user-level) or a `<envKind>Configuration` attrset in `flake.nix` (system-level) | only envs that opt in | no |
 
 **env-verify** (`env-verify.nix`, run via `nix run .#env-verify`) does

@@ -53,7 +53,7 @@
   ]
   # Tier 2 — wanted on every env but not installable via nix on some envs.
   ++ lib.optionals (envKind != "kelasa") [
-    # kelasa envs install claude via toolbox in post-nix-kelasa.sh (Layer 4).
+    # kelasa envs provide claude through their own post-install tooling.
     claude-code
   ];
 
