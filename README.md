@@ -7,8 +7,9 @@ Linux (2 / 2023). One flake, several envKinds.
 
 ## Layer design
 
-Four layers, one job each. No chaining. Run in sequence on a fresh
-machine; run only Layer 3 for day-2 rebuilds.
+Five layers, one job each. No chaining. Run in sequence on a fresh
+machine; run only Layer 3 for day-2 rebuilds of the base env, and
+Layer 5 when AI tooling needs refreshing.
 
 ### The philosophy
 
@@ -21,8 +22,8 @@ machine; run only Layer 3 for day-2 rebuilds.
 
 - **Layer 2 — pull the nix-managed environment source.** Generic
   across all envKinds: no machine prep, no envKind assumptions.
-  Clones `env` and `mAId` into `~/env-workplace/`, confirms GitHub
-  SSH, pins commit identity, exits.
+  Clones `env` into `~/env-workplace/`, confirms GitHub SSH, pins
+  commit identity, exits.
 
 - **Layer 3 — build the nix environment, then run universal
   post-nix tail.** `home-manager switch` or `nix-darwin switch`
@@ -40,22 +41,37 @@ machine; run only Layer 3 for day-2 rebuilds.
   keyed to non-nix binaries. Lives in the envKind's own repo.
   Writes `~/.post-nix-rc`; never builds nix artifacts.
 
-Why four distinct scripts, no chaining? L1 and L2 run rarely (new
+- **Layer 5 — fast-moving updates on top of the base env.** A small
+  workspace-registry framework. L5 drivers (`layer-5/run` in `env`
+  and the envKind repo) iterate a registry of `{ name, repo-url,
+  entry-point }` entries. For each entry they clone/fetch the repo
+  into `~/workplace/<name>/<repo>/`, pin git identity, and hand
+  off to the repo's own `install` entry-point. The driver itself
+  never builds content — each workspace repo owns its own install.
+  L5 is the home for things that change faster than the base env
+  and aren't (yet) worth nix-managing. When a workspace hardens
+  enough, it can graduate into L3 (nix-managed) or L4 (non-nix).
+
+Why five distinct scripts, no chaining? L1 and L2 run rarely (new
 machine, major env refresh). L3 runs often. L4 is out-of-band and
-not always needed. Grouping them into an orchestrator would bundle
-different change rates and risks. Separate scripts keep each
-layer's scope obvious and debuggable alone.
+not always needed. L5 runs whenever fast-moving workspaces need a
+refresh, independently of the base env. Grouping them into an
+orchestrator would bundle different change rates and risks.
+Separate scripts keep each layer's scope obvious and debuggable
+alone.
 
 ### At a glance
 
 | Layer | Script | Repo | Curl-able | Purpose |
 |---|---|---|---|---|
 | 1 | `bootstrap-<envKind>.sh` | `env` (public envKinds) or a `<kelasa-specific env repo>` | yes | Machine ready for nix |
-| 2 | `build-nix/bootstrap-common.sh` | `env` | yes | env + mAId cloned |
+| 2 | `build-nix/bootstrap-common.sh` | `env` | yes | env cloned |
 | 3 | `build-nix/<envKind>.sh` → `build-nix/post-nix-common.sh` | `env` | no | nix build + universal post-nix nudges |
 | 4 | `post-nix-kelasa.sh` | `<kelasa-specific env repo>` | no | envKind-specific non-nixable post-install |
+| 5 | `layer-5/run` | `env` (public) + `<kelasa-specific env repo>` (private) | no | Clone workspace repos; hand off to each repo's own `install` |
 
-Day-2 rebuild: just run Layer 3.
+Day-2 rebuild of the base env: just run Layer 3.
+Day-2 refresh of AI tooling (or other workspaces): just run Layer 5.
 
 ---
 
@@ -90,14 +106,20 @@ curl -fsSL https://raw.githubusercontent.com/kusimari/env/main/build-nix/bootstr
 
 # Layer 4 (if your envKind has one) — standalone post-nix install
 ~/env-workplace/<kelasa-specific env repo>/desktop/post-nix-kelasa.sh
+
+# Layer 5 — clone workspace repos and let them self-install.
+# Use the private driver on kelasa machines; it runs the public
+# driver first.
+~/env-workplace/env/layer-5/run                               # public-only
+~/env-workplace/<kelasa-specific env repo>/layer-5/run        # private; chains public first
 ```
 
 ### Cloning or switching to a feature branch
 
-Both L1 (kelasa) and L2 accept branch flags. On initial clone, the
-clone targets that branch. On re-run, the scripts switch to the
-named branch if the working tree is clean — they refuse to clobber
-uncommitted changes, and prompt you to commit or stash first.
+L1 and L2 accept branch flags. On initial clone, the clone targets
+that branch. On re-run, the scripts switch to the named branch if
+the working tree is clean — they refuse to clobber uncommitted
+changes, and prompt you to commit or stash first.
 
 ```bash
 # L1 — pass --branch to check out a feature branch of a kelasa-
@@ -107,10 +129,14 @@ uncommitted changes, and prompt you to commit or stash first.
 curl <L1-url-from-your-kelasa-env-repo> \
   | bash -s -- --branch feature-build-layers
 
-# L2 — pass --env-branch / --maid-branch to pick non-main branches
+# L2 — pass --env-branch to pick a non-main env branch
 curl -fsSL https://raw.githubusercontent.com/kusimari/env/feature-build-layers/build-nix/bootstrap-common.sh \
-  | bash -s -- --env-branch feature-build-layers --maid-branch feature-build-layers
+  | bash -s -- --env-branch feature-build-layers
 ```
+
+L5 pins workspace repos to their default branches from the
+registry embedded in `layer-5/run`. To test a workspace feature
+branch, edit the registry in a local checkout before running L5.
 
 To check the flake without building: `./build-nix/test.sh`.
 
