@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# env/build-nix/bootstrap-common.sh — Layer 2 of the four-layer
+# env/build-nix/bootstrap-common.sh — Layer 2 of the five-layer
 # bootstrap.
 #
 # Ensures ~/env-workplace exists, checks GitHub SSH reachability,
-# clones or fetches env + mAId. That's it. No chaining — when this
-# script finishes, the next step (Layer 3 nix build) is something
-# the user runs directly. See env/README.md for the full layer
-# design.
+# clones or fetches env. That's it. No chaining — when this script
+# finishes, the next step (Layer 3 nix build) is something the user
+# runs directly. AI-tooling repos (mAId and any private siblings)
+# are pulled in Layer 5; see env/layer-5/. See env/README.md for
+# the full layer design.
 #
 # Runs either from a checkout or via curl pipe; auto-detects.
 #
@@ -16,7 +17,6 @@
 #                        On re-run: switches to it if the clone is on
 #                        a different branch. Fails if the working
 #                        tree has uncommitted changes.
-#   --maid-branch NAME   Same semantics for mAId.
 #   --dry-run            Log planned actions; make no changes.
 #   --help, -h           Show this header and exit.
 # END-USAGE
@@ -25,16 +25,13 @@ set -euo pipefail
 
 # ── Constants ────────────────────────────────────────────────────────
 ENV_REPO="git@github.com:kusimari/env.git"
-MAID_REPO="git@github.com:kusimari/mAId.git"
 WORKSPACE="$HOME/env-workplace"
 ENV_CLONE="$WORKSPACE/env"
-MAID_CLONE="$WORKSPACE/mAId"
 DEFAULT_KEY="$HOME/.ssh/id_ed25519"
 
 # ── Defaults ─────────────────────────────────────────────────────────
 DRY_RUN=0
 ENV_BRANCH=""
-MAID_BRANCH=""
 
 log()  { printf '==> %s\n' "$*"; }
 warn() { printf '!!! %s\n' "$*" >&2; }
@@ -60,9 +57,6 @@ while [[ $# -gt 0 ]]; do
         --env-branch)     [[ $# -ge 2 ]] || die "--env-branch requires a name"
                           ENV_BRANCH="$2";      shift 2 ;;
         --env-branch=*)   ENV_BRANCH="${1#*=}"; shift   ;;
-        --maid-branch)    [[ $# -ge 2 ]] || die "--maid-branch requires a name"
-                          MAID_BRANCH="$2";      shift 2 ;;
-        --maid-branch=*)  MAID_BRANCH="${1#*=}"; shift   ;;
         --dry-run)        DRY_RUN=1; shift ;;
         --help|-h)        usage; exit 0 ;;
         *) die "Unknown argument: $1 (use --help)" ;;
@@ -157,10 +151,10 @@ switch_branch() {
     run git -C "$dest" checkout --quiet "$branch"
 }
 
-# Pin commit identity for public repos (env + mAId). Without this,
-# git auto-assigns $USER@$HOSTNAME, which can leak corporate
-# dev-desktop hostnames into public commit metadata. Local config
-# only — global git config is never touched. Idempotent.
+# Pin commit identity on the env clone. Without this, git
+# auto-assigns $USER@$HOSTNAME, which can leak corporate dev-desktop
+# hostnames into public commit metadata. Local config only — global
+# git config is never touched. Idempotent.
 ensure_git_identity() {
     local dest="$1"
     local want_name="kusimari"
@@ -185,7 +179,5 @@ log "Layer 2: sync$( (( DRY_RUN )) && echo ' (dry-run)')"
 ensure_workspace
 ensure_github_ssh
 clone_or_fetch "env"  "$ENV_REPO"  "$ENV_CLONE"  "$ENV_BRANCH"
-clone_or_fetch "mAId" "$MAID_REPO" "$MAID_CLONE" "$MAID_BRANCH"
 ensure_git_identity "$ENV_CLONE"
-ensure_git_identity "$MAID_CLONE"
 log "Layer 2 done."
