@@ -35,6 +35,9 @@ echo "Replacing placeholders with actual values..."
 replace_placeholders "replace-user" "$USER_VALUE" "replace-hostname" "$HOSTNAME_VALUE"
 
 echo "$NIX_ECHO_MESSAGE"
+if [[ "$NIX_COMMAND" == *sudo* ]]; then
+    echo "Approve sudo (Touch ID or password) when prompted..."
+fi
 
 cd "$FLAKE_DIR" || { echo "Error: cannot cd to flake directory: $FLAKE_DIR"; exit 1; }
 eval "$NIX_COMMAND"
