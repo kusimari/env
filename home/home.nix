@@ -37,7 +37,7 @@
     rclone
     exiftool
 
-    gemini-cli-bin
+    antigravity-cli
     gh
 
     # Terminal utilities

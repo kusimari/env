@@ -41,6 +41,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     claude-code.url = "github:sadjow/claude-code-nix";
+    # Antigravity CLI — pinned to nixpkgs PR #522045 until merged upstream.
+    # Remove this input once antigravity-cli lands in nixpkgs-unstable.
+    nixpkgs-antigravity-cli = {
+      url = "github:deftdawg/nixpkgs/add-antigravity-cli-package";
+      flake = false;
+    };
 
     # Linux-specific
     nixgl.url = "github:nix-community/nixGL";
@@ -62,6 +68,10 @@
         # occasionally hang inside the sandbox on aarch64-darwin; the
         # package itself is fine. Remove this overlay once nixpkgs
         # ships a cached direnv build we actually pull.
+        (final: _prev: {
+          antigravity-cli = final.callPackage
+            "${inputs.nixpkgs-antigravity-cli}/pkgs/by-name/an/antigravity-cli/package.nix" {};
+        })
         (_final: prev: {
           direnv = prev.direnv.overrideAttrs (_old: { doCheck = false; });
         })

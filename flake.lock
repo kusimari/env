@@ -204,6 +204,23 @@
         "type": "github"
       }
     },
+    "nixpkgs-antigravity-cli": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779290145,
+        "narHash": "sha256-QPwr7tfih9cD6QV5G3NDNGc1oT88nk4bGjMPv2nWKIs=",
+        "owner": "deftdawg",
+        "repo": "nixpkgs",
+        "rev": "83a021e960103be4f56333b4b8cbbe4b76f77604",
+        "type": "github"
+      },
+      "original": {
+        "owner": "deftdawg",
+        "ref": "add-antigravity-cli-package",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nixpkgs-lib": {
       "locked": {
         "lastModified": 1743296961,
@@ -274,7 +291,8 @@
         "nix-darwin": "nix-darwin",
         "nix-vscode-extensions": "nix-vscode-extensions",
         "nixgl": "nixgl",
-        "nixpkgs": "nixpkgs_4"
+        "nixpkgs": "nixpkgs_4",
+        "nixpkgs-antigravity-cli": "nixpkgs-antigravity-cli"
       }
     },
     "systems": {
