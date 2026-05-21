@@ -10,6 +10,7 @@
       IdentityFile ~/.ssh/github_id
       UserKnownHostsFile ~/.ssh/known_hosts ~/.ssh/known_hosts_nix
 
+    # autossh -M 0 relies on these to detect dead connections (~90s)
     Host *
       ServerAliveInterval 30
       ServerAliveCountMax 3
