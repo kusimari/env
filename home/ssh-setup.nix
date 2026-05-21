@@ -1,6 +1,7 @@
 # SSH Setup - GitHub config, activation script, and autossh (persistent connections)
 { config, lib, pkgs, ... }:
 {
+  # autossh -M 0 -t <remote> -- tmux new-session -As <session-name>
   home.packages = [ pkgs.autossh ];
 
   # Included by system ~/.ssh/config via "Include ~/.ssh/config_nix"
