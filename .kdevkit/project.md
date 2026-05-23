@@ -160,8 +160,7 @@ env/
 │   ├── layer-3-common.sh             # shared body sourced by every L3 envKind script
 │   ├── layer-3-post-nix-common.sh    # L3 tail — universal non-nixable post-nix nudges
 │   ├── layer-5a.sh                   # L5a (public): workspace + store registries
-│   ├── al2-fix-ssl.sh                # L1 helper for AL2 SSL quirks (not in the layer model)
-│   └── test.sh                       # flake eval without building (tooling, not a layer)
+│   └── test-flake.sh                 # flake eval without building (tooling, not a layer)
 │
 ├── home/                  # home-manager user-level config
 │   ├── home.nix                   # single entry consumed by every envKind
@@ -223,7 +222,7 @@ env/
   produces on PATH.
 - **`~/.pre-nix-rc` and `~/.post-nix-rc` are the only non-nix → nix
   shell bridge.** Any other shell-init hack will drift.
-- **`layers/test.sh`** evaluates the flake without building — use
+- **`layers/test-flake.sh`** evaluates the flake without building — use
   it as the first check after any flake edit.
 
 ## Conventions
@@ -238,4 +237,4 @@ env/
 - Conventional-commit style messages.
 - Feature design docs in `.kdevkit/feature/<name>.md`; active ones in
   `.kdevkit/feature/wip/`.
-- Day-2 rebuild flow: edit → `layers/test.sh` → `layers/layer-3-<envKind>.sh`.
+- Day-2 rebuild flow: edit → `layers/test-flake.sh` → `layers/layer-3-<envKind>.sh`.

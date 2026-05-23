@@ -149,7 +149,7 @@ registries embedded in `layers/layer-5a.sh` (and
 machines). To test a workspace or store feature branch, edit the
 registry in a local checkout before running L5.
 
-To check the flake without building: `./layers/test.sh`.
+To check the flake without building: `./layers/test-flake.sh`.
 
 ---
 
