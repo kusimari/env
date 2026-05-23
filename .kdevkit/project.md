@@ -34,19 +34,31 @@ discussion; the table below is the operational summary.
 | 2 | `build-nix/bootstrap-common.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
 | 3 | `build-nix/<envKind>.sh` → sources `build-nix/post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
 | 4 | `post-nix-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
-| 5 | `layer-5/run` | `env` (public) + `<kelasa-specific env repo>` (private) | On demand | Iterates a workspace registry; clones each workspace repo under `~/workplace/<name>/` and invokes its own `install` entry-point. |
+| 5a | `layer-5a.sh` | `env` (public) | On demand | Iterates two registries — workspaces and stores. Workspaces clone under `~/tool-workplace/<name>/<repo>/`; stores clone flat under `~/dabba/<repo>/`. Also `mkdir -p ~/project-workplace/` (humans populate). Each entry runs its own `install` after clone/fetch. |
+| 5b | `layer-5b.sh` | `<kelasa-specific env repo>` (private) | On demand | Chains 5a first, then iterates the private workspace + store registries with the `$USER@amazon.com` identity. |
 
 **L3 vs L4 post-nix split.** L3's `post-nix-common.sh` is
 envKind-agnostic; L4 is envKind-specific. If a post-nix step is
 useful on every envKind, it belongs in L3. If it's meaningful only
 on one envKind, it belongs in L4.
 
-**L5 workspace framework.** L5 is not for nix-managed content. It
-exists as a staging area for things that change faster than the
-base env — workspace repos with their own install flows. The
-driver only clones and hands off; it never builds content. Each
-workspace owns its own `install` entry-point. Graduation (into L3
-or L4) is a deliberate decision once a workspace stabilizes.
+**L5 framework — three roots, two registries.** L5 is not for
+nix-managed content. It exists as a staging area for things that
+change faster than the base env — workspace repos with their own
+install flows. The driver only clones and hands off; it never builds
+content. Three roots, distinct semantics:
+
+- `~/tool-workplace/` — env-tooling under active churn. Backed up
+  via git remotes only. Workspace registries clone here.
+- `~/dabba/` — stores. Cross-machine state that must be backed up
+  off the local disk (git-backed repos like Gorantls-store and, in
+  future, rclone mounts). Store registries clone flat here.
+- `~/project-workplace/` — manual, machine-specific projects. L5
+  only `mkdir -p`s it; no registry, no clones.
+
+Each workspace or store owns its own `install` entry-point.
+Graduation (into L3 or L4) is a deliberate decision once a workspace
+stabilizes.
 
 **Shell hook bridge.** Layers 1 and 4 are not nix-managed, but they can
 inject shell state into the nix-managed zsh by writing to
@@ -150,9 +162,7 @@ env/
 │   ├── post-nix-common.sh         # L3 tail — universal non-nixable post-nix nudges
 │   └── test.sh                    # flake eval without building
 │
-├── layer-5/               # Layer 5 (public workspace driver)
-│   ├── run                        # driver: walks registry, clones, hands off
-│   └── README.md                  # registry format + how to add a workspace
+├── layer-5a.sh            # Layer 5a (public): walks workspace + store registries, mkdirs the three roots, hands off to each entry's install
 │
 ├── home/                  # home-manager user-level config
 │   ├── home.nix                   # single entry consumed by every envKind
@@ -222,8 +232,9 @@ env/
 - Branch naming: short, purpose-first (e.g. `feature-build-layers`,
   `claude-code-internalize`). L1 and L2 scripts accept `--branch`
   / `--env-branch` so feature branches can be bootstrapped
-  end-to-end. L5 pins workspaces to default branches via the
-  registry embedded in `layer-5/run`.
+  end-to-end. L5 pins workspaces and stores to default branches via
+  the registries embedded in `layer-5a.sh` (and `layer-5b.sh` in the
+  private repo).
 - Conventional-commit style messages.
 - Feature design docs in `.kdevkit/feature/<name>.md`; active ones in
   `.kdevkit/feature/wip/`.
