@@ -42,12 +42,19 @@ Layer 5 when AI tooling needs refreshing.
   Writes `~/.post-nix-rc`; never builds nix artifacts.
 
 - **Layer 5 — fast-moving updates on top of the base env.** A small
-  workspace-registry framework. L5 drivers (`layer-5/run` in `env`
-  and the envKind repo) iterate a registry of `{ name, repo-url,
-  entry-point }` entries. For each entry they clone/fetch the repo
-  into `~/workplace/<name>/<repo>/`, pin git identity, and hand
-  off to the repo's own `install` entry-point. The driver itself
-  never builds content — each workspace repo owns its own install.
+  registry framework with three roots and two registry kinds. L5
+  drivers (`layer-5a.sh` in `env`, `layer-5b.sh` in the envKind repo)
+  iterate two registries:
+    - **workspaces** — clone into
+      `~/tool-workplace/<name>/<repo>/` (env-tooling under active
+      churn).
+    - **stores** — clone flat into `~/dabba/<repo>/` (cross-machine,
+      backed-up content).
+  Both drivers also `mkdir -p ~/project-workplace/`, which humans
+  populate with machine-specific work — no registry, no auto-clone.
+  For each registry entry the driver pins git identity and hands off
+  to the repo's own `install` entry-point. The driver itself never
+  builds content — each workspace or store owns its own install.
   L5 is the home for things that change faster than the base env
   and aren't (yet) worth nix-managing. When a workspace hardens
   enough, it can graduate into L3 (nix-managed) or L4 (non-nix).
@@ -68,7 +75,8 @@ alone.
 | 2 | `build-nix/bootstrap-common.sh` | `env` | yes | env cloned |
 | 3 | `build-nix/<envKind>.sh` → `build-nix/post-nix-common.sh` | `env` | no | nix build + universal post-nix nudges |
 | 4 | `post-nix-kelasa.sh` | `<kelasa-specific env repo>` | no | envKind-specific non-nixable post-install |
-| 5 | `layer-5/run` | `env` (public) + `<kelasa-specific env repo>` (private) | no | Clone workspace repos; hand off to each repo's own `install` |
+| 5a | `layer-5a.sh` | `env` (public) | no | Workspaces → `~/tool-workplace/`, stores → `~/dabba/`, mkdir `~/project-workplace/`. Hand off to each entry's own `install`. |
+| 5b | `layer-5b.sh` | `<kelasa-specific env repo>` (private) | no | Chains 5a, then iterates private workspaces + stores under the same three roots. |
 
 Day-2 rebuild of the base env: just run Layer 3.
 Day-2 refresh of AI tooling (or other workspaces): just run Layer 5.
@@ -107,11 +115,11 @@ curl -fsSL https://raw.githubusercontent.com/kusimari/env/main/build-nix/bootstr
 # Layer 4 (if your envKind has one) — standalone post-nix install
 ~/env-workplace/<kelasa-specific env repo>/desktop/post-nix-kelasa.sh
 
-# Layer 5 — clone workspace repos and let them self-install.
+# Layer 5 — clone workspace + store repos and let them self-install.
 # Use the private driver on kelasa machines; it runs the public
 # driver first.
-~/env-workplace/env/layer-5/run                               # public-only
-~/env-workplace/<kelasa-specific env repo>/layer-5/run        # private; chains public first
+~/env-workplace/env/layer-5a.sh                               # public-only
+~/env-workplace/<kelasa-specific env repo>/layer-5b.sh        # private; chains public first
 ```
 
 ### Cloning or switching to a feature branch
@@ -134,9 +142,10 @@ curl -fsSL https://raw.githubusercontent.com/kusimari/env/feature-build-layers/b
   | bash -s -- --env-branch feature-build-layers
 ```
 
-L5 pins workspace repos to their default branches from the
-registry embedded in `layer-5/run`. To test a workspace feature
-branch, edit the registry in a local checkout before running L5.
+L5 pins workspaces and stores to their default branches from the
+registries embedded in `layer-5a.sh` (and `layer-5b.sh` on private
+machines). To test a workspace or store feature branch, edit the
+registry in a local checkout before running L5.
 
 To check the flake without building: `./build-nix/test.sh`.
 
