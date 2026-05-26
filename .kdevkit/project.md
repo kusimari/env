@@ -22,20 +22,24 @@ The envKind string is `"mane"` or `"kelasa"` — *not* the full target
 name. Target names (`al2-kelasa` etc.) only appear in `flake.nix`
 attribute keys; code elsewhere tests `envKind`.
 
-## Five-layer build system
+## Six-layer build system
 
 Each layer is one script, run independently. No chaining — different
-change rates and different trust domains. See `README.md` for the full
-discussion; the table below is the operational summary.
+change rates and different trust domains. L1-L5 are the always-installed
+base env (run in order on a fresh machine, individually on day-2). L6
+is per-project, on-demand — never run as part of bootstrap. See
+`README.md` for the full discussion; the table below is the
+operational summary.
 
 | Layer | Script | Repo | Runs when | Purpose |
 |---|---|---|---|---|
 | 1 | `layer-1-<envKind>.sh` | `env` (public) or `<kelasa-specific env repo>` | New machine | Native OS prep: auth, certs, sudoers, package mirrors. Makes machine nix-ready. |
 | 2 | `layers/layer-2.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
 | 3 | `layers/layer-3-<envKind>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
-| 4 | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
-| 5a | `layers/layer-5a.sh` | `env` (public) | On demand | Iterates two registries — workspaces and stores. Workspaces clone under `~/tool-workplace/<name>/<repo>/`; stores clone flat under `~/dabba/<repo>/`. Also `mkdir -p ~/workplace/` (humans populate). Each entry runs its own `install` after clone/fetch. |
-| 5b | `desktop-layers/layer-5b.sh` | `<kelasa-specific env repo>` (private) | On demand | Chains 5a first, then iterates the private workspace + store registries with the `$USER@amazon.com` identity. |
+| 4 | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa, or any day-2 change to envKind-specific post-nix content | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
+| 5a | `layers/layer-5a.sh` | `env` (public) | On demand | Iterates two registries — workspaces and stores. Workspaces clone under `~/tool-workplace/<name>/<repo>/`; stores clone flat under `~/dabba/<repo>/`. Also `mkdir -p ~/workplace/` (Layer 6 populates per-project). Each entry runs its own `install` after clone/fetch. |
+| 5b | `desktop-layers/layer-5b.sh` | `<kelasa-specific env repo>` (private) | On demand | Chains 5a first, then iterates the private workspace + store registries with the kelasa work-identity (configured inside the kelasa env repo's L5b driver). |
+| 6 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | On demand, per project | Replays a project recipe inside `~/workplace/<project>/`: clones source repos, writes symlinks back to the recipe, generates `.envrc`. **Not** part of fresh-machine bootstrap — run only when actually working on that project on this machine. |
 
 **L3 vs L4 post-nix split.** L3's `layer-3-post-nix-common.sh` is
 envKind-agnostic; L4 is envKind-specific. If a post-nix step is
@@ -53,12 +57,35 @@ content. Three roots, distinct semantics:
 - `~/dabba/` — stores. Cross-machine state that must be backed up
   off the local disk (git-backed repos like Gorantls-store and, in
   future, rclone mounts). Store registries clone flat here.
-- `~/workplace/` — manual, machine-specific projects. L5
-  only `mkdir -p`s it; no registry, no clones.
+- `~/workplace/` — per-project workspaces. L5 only `mkdir -p`s the
+  root; Layer 6 populates entries on demand.
 
 Each workspace or store owns its own `install` entry-point.
 Graduation (into L3 or L4) is a deliberate decision once a workspace
 stabilizes.
+
+**L6 framework — capture once, replay on demand.** L6 owns the
+`~/workplace/<project>/` tree. Each project has a recipe checked
+into the envKind repo under `projects/<project>/`: a `workspace.md`
+(natural-language setup steps), an optional Nix flake, optional tool
+configs. The driver `projects/workplace-setup.sh` replays a recipe
+inside the matching `~/workplace/<project>/` directory.
+
+Two halves:
+
+- **Capture** runs once per project, when the workspace first
+  exists. The developer (or a coding agent — see
+  `env/workspace-tools/workspace-capture-instruction.md`) writes the
+  recipe to `projects/<project>/workspace.md`.
+- **Replay** runs every time the project is needed on a machine.
+  The driver clones source repos, writes a symlink from the
+  workspace back to the recipe directory, generates `.envrc`,
+  invokes direnv. Idempotent — safe to re-run.
+
+L6 is **not** part of bootstrap. Project workspaces are recreated
+only when a developer wants to work on a specific project on this
+machine. The base env (L1-L4) and tooling (L5) are always-installed;
+L6 is per-project and on-demand.
 
 **Shell hook bridge.** Layers 1 and 4 are not nix-managed, but they can
 inject shell state into the nix-managed zsh by writing to
@@ -195,7 +222,7 @@ env/
 ├── rofi-desktop/          # .desktop files for rofi (applied only to ubuntu-mane)
 │   └── system-{reboot,shutdown,sleep}.desktop
 │
-├── workspace-tools/       # design docs + capture/setup instructions for AI workspaces
+├── workspace-tools/       # L6 design docs — capture/setup instructions for project workspaces
 │   ├── DESIGN.md
 │   └── workspace-{capture,setup}-instruction.md
 │
@@ -237,4 +264,17 @@ env/
 - Conventional-commit style messages.
 - Feature design docs in `.kdevkit/feature/<name>.md`; active ones in
   `.kdevkit/feature/wip/`.
-- Day-2 rebuild flow: edit → `layers/test-flake.sh` → `layers/layer-3-<envKind>.sh`.
+- Day-2 update flows (each layer re-runs independently; chase the
+  layer that owns what changed):
+  - `env` flake / `home.nix` edits: `layers/test-flake.sh` →
+    `layers/layer-3-<envKind>.sh`.
+  - kelasa-specific env-repo post-nix content (site-managed tools,
+    aliases, `~/.post-nix-rc.d/` drop-ins):
+    `desktop-layers/layer-4-<envKind>.sh` (in the kelasa env repo).
+  - L5 registry / workspace / store changes:
+    `desktop-layers/layer-5b.sh` on kelasa, else `layers/layer-5a.sh`.
+  - A specific project workspace recipe (L6, on demand only):
+    `cd ~/workplace/<project> && projects/workplace-setup.sh`
+    from inside the envKind repo with project recipes.
+  Multi-area changes: pull the relevant repos with `git pull --ff-only`,
+  then re-run L3 → L4 → L5 → L6 in that order.

@@ -7,9 +7,10 @@ Linux (2 / 2023). One flake, several envKinds.
 
 ## Layer design
 
-Five layers, one job each. No chaining. Run in sequence on a fresh
-machine; run only Layer 3 for day-2 rebuilds of the base env, and
-Layer 5 when AI tooling needs refreshing.
+Six layers, one job each. No chaining. Layers 1-5 run on a fresh
+machine in sequence to bring the base env online; Layer 6 is
+per-project and only runs when a specific project workspace is
+needed on this machine.
 
 ### The philosophy
 
@@ -51,8 +52,8 @@ Layer 5 when AI tooling needs refreshing.
       churn).
     - **stores** — clone flat into `~/dabba/<repo>/` (cross-machine,
       backed-up content).
-  Both drivers also `mkdir -p ~/workplace/`, which humans
-  populate with machine-specific work — no registry, no auto-clone.
+  Both drivers also `mkdir -p ~/workplace/`, which Layer 6 (below)
+  populates per-project on demand.
   For each registry entry the driver pins git identity and hands off
   to the repo's own `install` entry-point. The driver itself never
   builds content — each workspace or store owns its own install.
@@ -60,11 +61,35 @@ Layer 5 when AI tooling needs refreshing.
   and aren't (yet) worth nix-managing. When a workspace hardens
   enough, it can graduate into L3 (nix-managed) or L4 (non-nix).
 
-Why five distinct scripts, no chaining? L1 and L2 run rarely (new
-machine, major env refresh). L3 runs often. L4 is out-of-band and
-not always needed. L5 runs whenever fast-moving workspaces need a
-refresh, independently of the base env. Grouping them into an
-orchestrator would bundle different change rates and risks.
+- **Layer 6 — per-project workplace recreation, on demand.** Project
+  workspaces under `~/workplace/<project>/` are **not** bulk-installed
+  during machine bootstrap. Each project owns a recipe (a
+  `workspace.md` plus optional Nix flake and tool configs) checked
+  into the envKind repo under `projects/<project>/`. A small driver
+  (`projects/workplace-setup.sh`, sibling to the recipes) takes a
+  project recipe and recreates the workspace inside
+  `~/workplace/<project>/`: clones the project's source repos, writes
+  symlinks back to the recipe directory, generates `.envrc` for the
+  project's Nix flake, hands the shell to direnv.
+  Two halves to L6:
+    - **Capture** — once, when a project workspace first exists, the
+      developer (or a coding agent following the capture
+      instructions in `env/workspace-tools/`) writes the recipe.
+    - **Replay** — every time that project is needed on a machine,
+      run the driver from inside `~/workplace/<project>/` and the
+      recipe reproduces the workspace.
+  L6 is **not** part of fresh-machine bootstrap. Project workspaces
+  come and go — they get recreated only when a developer decides to
+  work on that project on this machine. The base env (L1-L4) and
+  fast-moving tooling (L5) are always-installed; L6 is per-project,
+  on-demand, and idempotent.
+
+Why distinct scripts, no chaining? L1 and L2 run rarely (new machine,
+major env refresh). L3 runs often. L4 is out-of-band and not always
+needed. L5 runs whenever fast-moving workspaces need a refresh,
+independently of the base env. L6 runs only when a developer wants
+to work on a specific project on this machine. Grouping them into
+an orchestrator would bundle different change rates and risks.
 Separate scripts keep each layer's scope obvious and debuggable
 alone.
 
@@ -78,9 +103,36 @@ alone.
 | 4 | `desktop-layers/layer-4-kelasa.sh` | `<kelasa-specific env repo>` | no | envKind-specific non-nixable post-install |
 | 5a | `layers/layer-5a.sh` | `env` (public) | no | Workspaces → `~/tool-workplace/`, stores → `~/dabba/`, mkdir `~/workplace/`. Hand off to each entry's own `install`. |
 | 5b | `desktop-layers/layer-5b.sh` | `<kelasa-specific env repo>` (private) | no | Chains 5a, then iterates private workspaces + stores under the same three roots. |
+| 6 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | no | On demand, per-project. Replays a recipe inside `~/workplace/<project>/` to recreate that project's workspace (clones, symlinks, `.envrc`). |
 
-Day-2 rebuild of the base env: just run Layer 3.
-Day-2 refresh of AI tooling (or other workspaces): just run Layer 5.
+### Day-2 update flows
+
+After initial setup, layers re-run independently. Pick based on
+what changed.
+
+| What changed | Run |
+|---|---|
+| `env` flake / `home.nix` / nix-managed config | L3: `~/env-workplace/env/layers/layer-3-<envKind>.sh` |
+| envKind-specific post-nix content (site-managed tools, aliases, `~/.post-nix-rc.d/` drop-ins) | L4: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-4-<envKind>.sh` |
+| L5 registry, workspace `install`, or store content | L5b on kelasa machines: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5b.sh` (chains 5a). L5a on public-only machines: `~/env-workplace/env/layers/layer-5a.sh`. |
+| A specific project's workspace recipe | L6, on demand: `mkdir -p ~/workplace/<project> && cd ~/workplace/<project> && ~/env-workplace/<envKind repo with project recipes>/projects/workplace-setup.sh` |
+| Multiple of the above | L3 → L4 → L5 → L6 in that order |
+
+Pulling new upstream commits before re-running a layer:
+
+```bash
+# To pick up new env commits before L3:
+git -C ~/env-workplace/env pull --ff-only
+~/env-workplace/env/layers/layer-3-<envKind>.sh
+
+# To pick up new commits in the kelasa-specific env repo before
+# L4 / L5b:
+git -C ~/env-workplace/<kelasa-specific env repo> pull --ff-only
+~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-4-<envKind>.sh
+~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5b.sh
+```
+
+A `git pull` alone is not enough — re-run the matching layer after.
 
 ---
 
@@ -121,6 +173,13 @@ curl -fsSL https://raw.githubusercontent.com/kusimari/env/main/layers/layer-2.sh
 # driver first.
 ~/env-workplace/env/layers/layer-5a.sh                               # public-only
 ~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5b.sh # private; chains public first
+
+# Layer 6 — recreate a specific project workspace on demand. NOT a
+# bulk install; run only when you actually want to work on that
+# project on this machine. Repeat per project.
+mkdir -p ~/workplace/<project>
+cd ~/workplace/<project>
+~/env-workplace/<envKind repo with project recipes>/projects/workplace-setup.sh
 ```
 
 ### Cloning or switching to a feature branch
@@ -166,6 +225,7 @@ environment without putting non-nixable content in the flake.
 |---|---|---|---|
 | `~/.pre-nix-rc` | Layer 1 | `.zshenv` (early) | PATH / env needed before interactive shells fully start |
 | `~/.post-nix-rc` | Layer 4 | `.zshenv` (after pre-nix-rc) | PATH / aliases that depend on Layer-3 nix artifacts |
+| `~/.post-nix-rc.d/*.sh` | Layer 5 workspace `install` scripts | `~/.post-nix-rc` (alphabetical loop) | Workspace-owned shell snippets that need to live alongside an L5 install — keeps L4 free of L5 churn |
 
 Writers must be idempotent — diff-check the intended content,
 overwrite only on mismatch. These files are the contract between
