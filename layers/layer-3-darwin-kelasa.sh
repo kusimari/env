@@ -9,7 +9,7 @@
 # nix setup
   # run darwin as user - temporarily replace placeholder values, run nix, then revert with sed
 
-# Platform-specific configuration for _common.sh
+# Platform-specific configuration for layer-3-common.sh
 export SED_INPLACE_FLAG=''  # macOS requires empty string after -i
 export NIX_COMMAND='sudo -H nix run nix-darwin -- switch --flake ".#darwin-kelasa"'
 export NIX_ECHO_MESSAGE="Running nix-darwin switch..."
@@ -18,4 +18,4 @@ export NIX_ECHO_MESSAGE="Running nix-darwin switch..."
 # export NIX_COMMAND='sudo -H nix run nix-darwin/nix-darwin-25.05#darwin-rebuild -- switch --flake ".#darwin-kelasa"'
 
 # Execute common functionality
-source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/layer-3-common.sh"

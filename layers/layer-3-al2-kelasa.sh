@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Prerequisites for al2-kelasa: run Layer 1 (bootstrap-al2-kelasa.sh
+# Prerequisites for al2-kelasa: run Layer 1 (layer-1-al2-kelasa.sh
 # in a kelasa-specific env repo) first. It installs single-user Nix,
 # sets up SSL certificates, and chsh's to zsh.
 
 # nix setup
   # run home-manager - temporarily replace placeholder values, run nix, then revert with sed
 
-# Platform-specific configuration for _common.sh
+# Platform-specific configuration for layer-3-common.sh
 # Linux sed uses -i without additional flag (don't export SED_INPLACE_FLAG)
 
 # For AL2: Use nix run command for initial setup with backup
@@ -19,4 +19,4 @@ export NIX_ECHO_MESSAGE="Running home-manager init with backup..."
 # export NIX_ECHO_MESSAGE="Running home-manager switch..."
 
 # Execute common functionality
-source "$(dirname "${BASH_SOURCE[0]}")/_common.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/layer-3-common.sh"

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# env/build-nix/bootstrap-ubuntu-mane.sh — Layer 1 for the
+# env/layers/layer-1-ubuntu-mane.sh — Layer 1 for the
 # ubuntu-mane envKind.
 #
 # Generic prep: apt prereqs for Nix + the Determinate Nix installer
 # (multi-user). Exits when done. No chaining; the user runs the
-# next layer (bootstrap-common.sh) separately.
+# next layer (layer-2.sh) separately.
 #
 # Curl-friendly:
-#   curl -fsSL <raw-url>/build-nix/bootstrap-ubuntu-mane.sh | bash
+#   curl -fsSL <raw-url>/layers/layer-1-ubuntu-mane.sh | bash
 #
 # --dry-run is honored: logs what would happen, mutates nothing.
 #
@@ -75,4 +75,4 @@ log "Layer 1 (ubuntu-mane): machine prep$( (( DRY_RUN )) && echo ' (dry-run)')"
 require_ubuntu
 ensure_apt_prereqs
 ensure_nix
-log "Layer 1 done. Next: run Layer 2 (bootstrap-common.sh)."
+log "Layer 1 done. Next: run Layer 2 (layer-2.sh)."
