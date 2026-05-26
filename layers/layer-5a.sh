@@ -1,23 +1,26 @@
 #!/usr/bin/env bash
 # env/layers/layer-5a.sh — Layer 5a (public) of the five-layer bootstrap.
 #
-# Iterates two registries and ensures three roots:
+# Ensures three roots and runs one inline block per known workspace and
+# store:
 #   ~/tool-workplace/   workspaces (env-tooling under active churn)
 #   ~/dabba/            stores (cross-machine, backed-up content)
 #   ~/workplace         mkdir-only; humans populate machine-specific work
 #
-# For each workspace entry: clone/fetch the repo into
-# ~/tool-workplace/<name>/<repo-basename>/, pin git identity, and
-# hand off to the repo's own `install` entry-point.
+# Each workspace block clones/fetches the repo into
+# ~/tool-workplace/<name>/<repo-basename>/, pins the public git identity,
+# and hands off to the repo's own `install` entry-point.
 #
-# For each store entry: clone/fetch flat into
-# ~/dabba/<repo-basename>/, pin git identity, hand off to install.
+# Each store block clones/fetches flat into ~/dabba/<repo-basename>/,
+# pins identity, and hands off to install.
 #
 # This script does not know what any given workspace or store does —
 # the content repo owns its own install. L5a only clones and hands off.
 #
-# Adding a workspace: add a row to the WORKSPACES heredoc.
-# Adding a store: add a row to the STORES heredoc.
+# Adding a workspace or store: copy an existing { ... } block and edit
+# the name/url. Each block is wrapped with `|| { warn ...; FAILED=1; }`
+# so one bad entry does not abort the rest of the run; the script exits
+# non-zero at the end if any block failed.
 #
 # Options:
 #   --dry-run        Log planned actions; make no changes.
@@ -27,28 +30,7 @@
 #   --help, -h       Show this header and exit.
 # END-USAGE
 
-set -euo pipefail
-
-# ── Registries ──────────────────────────────────────────────────────
-# Format: <name>\t<repo-url>\t<entry-point>
-# - name:        directory under the relevant root (workspace name for
-#                WORKSPACES; ignored except as a log label for STORES,
-#                which clone flat by repo basename).
-# - repo-url:    any URL git-clone accepts.
-# - entry-point: path (relative to the clone) of an executable
-#                the driver runs after clone/fetch.
-# Lines starting with # are comments. Blank lines are ignored.
-WORKSPACES="$(cat <<'TSV'
-# ai-workspace: hosts mAId (and private siblings, if present).
-ai-workspace	git@github.com:kusimari/mAId.git	install
-TSV
-)"
-
-# No public stores today. Add rows here when a public, backed-up
-# store gets a repo.
-STORES="$(cat <<'TSV'
-TSV
-)"
+set -uo pipefail
 
 # ── Constants ───────────────────────────────────────────────────────
 TOOL_WORKPLACE_ROOT="$HOME/tool-workplace"
@@ -60,7 +42,7 @@ PUBLIC_USER_EMAIL="kusimari@gmail.com"
 # ── Defaults ────────────────────────────────────────────────────────
 DRY_RUN=0
 SKIP_INSTALL=0
-FAILURES=()
+FAILED=0
 
 log()  { printf '==> %s\n' "$*"; }
 warn() { printf '!!! %s\n' "$*" >&2; }
@@ -89,7 +71,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ── Git helpers (kept inline to avoid a cross-script library) ───────
+# ── Helpers (kept inline to avoid a cross-script library) ───────────
 
 # Clone $url into $dest, or fetch if already present.
 clone_or_fetch() {
@@ -122,8 +104,6 @@ ensure_git_identity() {
     run git -C "$dest" config --local user.name  "$want_name"
     run git -C "$dest" config --local user.email "$want_email"
 }
-
-# ── Flow ────────────────────────────────────────────────────────────
 
 # Extract the clone basename from a git URL:
 #   git@github.com:kusimari/mAId.git          → mAId
@@ -159,53 +139,7 @@ run_entry_point() {
     fi
 }
 
-process_workspace() {
-    local name="$1" url="$2" entry="$3"
-    local ws_dir="$TOOL_WORKPLACE_ROOT/$name"
-    local clone_base
-    clone_base="$(repo_basename "$url")"
-    local clone_dir="$ws_dir/$clone_base"
-
-    log "Workspace: $name (repo: $clone_base)"
-    if [[ ! -d "$ws_dir" ]]; then
-        log "Creating workspace dir: $ws_dir"
-        run mkdir -p "$ws_dir"
-    fi
-
-    clone_or_fetch "$name/$clone_base" "$url" "$clone_dir"
-    ensure_git_identity "$clone_dir" "$PUBLIC_USER_NAME" "$PUBLIC_USER_EMAIL"
-    run_entry_point "$clone_dir" "$entry" "$name/$clone_base"
-}
-
-process_store() {
-    local name="$1" url="$2" entry="$3"
-    local clone_base
-    clone_base="$(repo_basename "$url")"
-    local clone_dir="$DABBA_ROOT/$clone_base"
-
-    log "Store: $name (repo: $clone_base)"
-    clone_or_fetch "store/$clone_base" "$url" "$clone_dir"
-    ensure_git_identity "$clone_dir" "$PUBLIC_USER_NAME" "$PUBLIC_USER_EMAIL"
-    run_entry_point "$clone_dir" "$entry" "store/$clone_base"
-}
-
-# Iterate a registry safely. $1 is human-readable kind ("workspace" /
-# "store"), $2 is the registry body, $3 is the per-row processor name.
-iterate_registry() {
-    local kind="$1" registry="$2" processor="$3"
-    while IFS=$'\t' read -r name url entry; do
-        [[ -z "$name" || "$name" =~ ^[[:space:]]*# ]] && continue
-        if [[ -z "$url" || -z "$entry" ]]; then
-            warn "Malformed $kind row: '$name\t$url\t$entry' (skipping)"
-            FAILURES+=("$name")
-            continue
-        fi
-        if ! ( "$processor" "$name" "$url" "$entry" ); then
-            warn "$name: failed (continuing)"
-            FAILURES+=("$name")
-        fi
-    done <<<"$registry"
-}
+# ── Flow ────────────────────────────────────────────────────────────
 
 log "Layer 5a (public): roots and registries$( (( DRY_RUN )) && echo ' (dry-run)')"
 
@@ -218,11 +152,32 @@ for root in "$TOOL_WORKPLACE_ROOT" "$DABBA_ROOT" "$WORKPLACE_ROOT"; do
     fi
 done
 
-iterate_registry workspace "$WORKSPACES" process_workspace
-iterate_registry store     "$STORES"     process_store
+# Workspace: ai-workspace/mAId — hosts mAId (and private siblings on
+# the kelasa side, handled by L5b).
+{
+    name="ai-workspace"
+    url="git@github.com:kusimari/mAId.git"
+    entry="install"
+    clone_base="$(repo_basename "$url")"
+    ws_dir="$TOOL_WORKPLACE_ROOT/$name"
+    clone_dir="$ws_dir/$clone_base"
 
-if (( ${#FAILURES[@]} > 0 )); then
-    warn "Layer 5a finished with failures: ${FAILURES[*]}"
+    log "Workspace: $name (repo: $clone_base)"
+    if [[ ! -d "$ws_dir" ]]; then
+        log "Creating workspace dir: $ws_dir"
+        run mkdir -p "$ws_dir"
+    fi
+    clone_or_fetch "$name/$clone_base" "$url" "$clone_dir"
+    ensure_git_identity "$clone_dir" "$PUBLIC_USER_NAME" "$PUBLIC_USER_EMAIL"
+    run_entry_point "$clone_dir" "$entry" "$name/$clone_base"
+} || { warn "ai-workspace/mAId: failed (continuing)"; FAILED=1; }
+
+# Stores: none today. Add a `{ ... } || { warn ...; FAILED=1; }` block
+# here when a public, backed-up store gets a repo. Pattern: mirror a
+# workspace block but clone flat into "$DABBA_ROOT/$clone_base".
+
+if (( FAILED )); then
+    warn "Layer 5a finished with failures."
     exit 1
 fi
 
