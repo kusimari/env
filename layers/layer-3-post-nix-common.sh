@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# env/build-nix/post-nix-common.sh — Layer 3 tail.
+# env/layers/layer-3-post-nix-common.sh — Layer 3 tail.
 #
-# Sourced by _common.sh after `home-manager switch` (or equivalent)
-# finishes. At that point nix-managed binaries exist on disk, but the
-# calling shell hasn't re-sourced .zshrc, so we prepend the per-user
-# nix profile bin dirs to PATH ourselves before invoking anything.
+# Sourced by layer-3-common.sh after `home-manager switch` (or
+# equivalent) finishes. At that point nix-managed binaries exist on
+# disk, but the calling shell hasn't re-sourced .zshrc, so we prepend
+# the per-user nix profile bin dirs to PATH ourselves before invoking
+# anything.
 #
 # Keep this file to idempotent, interactive-friendly post-activation
 # nudges. Anything that needs secrets (tokens, keychain writes) belongs
@@ -34,7 +35,7 @@ pn_prime_path() {
 # gh auth: the token lives in ~/.config/gh/hosts.yml (or the OS keychain
 # if gh was compiled with support). Either way it's per-user, portable
 # via that file, and outside the nix store. Mirrors the shape of
-# ensure_github_ssh in bootstrap-common.sh — check silently, do the
+# ensure_github_ssh in layer-2.sh — check silently, do the
 # automatable part ourselves (invoke `gh auth login`), then let the
 # user complete the manual step (paste the device code) interactively.
 pn_ensure_gh_auth() {

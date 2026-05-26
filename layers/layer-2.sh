@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# env/build-nix/bootstrap-common.sh — Layer 2 of the five-layer
-# bootstrap.
+# env/layers/layer-2.sh — Layer 2 of the five-layer bootstrap.
 #
 # Ensures ~/env-workplace exists, checks GitHub SSH reachability,
 # clones or fetches env. That's it. No chaining — when this script
 # finishes, the next step (Layer 3 nix build) is something the user
 # runs directly. AI-tooling repos (mAId and any private siblings)
-# are pulled in Layer 5; see env/layer-5/. See env/README.md for
-# the full layer design.
+# are pulled in Layer 5; see env/layers/layer-5a.sh. See env/README.md
+# for the full layer design.
 #
 # Runs either from a checkout or via curl pipe; auto-detects.
 #
@@ -92,7 +91,7 @@ ensure_github_ssh() {
         mkdir -p "$(dirname "$DEFAULT_KEY")"
         chmod 700 "$(dirname "$DEFAULT_KEY")"
         ssh-keygen -t ed25519 -f "$DEFAULT_KEY" -N '' \
-            -C "bootstrap-common@$(hostname)" >/dev/null
+            -C "layer-2@$(hostname)" >/dev/null
     elif [[ ! -f "$DEFAULT_KEY" ]]; then
         die "$DEFAULT_KEY exists but is not a regular file; remove or move it, then re-run"
     fi

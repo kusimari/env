@@ -30,14 +30,14 @@ discussion; the table below is the operational summary.
 
 | Layer | Script | Repo | Runs when | Purpose |
 |---|---|---|---|---|
-| 1 | `bootstrap-<envKind>.sh` | `env` (public) or `<kelasa-specific env repo>` | New machine | Native OS prep: auth, certs, sudoers, package mirrors. Makes machine nix-ready. |
-| 2 | `build-nix/bootstrap-common.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
-| 3 | `build-nix/<envKind>.sh` → sources `build-nix/post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
-| 4 | `post-nix-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
-| 5a | `layer-5a.sh` | `env` (public) | On demand | Iterates two registries — workspaces and stores. Workspaces clone under `~/tool-workplace/<name>/<repo>/`; stores clone flat under `~/dabba/<repo>/`. Also `mkdir -p ~/project-workplace/` (humans populate). Each entry runs its own `install` after clone/fetch. |
-| 5b | `layer-5b.sh` | `<kelasa-specific env repo>` (private) | On demand | Chains 5a first, then iterates the private workspace + store registries with the `$USER@amazon.com` identity. |
+| 1 | `layer-1-<envKind>.sh` | `env` (public) or `<kelasa-specific env repo>` | New machine | Native OS prep: auth, certs, sudoers, package mirrors. Makes machine nix-ready. |
+| 2 | `layers/layer-2.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
+| 3 | `layers/layer-3-<envKind>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
+| 4 | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
+| 5a | `layers/layer-5a.sh` | `env` (public) | On demand | Iterates two registries — workspaces and stores. Workspaces clone under `~/tool-workplace/<name>/<repo>/`; stores clone flat under `~/dabba/<repo>/`. Also `mkdir -p ~/workplace/` (humans populate). Each entry runs its own `install` after clone/fetch. |
+| 5b | `desktop-layers/layer-5b.sh` | `<kelasa-specific env repo>` (private) | On demand | Chains 5a first, then iterates the private workspace + store registries with the `$USER@amazon.com` identity. |
 
-**L3 vs L4 post-nix split.** L3's `post-nix-common.sh` is
+**L3 vs L4 post-nix split.** L3's `layer-3-post-nix-common.sh` is
 envKind-agnostic; L4 is envKind-specific. If a post-nix step is
 useful on every envKind, it belongs in L3. If it's meaningful only
 on one envKind, it belongs in L4.
@@ -53,7 +53,7 @@ content. Three roots, distinct semantics:
 - `~/dabba/` — stores. Cross-machine state that must be backed up
   off the local disk (git-backed repos like Gorantls-store and, in
   future, rclone mounts). Store registries clone flat here.
-- `~/project-workplace/` — manual, machine-specific projects. L5
+- `~/workplace/` — manual, machine-specific projects. L5
   only `mkdir -p`s it; no registry, no clones.
 
 Each workspace or store owns its own `install` entry-point.
@@ -150,19 +150,18 @@ env/
 ├── README.md              # layer system, envKinds, install commands
 ├── setup-notes.md         # operator cheat-sheet, post-install tasks
 │
-├── build-nix/             # Layer 2 + Layer 3 scripts
-│   ├── bootstrap-common.sh        # L2 — clone env
-│   ├── bootstrap-ubuntu-mane.sh   # L1 (public envKind)
-│   ├── ubuntu-mane.sh             # L3 for ubuntu-mane
-│   ├── al2-kelasa.sh              # L3 for AL2
-│   ├── al2023-kelasa.sh           # L3 for AL2023
-│   ├── darwin-kelasa.sh           # L3 for darwin
-│   ├── al2-fix-ssl.sh             # L1 helper for AL2 SSL quirks
-│   ├── _common.sh                 # shared body sourced by every L3 envKind script
-│   ├── post-nix-common.sh         # L3 tail — universal non-nixable post-nix nudges
-│   └── test.sh                    # flake eval without building
-│
-├── layer-5a.sh            # Layer 5a (public): walks workspace + store registries, mkdirs the three roots, hands off to each entry's install
+├── layers/                # Every layer script for the public side: L1 (ubuntu-mane) + L2 + L3 + L5a, plus L1/L3 helpers
+│   ├── layer-1-ubuntu-mane.sh        # L1 for ubuntu-mane (public envKind)
+│   ├── layer-2.sh                    # L2 — clone env
+│   ├── layer-3-ubuntu-mane.sh        # L3 for ubuntu-mane
+│   ├── layer-3-al2-kelasa.sh         # L3 for AL2
+│   ├── layer-3-al2023-kelasa.sh      # L3 for AL2023
+│   ├── layer-3-darwin-kelasa.sh      # L3 for darwin
+│   ├── layer-3-common.sh             # shared body sourced by every L3 envKind script
+│   ├── layer-3-post-nix-common.sh    # L3 tail — universal non-nixable post-nix nudges
+│   ├── layer-5a.sh                   # L5a (public): workspace + store registries
+│   ├── al2-fix-ssl.sh                # L1 helper for AL2 SSL quirks (not in the layer model)
+│   └── test.sh                       # flake eval without building (tooling, not a layer)
 │
 ├── home/                  # home-manager user-level config
 │   ├── home.nix                   # single entry consumed by every envKind
@@ -224,7 +223,7 @@ env/
   produces on PATH.
 - **`~/.pre-nix-rc` and `~/.post-nix-rc` are the only non-nix → nix
   shell bridge.** Any other shell-init hack will drift.
-- **`build-nix/test.sh`** evaluates the flake without building — use
+- **`layers/test.sh`** evaluates the flake without building — use
   it as the first check after any flake edit.
 
 ## Conventions
@@ -233,9 +232,10 @@ env/
   `claude-code-internalize`). L1 and L2 scripts accept `--branch`
   / `--env-branch` so feature branches can be bootstrapped
   end-to-end. L5 pins workspaces and stores to default branches via
-  the registries embedded in `layer-5a.sh` (and `layer-5b.sh` in the
+  the registries embedded in `layers/layer-5a.sh` (and
+  `desktop-layers/layer-5b.sh` in the
   private repo).
 - Conventional-commit style messages.
 - Feature design docs in `.kdevkit/feature/<name>.md`; active ones in
   `.kdevkit/feature/wip/`.
-- Day-2 rebuild flow: edit → `build-nix/test.sh` → `build-nix/<envKind>.sh`.
+- Day-2 rebuild flow: edit → `layers/test.sh` → `layers/layer-3-<envKind>.sh`.

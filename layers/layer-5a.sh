@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# env/layer-5a.sh — Layer 5a (public) of the five-layer bootstrap.
+# env/layers/layer-5a.sh — Layer 5a (public) of the five-layer bootstrap.
 #
 # Iterates two registries and ensures three roots:
 #   ~/tool-workplace/   workspaces (env-tooling under active churn)
 #   ~/dabba/            stores (cross-machine, backed-up content)
-#   ~/project-workplace mkdir-only; humans populate machine-specific work
+#   ~/workplace         mkdir-only; humans populate machine-specific work
 #
 # For each workspace entry: clone/fetch the repo into
 # ~/tool-workplace/<name>/<repo-basename>/, pin git identity, and
@@ -53,7 +53,7 @@ TSV
 # ── Constants ───────────────────────────────────────────────────────
 TOOL_WORKPLACE_ROOT="$HOME/tool-workplace"
 DABBA_ROOT="$HOME/dabba"
-PROJECT_WORKPLACE_ROOT="$HOME/project-workplace"
+WORKPLACE_ROOT="$HOME/workplace"
 PUBLIC_USER_NAME="kusimari"
 PUBLIC_USER_EMAIL="kusimari@gmail.com"
 
@@ -209,9 +209,9 @@ iterate_registry() {
 
 log "Layer 5a (public): roots and registries$( (( DRY_RUN )) && echo ' (dry-run)')"
 
-# Ensure the three roots exist before iterating. project-workplace is
+# Ensure the three roots exist before iterating. workplace is
 # mkdir-only by design — no registry, no clones.
-for root in "$TOOL_WORKPLACE_ROOT" "$DABBA_ROOT" "$PROJECT_WORKPLACE_ROOT"; do
+for root in "$TOOL_WORKPLACE_ROOT" "$DABBA_ROOT" "$WORKPLACE_ROOT"; do
     if [[ ! -d "$root" ]]; then
         log "Creating root: $root"
         run mkdir -p "$root"

@@ -1,10 +1,18 @@
 #!/bin/bash
-# Common body for Layer-3 build scripts (ubuntu-mane.sh,
-# darwin-kelasa.sh, al2-kelasa.sh, al2023-kelasa.sh). The L3 wrapper
-# must export these before sourcing this file:
+# env/layers/layer-3-common.sh — shared body for every Layer 3
+# entry-point. Sourced by:
+#   layer-3-ubuntu-mane.sh
+#   layer-3-darwin-kelasa.sh
+#   layer-3-al2-kelasa.sh
+#   layer-3-al2023-kelasa.sh
+#
+# Each L3 entry-point must export these before sourcing this file:
 #   SED_INPLACE_FLAG  — '' on macOS, unset on Linux
 #   NIX_COMMAND       — the nix command to run (platform-specific)
 #   NIX_ECHO_MESSAGE  — banner printed before the nix command
+#
+# Tail: this file sources layer-3-post-nix-common.sh after the nix
+# build, providing universal post-nix nudges (PATH fix, gh auth, etc.).
 
 # Not using `set -e`: placeholders must be restored even if nix fails.
 
@@ -55,7 +63,7 @@ replace_placeholders "$USER_VALUE" "replace-user" "$HOSTNAME_VALUE" "replace-hos
 echo "Done!"
 
 # shellcheck disable=SC1091
-source "$(dirname "${BASH_SOURCE[0]}")/post-nix-common.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/layer-3-post-nix-common.sh"
 
 printf '\n\033[1;33m=== Post-install setup notes ===\033[0m\n'
 cat "$FLAKE_DIR/setup-notes.md"
