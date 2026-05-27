@@ -42,11 +42,11 @@ needed on this machine.
   keyed to non-nix binaries. Lives in the envKind's own repo.
   Writes `~/.post-nix-rc`; never builds nix artifacts.
 
-- **Layer 5 — fast-moving updates on top of the base env.** A small
-  registry framework with three roots and two registry kinds. L5
-  drivers (`layers/layer-5a.sh` in `env`, `desktop-layers/layer-5b.sh`
-  in the envKind repo)
-  iterate two registries:
+- **Layer 5 — fast-moving updates on top of the base env.** Three
+  roots and a small set of inline `{ ... }` blocks, one per known
+  workspace and store. L5 drivers (`layers/layer-5a.sh` in `env`,
+  `desktop-layers/layer-5b.sh` in the envKind repo) walk their
+  blocks:
     - **workspaces** — clone into
       `~/tool-workplace/<name>/<repo>/` (env-tooling under active
       churn).
@@ -54,12 +54,14 @@ needed on this machine.
       backed-up content).
   Both drivers also `mkdir -p ~/workplace/`, which Layer 6 (below)
   populates per-project on demand.
-  For each registry entry the driver pins git identity and hands off
-  to the repo's own `install` entry-point. The driver itself never
-  builds content — each workspace or store owns its own install.
+  For each block the driver pins git identity and hands off to the
+  repo's own `install` entry-point. The driver itself never builds
+  content — each workspace or store owns its own install.
   L5 is the home for things that change faster than the base env
   and aren't (yet) worth nix-managing. When a workspace hardens
   enough, it can graduate into L3 (nix-managed) or L4 (non-nix).
+  Adding a workspace or store: copy an existing `{ ... }` block in
+  the relevant driver and edit the name/url.
 
 - **Layer 6 — per-project workplace recreation, on demand.** Project
   workspaces under `~/workplace/<project>/` are **not** bulk-installed
@@ -102,7 +104,7 @@ alone.
 | 3 | `layers/layer-3-<envKind>.sh` → `layers/layer-3-common.sh` → `layers/layer-3-post-nix-common.sh` | `env` | no | nix build + universal post-nix nudges |
 | 4 | `desktop-layers/layer-4-kelasa.sh` | `<kelasa-specific env repo>` | no | envKind-specific non-nixable post-install |
 | 5a | `layers/layer-5a.sh` | `env` (public) | no | Workspaces → `~/tool-workplace/`, stores → `~/dabba/`, mkdir `~/workplace/`. Hand off to each entry's own `install`. |
-| 5b | `desktop-layers/layer-5b.sh` | `<kelasa-specific env repo>` (private) | no | Chains 5a, then iterates private workspaces + stores under the same three roots. |
+| 5b | `desktop-layers/layer-5b.sh` | `<kelasa-specific env repo>` (private) | no | Chains 5a, then walks private workspace + store blocks under the same three roots. |
 | 6 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | no | On demand, per-project. Replays a recipe inside `~/workplace/<project>/` to recreate that project's workspace (clones, symlinks, `.envrc`). |
 
 ### Day-2 update flows
@@ -114,7 +116,7 @@ what changed.
 |---|---|
 | `env` flake / `home.nix` / nix-managed config | L3: `~/env-workplace/env/layers/layer-3-<envKind>.sh` |
 | envKind-specific post-nix content (site-managed tools, aliases, `~/.post-nix-rc.d/` drop-ins) | L4: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-4-<envKind>.sh` |
-| L5 registry, workspace `install`, or store content | L5b on kelasa machines: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5b.sh` (chains 5a). L5a on public-only machines: `~/env-workplace/env/layers/layer-5a.sh`. |
+| L5 workspace block, store block, workspace `install`, or store content | L5b on kelasa machines: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5b.sh` (chains 5a). L5a on public-only machines: `~/env-workplace/env/layers/layer-5a.sh`. |
 | A specific project's workspace recipe | L6, on demand: `mkdir -p ~/workplace/<project> && cd ~/workplace/<project> && ~/env-workplace/<envKind repo with project recipes>/projects/workplace-setup.sh` |
 | Multiple of the above | L3 → L4 → L5 → L6 in that order |
 
@@ -202,11 +204,11 @@ curl -fsSL https://raw.githubusercontent.com/kusimari/env/feature-build-layers/l
   | bash -s -- --env-branch feature-build-layers
 ```
 
-L5 pins workspaces and stores to their default branches from the
-registries embedded in `layers/layer-5a.sh` (and
-`desktop-layers/layer-5b.sh` on private
-machines). To test a workspace or store feature branch, edit the
-registry in a local checkout before running L5.
+L5 pins workspaces and stores to their default branches via inline
+`{ ... }` blocks in `layers/layer-5a.sh` (and
+`desktop-layers/layer-5b.sh` on private machines). To test a
+workspace or store feature branch, edit the relevant block in a
+local checkout before running L5.
 
 To check the flake without building: `./layers/test-flake.sh`.
 

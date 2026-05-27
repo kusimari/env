@@ -37,8 +37,8 @@ operational summary.
 | 2 | `layers/layer-2.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
 | 3 | `layers/layer-3-<envKind>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
 | 4 | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa, or any day-2 change to envKind-specific post-nix content | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
-| 5a | `layers/layer-5a.sh` | `env` (public) | On demand | Iterates two registries — workspaces and stores. Workspaces clone under `~/tool-workplace/<name>/<repo>/`; stores clone flat under `~/dabba/<repo>/`. Also `mkdir -p ~/workplace/` (Layer 6 populates per-project). Each entry runs its own `install` after clone/fetch. |
-| 5b | `desktop-layers/layer-5b.sh` | `<kelasa-specific env repo>` (private) | On demand | Chains 5a first, then iterates the private workspace + store registries with the kelasa work-identity (configured inside the kelasa env repo's L5b driver). |
+| 5a | `layers/layer-5a.sh` | `env` (public) | On demand | Runs one inline `{ ... }` block per workspace and store. Workspaces clone under `~/tool-workplace/<name>/<repo>/`; stores clone flat under `~/dabba/<repo>/`. Also `mkdir -p ~/workplace/` (Layer 6 populates per-project). Each entry runs its own `install` after clone/fetch. |
+| 5b | `desktop-layers/layer-5b.sh` | `<kelasa-specific env repo>` (private) | On demand | Chains 5a first, then runs one inline block per private workspace and store with the kelasa work-identity (configured inside the kelasa env repo's L5b driver). |
 | 6 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | On demand, per project | Replays a project recipe inside `~/workplace/<project>/`: clones source repos, writes symlinks back to the recipe, generates `.envrc`. **Not** part of fresh-machine bootstrap — run only when actually working on that project on this machine. |
 
 **L3 vs L4 post-nix split.** L3's `layer-3-post-nix-common.sh` is
@@ -46,17 +46,17 @@ envKind-agnostic; L4 is envKind-specific. If a post-nix step is
 useful on every envKind, it belongs in L3. If it's meaningful only
 on one envKind, it belongs in L4.
 
-**L5 framework — three roots, two registries.** L5 is not for
-nix-managed content. It exists as a staging area for things that
-change faster than the base env — workspace repos with their own
-install flows. The driver only clones and hands off; it never builds
-content. Three roots, distinct semantics:
+**L5 framework — three roots, inline workspace + store blocks.** L5
+is not for nix-managed content. It exists as a staging area for
+things that change faster than the base env — workspace repos with
+their own install flows. The driver only clones and hands off; it
+never builds content. Three roots, distinct semantics:
 
 - `~/tool-workplace/` — env-tooling under active churn. Backed up
-  via git remotes only. Workspace registries clone here.
+  via git remotes only. Workspace blocks clone here.
 - `~/dabba/` — stores. Cross-machine state that must be backed up
   off the local disk (git-backed repos like Gorantls-store and, in
-  future, rclone mounts). Store registries clone flat here.
+  future, rclone mounts). Store blocks clone flat here.
 - `~/workplace/` — per-project workspaces. L5 only `mkdir -p`s the
   root; Layer 6 populates entries on demand.
 
@@ -186,7 +186,7 @@ env/
 │   ├── layer-3-darwin-kelasa.sh      # L3 for darwin
 │   ├── layer-3-common.sh             # shared body sourced by every L3 envKind script
 │   ├── layer-3-post-nix-common.sh    # L3 tail — universal non-nixable post-nix nudges
-│   ├── layer-5a.sh                   # L5a (public): workspace + store registries
+│   ├── layer-5a.sh                   # L5a (public): inline workspace + store blocks
 │   └── test-flake.sh                 # flake eval without building (tooling, not a layer)
 │
 ├── home/                  # home-manager user-level config
@@ -258,9 +258,9 @@ env/
   `claude-code-internalize`). L1 and L2 scripts accept `--branch`
   / `--env-branch` so feature branches can be bootstrapped
   end-to-end. L5 pins workspaces and stores to default branches via
-  the registries embedded in `layers/layer-5a.sh` (and
-  `desktop-layers/layer-5b.sh` in the
-  private repo).
+  inline `{ ... }` blocks in `layers/layer-5a.sh` (and
+  `desktop-layers/layer-5b.sh` in the private repo) — one block per
+  workspace or store, hand-edited when adding a new entry.
 - Conventional-commit style messages.
 - Feature design docs in `.kdevkit/feature/<name>.md`; active ones in
   `.kdevkit/feature/wip/`.
@@ -271,7 +271,7 @@ env/
   - kelasa-specific env-repo post-nix content (site-managed tools,
     aliases, `~/.post-nix-rc.d/` drop-ins):
     `desktop-layers/layer-4-<envKind>.sh` (in the kelasa env repo).
-  - L5 registry / workspace / store changes:
+  - L5 workspace / store changes:
     `desktop-layers/layer-5b.sh` on kelasa, else `layers/layer-5a.sh`.
   - A specific project workspace recipe (L6, on demand only):
     `cd ~/workplace/<project> && projects/workplace-setup.sh`
