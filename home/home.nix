@@ -44,6 +44,7 @@
     ripgrep  # fast regex search across files (rg), also used by emacs consult
     fd       # fast file finder, also used by emacs consult
     jq       # JSON processor, used by rclone-env backends
+    shellcheck  # bash linter; required by the kdevkit Test Gate
 
     # rclone-env: list, browse, check, copy, sync across rclone remotes
     (pkgs.writeShellScriptBin "rclone-env" (builtins.readFile ../rclone-env/rclone-env.sh))
