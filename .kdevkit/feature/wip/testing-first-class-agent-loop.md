@@ -130,9 +130,17 @@ chain.
    (`shellcheck`), `type-check` (`bash -n` + `nix flake check`), and
    `test` (`test-flake.sh` + `layer-5a.sh --dry-run`) commands out
    of the new section.
-5. **Land as one commit** on `feat/testing-first-class-agent-loop`.
-   Conventional-commit subject: `docs(kdevkit): add Testing section
-   for agentic Test Gate`.
+5. **Land as two commits in one PR**, squash on merge. Order:
+   1. `fix(env-verify): mirror commonConfiguration overlays and pass
+      lib/config to tier-3 imports` — env-verify.nix only.
+   2. `docs(kdevkit): add Testing section for agentic Test Gate` —
+      `home/home.nix` (shellcheck addition), `.kdevkit/project.md`
+      (Testing section), and this spec's logs.
+
+   Two commits because the env-verify fixes are correctness changes
+   to evaluation, not docs; bisectable on their own. One PR because
+   the auto track is meaningless until both land together — the doc
+   would otherwise advertise a Test Gate that fails on day one.
 6. **Promote** the spec from `feature/wip/` to `feature/` once
    merged. `git mv` only — kdevkit forbids auto-migration of trees.
 
@@ -171,6 +179,30 @@ chain.
 - 2026-05-26 · Spec authored. No implementation yet. Decision logged
   to keep `nix run .#env-verify` live-only and to add `shellcheck`
   to `home.packages` if missing.
+- 2026-05-27 · Implementation. Added `shellcheck` to tier-1
+  `home.packages` (was missing). Drafted prose `## Testing` section
+  in `project.md` between Directory map and Non-obvious invariants.
+  Auto-track validation surfaced two pre-existing latent bugs in
+  `env-verify.nix` that `nix flake check` had never exercised
+  before because no one had run it on a clean checkout — fixed
+  both (see Decision Log). Final auto-track sweep: `nix flake
+  check`, `bash layers/test-flake.sh`, `bash -n layers/*.sh`,
+  `shellcheck layers/*.sh` (via `nix-shell -p`), and `bash
+  layers/layer-5a.sh --dry-run` all pass on this checkout.
+- 2026-05-27 · Audit pass before commit. Plan agent reviewed the
+  spec end-to-end against kdevkit SKILL.md §§2/6/8. Confirmed: this
+  is the right feature (agent loop genuinely has nothing to read
+  without the section); auto/live split is correct; the env-verify
+  fixes belong in this feature, not a precursor. Skipped audit
+  suggestions to (a) tighten the auto-track criterion in prose, and
+  (b) add overlay-parity / tier-3-argset maintenance contracts to
+  `project.md`'s Testing prose — instead landed those two coupling
+  warnings as one-line code comments inside `env-verify.nix` next
+  to the `mkPkgs` and `tier3` definitions, where the next person to
+  edit those locations will actually see them. Skipped the
+  suggestion to add a `§8 readability artifact` paragraph to the
+  spec's Test Strategy as gold-plating; the new Testing prose itself
+  is the artifact.
 
 ## Decision Log
 
@@ -186,3 +218,39 @@ chain.
   benefit; the Day-2 update flow already calls it out.
 - 2026-05-26 · **Prose, not a structured Toolchain block.** Per
   kdevkit §2's explicit first-time-detection rule.
+- 2026-05-27 · **Fix env-verify overlays inline with this feature**
+  rather than splitting into a separate PR. Rationale: making
+  `nix flake check` part of the Test Gate is the whole point of
+  the feature, and the gate is meaningless if it does not pass on
+  a clean checkout. Two latent bugs surfaced — (a) `mkPkgs` did
+  not apply the `antigravity-cli` overlay, so any consumer of
+  `apps.x86_64-linux.env-verify` failed with `undefined variable
+  'antigravity-cli'`; (b) `tier3` imported `envKind-*.nix` files
+  with only `pkgs`, but `envKind-kelasa.nix` uses `lib.mkIf` and
+  expects `{ config, lib, pkgs, ... }`. Both fixed in
+  `env-verify.nix`. Alternative rejected: ship the doc and split
+  the env-verify fix into a separate commit — would land a Test
+  Gate that is broken from day one, which contradicts the spec's
+  self-validation requirement.
+- 2026-05-27 · **Document env-verify coupling as code comments,
+  not as `project.md` prose.** The audit recommended adding two
+  maintenance-contract bullets to the new `## Testing` section
+  ("overlay parity between `commonConfiguration` and `mkPkgs`"
+  and "tier-3 argset must match `env-verify.nix`'s `tier3`
+  import"). Decided instead to put one-line warnings inside
+  `env-verify.nix` next to `mkPkgs` and `tier3`. Rationale: the
+  bug recurs in the file where the change is made, and a comment
+  in that file is what the next reader will actually see. The
+  Testing section stays short and focused on what to run.
+  Alternative rejected: write the same coupling in both places —
+  duplicated source of truth.
+- 2026-05-27 · **Two commits, one PR, squash on merge.** Spec
+  originally said one commit (`docs(kdevkit): ...`). Revised to:
+  (1) `fix(env-verify): ...`, (2) `docs(kdevkit): ...`. Rationale:
+  the env-verify changes are correctness fixes to flake
+  evaluation, bisectable independently of the docs. Squash-merge
+  keeps the public history at one logical change ("make the agent
+  loop's auto track green and document it"). Alternative
+  rejected: one commit conflating fix and docs — diff is harder
+  to review, and the next person git-blaming `mkPkgs` for an
+  unrelated reason would land on a "docs:" commit.

@@ -15,12 +15,19 @@ let
   # Apply the same overlays as commonConfiguration in flake.nix so the eval
   # sees the same claude-code / alacritty-theme / vscode-extensions packages
   # as real home-manager activations.
+  # Keep overlay list in sync with commonConfiguration in flake.nix; drift
+  # here breaks `nix flake check`. Mirrors so the eval sees the same package
+  # set (including antigravity-cli) that real activations see.
   mkPkgs = system: import nixpkgs {
     inherit system;
     overlays = [
       inputs.nix-vscode-extensions.overlays.default
       inputs.alacritty-theme.overlays.default
       inputs.claude-code.overlays.default
+      (final: _prev: {
+        antigravity-cli = final.callPackage
+          "${inputs.nixpkgs-antigravity-cli}/pkgs/by-name/an/antigravity-cli/package.nix" {};
+      })
     ];
     config.allowUnfree = true;
   };
@@ -53,7 +60,11 @@ let
     manePkgs   = (mkConfig "mane").config.home.packages;
     kelasaPkgs = (mkConfig "kelasa").config.home.packages;
 
-    tier3      = envFile: (import envFile { inherit pkgs; }).home.packages or [];
+    # Argset must match what envKind-*.nix files expect (config/lib/pkgs);
+    # a mismatch breaks tier-3 evaluation here even if home-manager is happy.
+    # We pass a stub config because we only read .home.packages.
+    tier3 = envFile:
+      (import envFile { inherit pkgs lib; config = {}; }).home.packages or [];
     maneOnly   = tier3 ./home/envKind-mane.nix;
     kelasaOnly = tier3 ./home/envKind-kelasa.nix;
 

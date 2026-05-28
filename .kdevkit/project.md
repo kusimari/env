@@ -235,6 +235,68 @@ env/
         └── wip/                   # active specs
 ```
 
+## Testing
+
+This repo builds an environment on top of a machine, so validation
+splits into two tracks: things that can be evaluated against the
+checkout itself, and things that can only be observed on a machine
+that has actually been activated. The first track is the kdevkit
+Test Gate; the second is operator-driven and lives next to the
+day-2 update flows in Conventions.
+
+**Auto-runnable on a clean checkout** (the Test Gate). Anything
+evaluable against the repo without changing machine state goes
+here. From `env/`:
+
+- Type-check / schema check the flake with `nix flake check`. Cheap
+  evaluation pass that catches obvious schema or import breakage
+  before a build is attempted.
+- Build the flake without activating with `bash layers/test-flake.sh`.
+  Builds `homeConfigurations.ubuntu-mane.activationPackage` and
+  `homeConfigurations.al2-kelasa.activationPackage` to a Nix store
+  path; no `home-manager switch`, no symlink swap. This is the real
+  type check for `home/home.nix` and its imports.
+- Bash parser-only check with `bash -n layers/*.sh`. Catches
+  syntax errors without running anything.
+- Bash lint with `shellcheck layers/*.sh`. Catches L1-L5 driver
+  bugs that pass `bash -n`. `shellcheck` is in tier-1 `home.packages`,
+  so it lands on PATH on every activated envKind and is therefore
+  also picked up as an env-verify invariant.
+- L5 dry-run with `bash layers/layer-5a.sh --dry-run`. Walks the
+  inline workspace + store blocks without cloning, fetching, or
+  invoking entry-points; verifies the arg parser and that each
+  block evaluates.
+
+Together these are the format / lint / type-check / test commands
+the kdevkit loop reads out of this section. There is no separate
+formatter — Nix and bash are written by hand in this repo.
+
+**Live-only** (operator-driven, not in the Test Gate). The rest of
+validation requires an activated machine, so it stays manual:
+
+- `nix run .#env-verify` is the canonical post-activation check.
+  It enumerates tier-1 + tier-2 invariants and asserts each binary
+  is on PATH. On a vanilla checkout most invariants will report
+  MISS because they were never installed there — that is by design;
+  the check is meaningful only after L3 has switched the
+  home-manager generation. Run it after every day-2 rebuild.
+- L1 machine prep (`layer-1-<envKind>.sh`) only matters on a fresh
+  OS install and mutates system state — out of the loop entirely.
+- L3 / L4 activation (`layer-3-<envKind>.sh`, then `layer-4-kelasa.sh`
+  on kelasa) actually swap the home-manager generation and write
+  `~/.post-nix-rc` — verifiable only by re-running them and
+  observing shell behaviour after the next login.
+- L5 real install (`bash layers/layer-5a.sh` without `--dry-run`)
+  clones into `~/tool-workplace/` and `~/dabba/` and hands off to
+  each entry-point. Verified by inspecting those trees.
+- `~/.pre-nix-rc` / `~/.post-nix-rc` shell behaviour requires an
+  interactive shell on an activated machine — there is no
+  evaluation-time check for it.
+
+The per-layer rerun chain for live-only validation is the same one
+documented under Conventions §"Day-2 update flows"; chase the
+layer that owns what changed rather than re-running everything.
+
 ## Non-obvious invariants
 
 - **envKind branching happens inside `home/home.nix`**, not by
