@@ -100,6 +100,7 @@
           "raycast"
           "google-chrome"
           "porting-kit"
+          "obsidian"
         ];
       };
 
