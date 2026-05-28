@@ -157,23 +157,6 @@ chain.
   must re-activate after the merge before env-verify will be green.
   Call this out in the commit body so the reader knows.
 
-## Open questions for the next session
-
-- Should we add a top-level `## Agent Development` block now to
-  document the kdevkit defaults explicitly (score 70, retries 2),
-  even if we are not overriding them? Default answer in this spec:
-  no — only document overrides.
-- Do we want the Test Gate to also assert that
-  `env/.kdevkit/feature/wip/` does not contain any spec older than N
-  days as a hygiene check? Probably out of scope for this feature;
-  noted as a future idea.
-- Do we want a follow-up feature that bootstraps
-  `Gorantls-env/.kdevkit/project.md` with the same auto/live split,
-  adapted for the kelasa-side surface (no flake; mostly shellcheck +
-  layer-5b dry-run)? Recommendation: yes, but as a separate feature
-  in that repo's spec tree once we decide whether to introduce
-  kdevkit there at all.
-
 ## Session Log
 
 - 2026-05-26 · Spec authored. No implementation yet. Decision logged
@@ -254,3 +237,12 @@ chain.
   rejected: one commit conflating fix and docs — diff is harder
   to review, and the next person git-blaming `mkPkgs` for an
   unrelated reason would land on a "docs:" commit.
+- 2026-05-28 · **No top-level `## Agent Development` block.**
+  Per kdevkit §2's optional-section guidance, the block is for
+  per-skill overrides; the env repo runs cleanly on the defaults
+  (score threshold 70, retry budget 2). Adding the block to
+  document defaults would create a parallel source of truth that
+  drifts as kdevkit's defaults evolve. Keep `project.md` minimal
+  and rely on the skill's defaults until a real override
+  emerges. Originally raised as an Open Question; resolving here
+  during the §9 close-out.
