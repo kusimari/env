@@ -4,9 +4,9 @@
 
 ✅ **Iteration 1 complete.** Four-layer bootstrap design shipped
 across `env` (public) and a private kelasa env repo (private
-envKinds). Iter 2 (`mAId`) continues in
-`.kdevkit/feature/wip/feature-build-layers.md` — that doc
-references this one for the layered context it now builds on.
+envKinds). Iter 2 (`mAId`) moved out of this repo: mAId now lives
+at `~/tool-workplace/ai-workspace/mAId` with its own kdevkit at
+`mAId/specs/`. Active mAId specs live there.
 
 This file is the durable record of what Iteration 1 delivered. It
 doesn't re-derive design; see §2 for the final layer model and §5
@@ -334,12 +334,17 @@ public repo)
 
 ## 7 · Follow-ups for Iter 2 (mAId)
 
-Continues in `.kdevkit/feature/wip/feature-build-layers.md`.
-Iter 2 adds the `maid` CLI that maps generic skill/agent/command/
-MCP sources to per-tool paths under `$HOME` via symlinks. Layer 2
-already clones `mAId` alongside `env`, so the sync machinery is in
-place — Iter 2 only fills in the CLI and the source tree.
+Iter 2 moved out of `env`. mAId now lives at
+`~/tool-workplace/ai-workspace/mAId` with its own kdevkit; see
+`mAId/specs/` (project.md, feature/, backlog/) for current work.
+The Layer 2 / 5 clone wiring still applies — only the spec home
+moved.
 
-Four open items flagged at Iter-1 close, to decide during Iter 2:
-intent keyword list seeding, symlink relative-vs-absolute, inbox
-session-log lifecycle, writing-style.md inline draft timing.
+The original Iter-2 spec (intent router, inbox, flat skill files,
+Type A/B/C source kinds) was superseded during the move. Per-skill
+dirs with `SKILL.md`, a simpler `name/description/version/tags`
+schema, and a deploy-only CLI shipped instead. The four originally-
+flagged open items (intent keywords, symlink relative-vs-absolute,
+session-log lifecycle, writing-style draft timing) were closed by
+that pivot — see `mAId/specs/feature/sources-audit-and-kdevkit-v2.md`
+and siblings.
