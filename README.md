@@ -115,7 +115,7 @@ what changed.
 | What changed | Run |
 |---|---|
 | `env` flake / `home.nix` / nix-managed config | L3: `~/env-workplace/env/layers/layer-3-<envKind>.sh` |
-| envKind-specific post-nix content (site-managed tools, aliases, `~/.post-nix-rc.d/` drop-ins) | L4: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-4-<envKind>.sh` |
+| envKind-specific post-nix content (site-managed tools, aliases, `~/.post-nix-rc`) | L4: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-4-<envKind>.sh` |
 | L5 workspace block, store block, workspace `install`, or store content | L5b on kelasa machines: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5b.sh` (chains 5a). L5a on public-only machines: `~/env-workplace/env/layers/layer-5a.sh`. |
 | A specific project's workspace recipe | L6, on demand: `mkdir -p ~/workplace/<project> && cd ~/workplace/<project> && ~/env-workplace/<envKind repo with project recipes>/projects/workplace-setup.sh` |
 | Multiple of the above | L3 → L4 → L5 → L6 in that order |
@@ -225,12 +225,13 @@ environment without putting non-nixable content in the flake.
 
 | File | Written by | Sourced | Use for |
 |---|---|---|---|
-| `~/.pre-nix-rc` | Layer 1 | `.zshenv` (early) | PATH / env needed before interactive shells fully start |
-| `~/.post-nix-rc` | Layer 4 | `.zshenv` (after pre-nix-rc) | PATH / aliases that depend on Layer-3 nix artifacts |
-| `~/.post-nix-rc.d/*.sh` | Layer 5 workspace `install` scripts | `~/.post-nix-rc` (alphabetical loop) | Workspace-owned shell snippets that need to live alongside an L5 install — keeps L4 free of L5 churn |
+| `~/.pre-nix-rc` | Layer 1 | `.zshenv` (early) | Reserved stub for future L1-time shell state. Empty today. |
+| `~/.post-nix-rc` | Layer 4 | `.zshenv` + `.zlogin` + `.zshrc` | PATH / aliases that depend on Layer-3 nix artifacts. Re-sourced from later hooks so the OS-managed `.zprofile` cannot shadow earlier prepends. |
 
 Writers must be idempotent — diff-check the intended content,
-overwrite only on mismatch. These files are the contract between
+overwrite only on mismatch. PATH manipulation must use idempotent
+prepend (case-guarded or move-to-front) so repeat sourcing across
+the three hooks is a no-op. These files are the contract between
 non-nixable work and the nixified shell. Don't put shell
 initialization anywhere else.
 

@@ -107,8 +107,9 @@ shell form. See the policy comment above the hook block in
 `home/home.nix` for the full ordering table.
 
 `~/.pre-nix-rc` is currently a stub reserved for forward-compat L1-time
-shell state; the active toolbox/apollo PATH wiring lives in
-`~/.post-nix-rc`.
+shell state; the active toolbox PATH wiring lives in `~/.post-nix-rc`,
+which is owned by the kelasa env repo's L4 (a private, envKind-specific
+companion to this public repo).
 
 ## Tiered package model
 
@@ -346,7 +347,7 @@ layer that owns what changed rather than re-running everything.
   - `env` flake / `home.nix` edits: `layers/test-flake.sh` →
     `layers/layer-3-<envKind>.sh`.
   - kelasa-specific env-repo post-nix content (site-managed tools,
-    aliases, `~/.post-nix-rc.d/` drop-ins):
+    aliases, `~/.post-nix-rc`):
     `desktop-layers/layer-4-<envKind>.sh` (in the kelasa env repo).
   - L5 workspace / store changes:
     `desktop-layers/layer-5b.sh` on kelasa, else `layers/layer-5a.sh`.
