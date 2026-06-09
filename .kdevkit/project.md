@@ -92,8 +92,9 @@ inject shell state into the nix-managed zsh by writing to
 `~/.pre-nix-rc` (L1) and `~/.post-nix-rc` (L4). These files are the
 only supported contract between non-nixable work and the nixified
 shell. Writers must be idempotent (diff-check, overwrite on mismatch),
-and any PATH manipulation inside them must be idempotent prepend (case-
-guarded) so repeated sourcing is a no-op.
+and any PATH manipulation inside them must be idempotent move-to-front
+prepend (strip any existing entry, then prepend) so repeated sourcing
+across the three hooks is a no-op and ordering is preserved.
 
 `~/.post-nix-rc` is sourced from **all three** home-manager zsh hooks
 in `home/home.nix`: `envExtra` (`.zshenv`, every shell), `loginExtra`
