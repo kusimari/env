@@ -89,11 +89,26 @@ L6 is per-project and on-demand.
 
 **Shell hook bridge.** Layers 1 and 4 are not nix-managed, but they can
 inject shell state into the nix-managed zsh by writing to
-`~/.pre-nix-rc` (L1) and `~/.post-nix-rc` (L4). Both are sourced from
-`programs.zsh.envExtra` in `home/home.nix` (lines 107-120). These files
-are the only supported contract between non-nixable work and the
-nixified shell. Writers must be idempotent (diff-check, overwrite on
-mismatch).
+`~/.pre-nix-rc` (L1) and `~/.post-nix-rc` (L4). These files are the
+only supported contract between non-nixable work and the nixified
+shell. Writers must be idempotent (diff-check, overwrite on mismatch),
+and any PATH manipulation inside them must be idempotent prepend (case-
+guarded) so repeated sourcing is a no-op.
+
+`~/.post-nix-rc` is sourced from **all three** home-manager zsh hooks
+in `home/home.nix`: `envExtra` (`.zshenv`, every shell), `loginExtra`
+(`.zlogin`, login shells), and `initContent` (`.zshrc`, interactive
+shells). The three-hook pattern preserves PATH overlay across the OS's
+own shell-init layering — AL2's `/etc/skel/.zprofile` prepends
+`~/.local/bin` *after* `.zshenv` has run, so a single `.zshenv` source
+isn't enough to keep toolbox first. Re-sourcing from later hooks with
+idempotent prepends in `~/.post-nix-rc` claims top of PATH in every
+shell form. See the policy comment above the hook block in
+`home/home.nix` for the full ordering table.
+
+`~/.pre-nix-rc` is currently a stub reserved for forward-compat L1-time
+shell state; the active toolbox/apollo PATH wiring lives in
+`~/.post-nix-rc`.
 
 ## Tiered package model
 

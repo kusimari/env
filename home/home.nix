@@ -100,8 +100,29 @@
       ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE = "fg=#666666";
       ZSH_AUTOSUGGEST_STRATEGY = "(completion history)";
     };
+    # PATH ordering policy:
+    #   OS shell init        .zshenv → .zprofile → .zshrc → .zlogin
+    #   Our overlay          envExtra → loginExtra → initContent
+    #
+    # The OS owns .zprofile — on AL2 /etc/skel/.zprofile prepends
+    # ~/.local/bin AFTER .zshenv has set up the toolbox PATH from
+    # ~/.post-nix-rc, which would shadow ~/.toolbox/bin. We don't
+    # take .zprofile over; we re-source ~/.post-nix-rc from every
+    # later home-manager hook (loginExtra → .zlogin, initContent →
+    # .zshrc) so toolbox stays first regardless of what .zprofile
+    # does. The rc files use idempotent (case-guarded) prepends, so
+    # repeat sourcing is a no-op. Net effect: toolbox wins in every
+    # shell form (interactive/non-interactive × login/non-login).
     initContent = lib.mkOrder 550 ''
       fpath=(~/.zfunc $fpath)
+      if [[ -f ~/.post-nix-rc ]]; then
+        source ~/.post-nix-rc
+      fi
+    '';
+    loginExtra = ''
+      if [[ -f ~/.post-nix-rc ]]; then
+        source ~/.post-nix-rc
+      fi
     '';
     # Determinate Nix adds nix-daemon.sh to /etc/zshrc (interactive only).
     # Source it in .zshenv so non-login shells (e.g. Tailscale SSH) get Nix in PATH.
