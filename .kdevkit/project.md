@@ -98,13 +98,14 @@ guarded) so repeated sourcing is a no-op.
 `~/.post-nix-rc` is sourced from **all three** home-manager zsh hooks
 in `home/home.nix`: `envExtra` (`.zshenv`, every shell), `loginExtra`
 (`.zlogin`, login shells), and `initContent` (`.zshrc`, interactive
-shells). The three-hook pattern preserves PATH overlay across the OS's
-own shell-init layering — AL2's `/etc/skel/.zprofile` prepends
-`~/.local/bin` *after* `.zshenv` has run, so a single `.zshenv` source
-isn't enough to keep toolbox first. Re-sourcing from later hooks with
-idempotent prepends in `~/.post-nix-rc` claims top of PATH in every
-shell form. See the policy comment above the hook block in
-`home/home.nix` for the full ordering table.
+shells). The three-hook pattern preserves our PATH overlay across the
+OS's own shell-init layering — the OS may write its own `.zprofile`
+(or other files that fire between `.zshenv` and `.zshrc`) which can
+prepend PATH entries after `.zshenv` has run. Re-sourcing
+`~/.post-nix-rc` from later hooks with idempotent move-to-front
+prepends inside it claims top of PATH in every shell form regardless
+of what the OS does in between. See the policy comment above the hook
+block in `home/home.nix` for the full ordering table.
 
 `~/.pre-nix-rc` is currently a stub reserved for forward-compat L1-time
 shell state; the active toolbox PATH wiring lives in `~/.post-nix-rc`,
