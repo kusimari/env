@@ -89,11 +89,29 @@ L6 is per-project and on-demand.
 
 **Shell hook bridge.** Layers 1 and 4 are not nix-managed, but they can
 inject shell state into the nix-managed zsh by writing to
-`~/.pre-nix-rc` (L1) and `~/.post-nix-rc` (L4). Both are sourced from
-`programs.zsh.envExtra` in `home/home.nix` (lines 107-120). These files
-are the only supported contract between non-nixable work and the
-nixified shell. Writers must be idempotent (diff-check, overwrite on
-mismatch).
+`~/.pre-nix-rc` (L1) and `~/.post-nix-rc` (L4). These files are the
+only supported contract between non-nixable work and the nixified
+shell. Writers must be idempotent (diff-check, overwrite on mismatch),
+and any PATH manipulation inside them must be idempotent move-to-front
+prepend (strip any existing entry, then prepend) so repeated sourcing
+across the three hooks is a no-op and ordering is preserved.
+
+`~/.post-nix-rc` is sourced from **all three** home-manager zsh hooks
+in `home/home.nix`: `envExtra` (`.zshenv`, every shell), `loginExtra`
+(`.zlogin`, login shells), and `initContent` (`.zshrc`, interactive
+shells). The three-hook pattern preserves our PATH overlay across the
+OS's own shell-init layering — the OS may write its own `.zprofile`
+(or other files that fire between `.zshenv` and `.zshrc`) which can
+prepend PATH entries after `.zshenv` has run. Re-sourcing
+`~/.post-nix-rc` from later hooks with idempotent move-to-front
+prepends inside it claims top of PATH in every shell form regardless
+of what the OS does in between. See the policy comment above the hook
+block in `home/home.nix` for the full ordering table.
+
+`~/.pre-nix-rc` is currently a stub reserved for forward-compat L1-time
+shell state; the active toolbox PATH wiring lives in `~/.post-nix-rc`,
+which is owned by the kelasa env repo's L4 (a private, envKind-specific
+companion to this public repo).
 
 ## Tiered package model
 
@@ -331,7 +349,7 @@ layer that owns what changed rather than re-running everything.
   - `env` flake / `home.nix` edits: `layers/test-flake.sh` →
     `layers/layer-3-<envKind>.sh`.
   - kelasa-specific env-repo post-nix content (site-managed tools,
-    aliases, `~/.post-nix-rc.d/` drop-ins):
+    aliases, `~/.post-nix-rc`):
     `desktop-layers/layer-4-<envKind>.sh` (in the kelasa env repo).
   - L5 workspace / store changes:
     `desktop-layers/layer-5b.sh` on kelasa, else `layers/layer-5a.sh`.

@@ -1,4 +1,15 @@
 { config, lib, pkgs, envKind, ... }:
+let
+  # Single-source-of-truth snippet for sourcing ~/.post-nix-rc. Used
+  # by all three programs.zsh hooks (envExtra, loginExtra, initContent)
+  # so the snippets cannot drift. See the PATH ordering policy comment
+  # at programs.zsh below.
+  sourcePostNixRc = ''
+    if [[ -f ~/.post-nix-rc ]]; then
+      source ~/.post-nix-rc
+    fi
+  '';
+in
 {
   # Import custom modules and environment-specific config.
   # envKind is "mane" or "kelasa", passed via extraSpecialArgs in flake.nix.
@@ -100,9 +111,25 @@
       ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE = "fg=#666666";
       ZSH_AUTOSUGGEST_STRATEGY = "(completion history)";
     };
-    initContent = lib.mkOrder 550 ''
-      fpath=(~/.zfunc $fpath)
-    '';
+    # PATH ordering policy:
+    #   zsh shell init order   .zshenv → .zprofile → .zshrc → .zlogin
+    #   Our overlay            envExtra → loginExtra → initContent
+    #
+    # The OS owns .zprofile (and may write its own defaults that prepend
+    # PATH entries after .zshenv runs). We don't take .zprofile over.
+    # Instead we re-source ~/.post-nix-rc from every later home-manager
+    # hook so our PATH ordering wins regardless of what the OS or any
+    # later layer does in between. ~/.post-nix-rc uses idempotent
+    # move-to-front prepends so repeated sourcing is a no-op. Net
+    # effect: our PATH ordering holds in every shell form
+    # (interactive/non-interactive × login/non-login).
+    initContent =
+      # mkOrder 550 lands this content BEFORE oh-my-zsh's sourcing block
+      # (default order 1000) so ~/.zfunc is on fpath when compinit runs.
+      lib.mkOrder 550 (''
+        fpath=(~/.zfunc $fpath)
+      '' + sourcePostNixRc);
+    loginExtra = sourcePostNixRc;
     # Determinate Nix adds nix-daemon.sh to /etc/zshrc (interactive only).
     # Source it in .zshenv so non-login shells (e.g. Tailscale SSH) get Nix in PATH.
     envExtra = ''
@@ -115,10 +142,7 @@
       if [[ -f ~/.pre-nix-rc ]]; then
         source ~/.pre-nix-rc
       fi
-      if [[ -f ~/.post-nix-rc ]]; then
-        source ~/.post-nix-rc
-      fi
-    '';
+    '' + sourcePostNixRc;
     oh-my-zsh = {
       enable = true;
       plugins = [ "direnv" "tmux" ];
