@@ -91,8 +91,8 @@ symlinks/`.envrc`), optional tool configs. The driver
   re-run.
 - **Capture** runs when a machine has a workspace not yet tracked.
   The developer (or a coding agent — see
-  `env/workspace-tools/workspace-capture-instruction.md`) writes the
-  recipe back to `projects/<project>/` so future machines can
+  `env/project-workspace-tools/workspace-capture-instruction.md`) writes
+  the recipe back to `projects/<project>/` so future machines can
   hydrate it.
 
 L7 is **not** part of bootstrap and never mutates the environment
@@ -258,7 +258,7 @@ env/
 ├── rofi-desktop/          # .desktop files for rofi (applied only to ubuntu-mane)
 │   └── system-{reboot,shutdown,sleep}.desktop
 │
-├── workspace-tools/       # L6 design docs — capture/setup instructions for project workspaces
+├── project-workspace-tools/  # L7 design docs — capture/replay instructions for project workspaces
 │   ├── DESIGN.md
 │   └── workspace-{capture,setup}-instruction.md
 │

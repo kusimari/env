@@ -107,8 +107,8 @@ runs when a specific project workspace is needed on this machine.
       `bootstrap.sh`, and hands the shell to direnv.
     - **Capture** — when a machine has a workspace not yet tracked,
       the developer (or a coding agent following the capture
-      instructions in `env/workspace-tools/`) writes the recipe back
-      under `projects/<project>/` so future machines can hydrate it.
+      instructions in `env/project-workspace-tools/`) writes the recipe
+      back under `projects/<project>/` so future machines can hydrate it.
   L7 is **not** part of fresh-machine bootstrap and never mutates the
   environment (no nix, no rc files, no PATH) — only the
   `~/workplace/<project>/` tree. Project workspaces come and go —
