@@ -43,14 +43,6 @@ log()  { printf '==> %s\n' "$*"; }
 warn() { printf '!!! %s\n' "$*" >&2; }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
-run() {
-    if (( DRY_RUN )); then
-        printf 'dry-run: %s\n' "$*"
-    else
-        "$@"
-    fi
-}
-
 usage() {
     awk '/^# END-USAGE$/{exit} NR>1 && /^#/{sub(/^# ?/,""); print}' \
         "${BASH_SOURCE[0]}"
