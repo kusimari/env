@@ -5,6 +5,21 @@ Linux (2 / 2023). One flake, several envKinds.
 
 ---
 
+## envKind
+
+`envKind` is the single switch that distinguishes targets, referenced
+throughout this README and the layer scripts. It is `"mane"` (home
+Ubuntu, graphical) or `"kelasa"` (work machines: `darwin-kelasa`,
+`al2-kelasa`, `al2023-kelasa`). The string is passed into home-manager
+via `flake.nix` and consumed by `home/home.nix`; code tests the
+`"mane"`/`"kelasa"` string, while full target names like `al2-kelasa`
+appear only as `flake.nix` attribute keys. Layers branch on envKind:
+L1/L4 are envKind-specific (kelasa lives in a private companion repo),
+L2/L3 are generic, L5–L7 key off it where the content differs. See
+`.kdevkit/project.md` for the full envKind table.
+
+---
+
 ## Layer design
 
 Seven layers, one job each. No chaining. Layers 1–5 run on a fresh
@@ -45,8 +60,8 @@ runs when a specific project workspace is needed on this machine.
 
 - **Layer 5 — get the fast-moving tooling and stores.** Three roots
   and a small set of inline `{ ... }` blocks, one per known
-  workspace and store. L5 drivers (`layers/layer-5a.sh` in `env`,
-  `desktop-layers/layer-5b.sh` in the envKind repo) walk their
+  workspace and store. L5 drivers (`layers/layer-5.sh` in `env`,
+  `desktop-layers/layer-5.sh` in the envKind repo) walk their
   blocks:
     - **workspaces** — clone into
       `~/tool-workplace/<name>/<repo>/` (env-tooling under active
@@ -117,8 +132,7 @@ alone.
 | 2 | `layers/layer-2.sh` | `env` | yes | env cloned |
 | 3 | `layers/layer-3-<envKind>.sh` → `layers/layer-3-common.sh` → `layers/layer-3-post-nix-common.sh` | `env` | no | nix build + universal post-nix nudges |
 | 4 | `desktop-layers/layer-4-kelasa.sh` | `<kelasa-specific env repo>` | no | envKind-specific non-nixable post-install |
-| 5a | `layers/layer-5a.sh` | `env` (public) | no | **Get only.** Workspaces → `~/tool-workplace/`, stores → `~/dabba/`, mkdir `~/workplace/`. Clone/fetch; no install (that is L6). |
-| 5b | `desktop-layers/layer-5b.sh` | `<kelasa-specific env repo>` (private) | no | Chains 5a, then clones/fetches private workspace + store blocks under the same three roots. Get-only. |
+| 5 | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | no | **Get only.** Workspaces → `~/tool-workplace/`, stores → `~/dabba/`, mkdir `~/workplace/`. Clone/fetch; no install (that is L6). On kelasa run the private `layer-5.sh`; it chains the public one first. |
 | 6 | `layers/layer-6.sh` | `env` (public) + `<kelasa-specific env repo>` (private) | no | **Build tools.** Walks `~/tool-workplace/` and runs each workspace's own `install`/`setup`. Separable — not part of env setup. |
 | 7 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | no | On demand, per-project. *Hydrate:* replay a recipe inside `~/workplace/<project>/` (symlinks, `.envrc`, `bootstrap.sh`). *Capture:* track an untracked workspace. Never mutates the env. |
 
@@ -131,7 +145,7 @@ what changed.
 |---|---|
 | `env` flake / `home.nix` / nix-managed config | L3: `~/env-workplace/env/layers/layer-3-<envKind>.sh` |
 | envKind-specific post-nix content (site-managed tools, aliases, `~/.post-nix-rc`) | L4: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-4-<envKind>.sh` |
-| L5 workspace block, store block, or store content (clone/fetch only) | L5b on kelasa machines: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5b.sh` (chains 5a). L5a on public-only machines: `~/env-workplace/env/layers/layer-5a.sh`. |
+| L5 workspace block, store block, or store content (clone/fetch only) | On kelasa machines: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5.sh` (chains the public L5). On public-only machines: `~/env-workplace/env/layers/layer-5.sh`. |
 | A tool workspace's own `install`/`setup` (rebuild the tooling) | Run it from inside the workspace (fast path), or L6 to run them all: `~/env-workplace/env/layers/layer-6.sh` |
 | A specific project's workspace recipe | L7, on demand: `mkdir -p ~/workplace/<project> && cd ~/workplace/<project> && ~/env-workplace/<envKind repo with project recipes>/projects/workplace-setup.sh` |
 | Multiple of the above | L3 → L4 → L5 → L6 → L7 in that order |
@@ -144,10 +158,10 @@ git -C ~/env-workplace/env pull --ff-only
 ~/env-workplace/env/layers/layer-3-<envKind>.sh
 
 # To pick up new commits in the kelasa-specific env repo before
-# L4 / L5b:
+# L4 / L5:
 git -C ~/env-workplace/<kelasa-specific env repo> pull --ff-only
 ~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-4-<envKind>.sh
-~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5b.sh
+~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5.sh
 ```
 
 A `git pull` alone is not enough — re-run the matching layer after.
@@ -189,8 +203,8 @@ curl -fsSL https://raw.githubusercontent.com/kusimari/env/main/layers/layer-2.sh
 # Layer 5 — clone/fetch workspace + store repos (get-only, no install).
 # Use the private driver on kelasa machines; it runs the public
 # driver first.
-~/env-workplace/env/layers/layer-5a.sh                               # public-only
-~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5b.sh # private; chains public first
+~/env-workplace/env/layers/layer-5.sh                               # public-only
+~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5.sh # private; chains public first
 
 # Layer 6 — build the tools L5 fetched. Separable; not part of the
 # base env. Or run a single workspace's own install/setup from inside
@@ -226,8 +240,8 @@ curl -fsSL https://raw.githubusercontent.com/kusimari/env/feature-build-layers/l
 ```
 
 L5 pins workspaces and stores to their default branches via inline
-`{ ... }` blocks in `layers/layer-5a.sh` (and
-`desktop-layers/layer-5b.sh` on private machines). To test a
+`{ ... }` blocks in `layers/layer-5.sh` (and
+`desktop-layers/layer-5.sh` on private machines). To test a
 workspace or store feature branch, edit the relevant block in a
 local checkout before running L5.
 

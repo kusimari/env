@@ -2,11 +2,14 @@
 # env/layers/layer-6.sh — Layer 6 (public) of the seven-layer bootstrap.
 # Build the tools.
 #
-# Walks the tool workplaces L5 cloned under ~/tool-workplace/ and runs
-# each workspace's own root entry-point, preferring `setup` over
-# `install` when both exist. L6 has no registry of its own — it
-# discovers what L5 fetched. The content repo owns its install; L6
-# only invokes it.
+# Finds every tool entry-point L5 cloned under ~/tool-workplace/ and
+# runs it. An entry-point is an executable `setup` or `install` at
+# either the workspace-root (~/tool-workplace/<name>/) or the sub-repo
+# (~/tool-workplace/<name>/<repo>/) level — discovered with `fd`, so
+# the depth isn't hardcoded. Where both `setup` and `install` sit in
+# the same dir, `setup` wins (it is the recommended composer). L6 has
+# no registry of its own — it runs what L5 fetched. The content repo
+# owns its install; L6 only invokes it.
 #
 # L6 is NOT part of env setup. A bare rebuild (L1-L5) leaves the tools
 # un-built; L6 is an explicit, separate step. The normal fast path is
@@ -14,12 +17,7 @@
 # run-them-all convenience and the layer the rebuild driver targets
 # when tooling should be rebuilt.
 #
-# Layout: tool workspaces live at ~/tool-workplace/<name>/<repo>/
-# (two levels deep — matches how L5a/L5b clone). A repo is buildable
-# if it has an executable `setup` or `install` at its root. Repos with
-# neither are skipped (a store cloned into ~/dabba is never walked).
-#
-# Each workspace is wrapped so one bad build does not abort the rest;
+# Each entry-point is wrapped so one bad build does not abort the rest;
 # the script exits non-zero at the end if any build failed.
 #
 # Options:
@@ -31,9 +29,13 @@ set -uo pipefail
 
 # ── Constants ───────────────────────────────────────────────────────
 TOOL_WORKPLACE_ROOT="$HOME/tool-workplace"
-# Entry-points to try, in preference order. `setup` wins over `install`
-# (it is the recommended composer where both exist).
+# Entry-point basenames, in preference order. `setup` wins over
+# `install` when both sit in the same directory.
 ENTRY_PREFERENCE=(setup install)
+# fd --max-depth counts the matched file itself. An entry-point at the
+# workspace-root <name>/setup is depth 2; at the sub-repo level
+# <name>/<repo>/setup it is depth 3. Cover both.
+MAX_DEPTH=3
 
 # ── Defaults ────────────────────────────────────────────────────────
 DRY_RUN=0
@@ -57,33 +59,19 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ── Helpers ─────────────────────────────────────────────────────────
+command -v fd >/dev/null 2>&1 || die "fd not found on PATH (required for tool discovery)"
 
-# Echo the preferred entry-point basename present+executable in $dir,
-# or nothing if none qualifies.
-find_entry_point() {
-    local dir="$1" entry
-    for entry in "${ENTRY_PREFERENCE[@]}"; do
-        if [[ -f "$dir/$entry" && -x "$dir/$entry" ]]; then
-            printf '%s' "$entry"
-            return 0
-        fi
-    done
-    return 1
-}
-
-# Run a tool workspace's own entry-point from inside it.
-build_workspace() {
-    local clone_dir="$1" label="$2" entry
-    if ! entry="$(find_entry_point "$clone_dir")"; then
-        log "$label: no setup/install entry-point, skipping"
-        return 0
-    fi
-    log "$label: building via ./$entry"
+# Run one entry-point from inside its directory.
+build_entry() {
+    local entry_path="$1"
+    local dir label
+    dir="$(dirname "$entry_path")"
+    label="${dir#"$TOOL_WORKPLACE_ROOT"/}"
+    log "$label: building via ./$(basename "$entry_path")"
     if (( DRY_RUN )); then
-        printf 'dry-run: (cd %s && ./%s)\n' "$clone_dir" "$entry"
+        printf 'dry-run: (cd %s && ./%s)\n' "$dir" "$(basename "$entry_path")"
     else
-        ( cd "$clone_dir" && "./$entry" )
+        ( cd "$dir" && "$entry_path" )
     fi
 }
 
@@ -96,23 +84,37 @@ if [[ ! -d "$TOOL_WORKPLACE_ROOT" ]]; then
     exit 0
 fi
 
-# Walk depth-2 repos: ~/tool-workplace/<name>/<repo>/. A buildable repo
-# is a git checkout with an executable setup/install at its root.
-shopt -s nullglob
-found_any=0
-for clone_dir in "$TOOL_WORKPLACE_ROOT"/*/*/; do
-    clone_dir="${clone_dir%/}"
-    [[ -d "$clone_dir/.git" ]] || continue
-    found_any=1
-    label="${clone_dir#"$TOOL_WORKPLACE_ROOT"/}"
-    build_workspace "$clone_dir" "$label" \
-        || { warn "$label: build failed (continuing)"; FAILED=1; }
-done
-shopt -u nullglob
+# Discover executable setup/install entry-points anywhere up to
+# MAX_DEPTH under the root. Collect the dirs that hold at least one,
+# then per-dir let ENTRY_PREFERENCE pick which to run (so a dir with
+# both setup+install runs setup only, never twice).
+declare -A seen_dir=()
+ordered_dirs=()
+while IFS= read -r -d '' entry_path; do
+    dir="$(dirname "$entry_path")"
+    if [[ -z "${seen_dir[$dir]:-}" ]]; then
+        seen_dir[$dir]=1
+        ordered_dirs+=("$dir")
+    fi
+done < <(
+    fd --absolute-path --type file --type executable --max-depth "$MAX_DEPTH" \
+       '^(setup|install)$' "$TOOL_WORKPLACE_ROOT" --print0
+)
 
-if (( ! found_any )); then
-    warn "No tool workspaces found under $TOOL_WORKPLACE_ROOT — run L5 first."
+if (( ${#ordered_dirs[@]} == 0 )); then
+    warn "No tool entry-points (setup/install) found under $TOOL_WORKPLACE_ROOT — run L5 first."
+    exit 0
 fi
+
+for dir in "${ordered_dirs[@]}"; do
+    for entry in "${ENTRY_PREFERENCE[@]}"; do
+        if [[ -x "$dir/$entry" ]]; then
+            build_entry "$dir/$entry" \
+                || { warn "${dir#"$TOOL_WORKPLACE_ROOT"/}: build failed (continuing)"; FAILED=1; }
+            break
+        fi
+    done
+done
 
 if (( FAILED )); then
     warn "Layer 6 finished with build failures."
