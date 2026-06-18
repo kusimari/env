@@ -5,28 +5,37 @@ Linux (2 / 2023). One flake, several envKinds.
 
 ---
 
-## envKind
+## envKind, platform, target
 
-`envKind` is the single switch that distinguishes targets, referenced
-throughout this README and the layer scripts. It is `"mane"` (home
-Ubuntu, graphical) or `"kelasa"` (work machines: `darwin-kelasa`,
-`al2-kelasa`, `al2023-kelasa`). The string is passed into home-manager
-via `flake.nix` and consumed by `home/home.nix`; code tests the
-`"mane"`/`"kelasa"` string, while full target names like `al2-kelasa`
-appear only as `flake.nix` attribute keys. Layers branch on envKind:
-L1/L4 are envKind-specific (kelasa lives in a private companion repo),
-L2/L3 are generic, L5–L7 key off it where the content differs. See
-`.kdevkit/project.md` for the full envKind table.
+A machine is named on two orthogonal axes, referenced throughout this
+README and the layer scripts:
+
+- **envKind** — `mane` (home, personal) or `kelasa` (work). Drives git
+  identity, what's installed, and the L4 post-nix split. Passed into
+  home-manager via `flake.nix`; code tests this string.
+- **platform** — the OS: `ubuntu`, `al2`, `al2023`, `darwin`.
+- **target** — `<platform>-<envKind>` (e.g. `al2023-kelasa`): the full
+  machine key and the `flake.nix` attribute name. `envKind` is the
+  suffix after the last `-`.
+
+Each layer's filename suffix says which axis it varies on: **L1/L3** by
+`<target>` (`layer-3-al2023-kelasa.sh`), **L4** by `<envKind>`
+(`layer-4-kelasa.sh`), **L5/L6** invariant (`layer-5.sh`). kelasa L1/L4
+live in a private companion repo; L2/L3 are public. See
+`.kdevkit/project.md` for the full table.
 
 ---
 
 ## Layer design
 
-Seven layers, one job each. No chaining. Layers 1–5 run on a fresh
-machine in sequence to bring the base env online and fetch the
-fast-moving tooling; Layer 6 builds that tooling and is separable
-(a bare rebuild can stop at L5); Layer 7 is per-project and only
-runs when a specific project workspace is needed on this machine.
+Layers L0–L7, one job each. No chaining between scripts. **L0** is the
+pre-clone curl bootstrap that gets the repos onto a fresh machine.
+**L1–L5** run in sequence to bring the base env online and fetch the
+fast-moving tooling; **L6** builds that tooling and is separable (a bare
+rebuild can stop at L5); **L7** is per-project and only runs when a
+specific project workspace is needed on this machine. The `layer-run`
+driver (below) runs **L1–L6** in one command; L0 and L7 are owned by
+other entrypoints.
 
 ### The philosophy
 
@@ -128,13 +137,22 @@ alone.
 
 | Layer | Script | Repo | Curl-able | Purpose |
 |---|---|---|---|---|
-| 1 | `layers/layer-1-<envKind>.sh` (`env`) or `desktop-layers/layer-1-<envKind>-kelasa.sh` (private) | `env` (public envKinds) or a `<kelasa-specific env repo>` | yes | Machine ready for nix |
+| 0 | clone-only `env-setup.sh` | `<kelasa-specific env repo>` | yes | Pre-clone bootstrap: get the env repos onto a fresh machine (kelasa: run L1 prep). Not driven by `layer-run`. |
+| 1 | `layers/layer-1-<target>.sh` (`env`) or `desktop-layers/layer-1-<target>.sh` (private) | `env` (public targets) or a `<kelasa-specific env repo>` | yes | Machine ready for nix |
 | 2 | `layers/layer-2.sh` | `env` | yes | env cloned |
-| 3 | `layers/layer-3-<envKind>.sh` → `layers/layer-3-common.sh` → `layers/layer-3-post-nix-common.sh` | `env` | no | nix build + universal post-nix nudges |
-| 4 | `desktop-layers/layer-4-kelasa.sh` | `<kelasa-specific env repo>` | no | envKind-specific non-nixable post-install |
+| 3 | `layers/layer-3-<target>.sh` → `layers/layer-3-common.sh` → `layers/layer-3-post-nix-common.sh` | `env` | no | nix build + universal post-nix nudges |
+| 4 | `desktop-layers/layer-4-<envKind>.sh` | `<kelasa-specific env repo>` | no | envKind-specific non-nixable post-install |
 | 5 | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | no | **Get only.** Workspaces → `~/tool-workplace/`, stores → `~/dabba/`, mkdir `~/workplace/`. Clone/fetch; no install (that is L6). On kelasa run the private `layer-5.sh`; it chains the public one first. |
 | 6 | `layers/layer-6.sh` | `env` (public) + `<kelasa-specific env repo>` (private) | no | **Build tools.** Walks `~/tool-workplace/` and runs each workspace's own `install`/`setup`. Separable — not part of env setup. |
 | 7 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | no | On demand, per-project. *Hydrate:* replay a recipe inside `~/workplace/<project>/` (symlinks, `.envrc`, `bootstrap.sh`). *Capture:* track an untracked workspace. Never mutates the env. |
+
+**One-run rebuild: `layer-run`.** Instead of invoking L1–L6 by hand,
+`env/layer-run --target <target> [--repo <path>] [--layer 1,2,3]
+[--dry-run]` runs them in order (default: all of L1–L6). It takes the
+full target (deriving envKind for L4) and an optional `--repo` to the
+private companion (its private layers are skipped without it). L0 and L7
+are not runnable through it — `layer-run --help` lists them with a
+pointer. Relies on every layer being idempotent, so re-running is safe.
 
 ### Day-2 update flows
 
@@ -143,19 +161,20 @@ what changed.
 
 | What changed | Run |
 |---|---|
-| `env` flake / `home.nix` / nix-managed config | L3: `~/env-workplace/env/layers/layer-3-<envKind>.sh` |
+| `env` flake / `home.nix` / nix-managed config | L3: `~/env-workplace/env/layers/layer-3-<target>.sh` |
 | envKind-specific post-nix content (site-managed tools, aliases, `~/.post-nix-rc`) | L4: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-4-<envKind>.sh` |
 | L5 workspace block, store block, or store content (clone/fetch only) | On kelasa machines: `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5.sh` (chains the public L5). On public-only machines: `~/env-workplace/env/layers/layer-5.sh`. |
 | A tool workspace's own `install`/`setup` (rebuild the tooling) | Run it from inside the workspace (fast path), or L6 to run them all: `~/env-workplace/env/layers/layer-6.sh` |
 | A specific project's workspace recipe | L7, on demand: `mkdir -p ~/workplace/<project> && cd ~/workplace/<project> && ~/env-workplace/<envKind repo with project recipes>/projects/workplace-setup.sh` |
-| Multiple of the above | L3 → L4 → L5 → L6 → L7 in that order |
+| **Several base/tooling layers at once** | **`~/env-workplace/env/layer-run --target <target> --repo ~/env-workplace/<kelasa-specific env repo>`** (runs L1–L6 in order; add `--layer 3,5` to scope, `--dry-run` to preview) |
+| Multiple of the above (by hand) | L3 → L4 → L5 → L6 → L7 in that order |
 
 Pulling new upstream commits before re-running a layer:
 
 ```bash
 # To pick up new env commits before L3:
 git -C ~/env-workplace/env pull --ff-only
-~/env-workplace/env/layers/layer-3-<envKind>.sh
+~/env-workplace/env/layers/layer-3-<target>.sh
 
 # To pick up new commits in the kelasa-specific env repo before
 # L4 / L5:
@@ -179,41 +198,38 @@ envKind names are the source of truth in `flake.nix`.
 | `al2-kelasa` | `<kelasa-specific env repo>` | `<kelasa-specific env repo>` | Work Amazon Linux 2 (headless). |
 | `al2023-kelasa` | `<kelasa-specific env repo>` | `<kelasa-specific env repo>` | Work Amazon Linux 2023 (headless). |
 
-Layer 1 for `*-kelasa` envKinds readies the machine for nix —
+Layer 1 for `*-kelasa` targets readies the machine for nix —
 site-specific auth, package mirrors, sudoers tweaks. It lives in a
 `<kelasa-specific env repo>` alongside `env`, **not** in `env`,
 because that prep isn't nix-managed (it predates nix). That's the
 whole point of Layer 1.
 
-Fresh-machine commands:
+Fresh-machine commands (`<target>` is e.g. `al2023-kelasa`):
 
 ```bash
-# Layer 1 — curl your envKind's bootstrap script
-curl <L1-url>/layer-1-<envKind>.sh | bash
+# Layer 0 — curl the bootstrap to get the env repos on disk (kelasa:
+# also runs Layer 1 machine prep). This is the pre-clone entrypoint.
+curl <L0-url>/env-setup.sh | sh
+
+# Layer 1 — curl your target's bootstrap script (if not done by L0)
+curl <L1-url>/layer-1-<target>.sh | bash
 
 # Layer 2 — curl layer-2.sh from env
 curl -fsSL https://raw.githubusercontent.com/kusimari/env/main/layers/layer-2.sh | bash
 
-# Layer 3 — now that env is on disk, run the build directly
-~/env-workplace/env/layers/layer-3-<envKind>.sh
+# Layers 1–6, once env is on disk — one run via the driver:
+~/env-workplace/env/layer-run --target <target> \
+  --repo ~/env-workplace/<kelasa-specific env repo>
 
-# Layer 4 (if your envKind has one) — standalone post-nix install
-~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-4-kelasa.sh
-
-# Layer 5 — clone/fetch workspace + store repos (get-only, no install).
-# Use the private driver on kelasa machines; it runs the public
-# driver first.
-~/env-workplace/env/layers/layer-5.sh                               # public-only
-~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5.sh # private; chains public first
-
-# Layer 6 — build the tools L5 fetched. Separable; not part of the
-# base env. Or run a single workspace's own install/setup from inside
-# it (the fast iteration path).
-~/env-workplace/env/layers/layer-6.sh
+# …or run them individually (what layer-run orchestrates):
+~/env-workplace/env/layers/layer-3-<target>.sh                       # L3 nix build
+~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-4-<envKind>.sh  # L4
+~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5.sh # L5 (chains public)
+~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-6.sh # L6 (build tools)
 
 # Layer 7 — recreate a specific project workspace on demand. NOT a
-# bulk install; run only when you actually want to work on that
-# project on this machine. Repeat per project.
+# bulk install, NOT driven by layer-run; run only when you actually
+# want to work on that project on this machine. Repeat per project.
 mkdir -p ~/workplace/<project>
 cd ~/workplace/<project>
 ~/env-workplace/<envKind repo with project recipes>/projects/workplace-setup.sh

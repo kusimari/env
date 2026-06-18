@@ -197,10 +197,11 @@ is deferred — see open questions.)
       capability — L3 announced-not-run) + run/skip/fail summary.
 - [x] Static gate (`bash -n`, `shellcheck` clean) + functional dry-run
       tests per Test Strategy (all pass).
-- [ ] Update `README.md` + `.kdevkit/project.md`: document `layer-run`
+- [x] Update `README.md` + `.kdevkit/project.md`: document `layer-run`
       as the one-run rebuild entrypoint (Day-2 flows table + fresh-
       machine commands), and name L0 as the curl bootstrap step.
-      (project.md L0–L7 + `layer-run` row done; README pending.)
+      Both done; README reframed to L0–L7, target/envKind contract,
+      `layer-run` in At-a-glance + Day-2 + fresh-machine.
 
 - *Risk note:* public-repo hygiene — the driver and its `--help` text
   must name no private repo; refer to it only via `--repo`/placeholders.
