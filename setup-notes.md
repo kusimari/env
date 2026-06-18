@@ -1,15 +1,10 @@
 # Post-install setup notes
 
-Things to do manually — outside the layer scripts.
+Manual steps that are **not** part of the layer scripts (L0–L7) —
+things the layers can't or shouldn't automate (interactive auth,
+per-machine secrets, one-off remotes). The layered rebuild itself
+(L1–L6 via `layer-run`, L7 via `workplace-setup.sh`) is documented in
+`README.md`; don't duplicate it here.
 
-- Add google drive remote: `rclone-env add`
-- Add ssh remote for desktop-aka: `rclone-env add`
-- Run Layer 5 to clone (get-only) AI-tooling workspaces + stores:
-  `~/env-workplace/env/layers/layer-5.sh` (public) or
-  `~/env-workplace/<kelasa-specific env repo>/desktop-layers/layer-5.sh`
-  (private; also runs the public driver first). Workspaces land under
-  `~/tool-workplace/`, stores under `~/dabba/`,
-  `~/workplace/` is mkdir-only (humans populate).
-- Run Layer 6 to build the tools (runs each tool workspace's own
-  `setup`/`install`): `~/env-workplace/env/layers/layer-6.sh`. Separable
-  from the base env — a bare rebuild can stop at L5.
+- Add google drive remote: `rclone-env add` (interactive auth).
+- Add ssh remote for desktop-aka: `rclone-env add` (interactive auth).
