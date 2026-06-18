@@ -299,9 +299,12 @@ here. From `env/`:
   so it lands on PATH on every activated envKind and is therefore
   also picked up as an env-verify invariant.
 - L5 dry-run with `bash layers/layer-5.sh --dry-run`. Walks the
-  inline workspace + store blocks without cloning, fetching, or
-  invoking entry-points; verifies the arg parser and that each
-  block evaluates.
+  inline workspace + store blocks without cloning or fetching;
+  verifies the arg parser and that each block evaluates. (L5 is
+  get-only — it never invokes entry-points; that is L6.)
+- L6 dry-run with `bash layers/layer-6.sh --dry-run`. Lists the
+  tool entry-points `fd` discovers under `~/tool-workplace/` without
+  running them; verifies discovery + the `setup`-over-`install` pick.
 
 Together these are the format / lint / type-check / test commands
 the kdevkit loop reads out of this section. There is no separate
@@ -322,9 +325,12 @@ validation requires an activated machine, so it stays manual:
   on kelasa) actually swap the home-manager generation and write
   `~/.post-nix-rc` — verifiable only by re-running them and
   observing shell behaviour after the next login.
-- L5 real install (`bash layers/layer-5.sh` without `--dry-run`)
-  clones into `~/tool-workplace/` and `~/dabba/` and hands off to
-  each entry-point. Verified by inspecting those trees.
+- L5 real clone (`bash layers/layer-5.sh` without `--dry-run`)
+  clones into `~/tool-workplace/` and `~/dabba/` (get-only).
+  Verified by inspecting those trees.
+- L6 real build (`bash layers/layer-6.sh` without `--dry-run`) runs
+  each discovered tool's `setup`/`install`. Separable from the base
+  env. Verified by the tool's own post-install state.
 - `~/.pre-nix-rc` / `~/.post-nix-rc` shell behaviour requires an
   interactive shell on an activated machine — there is no
   evaluation-time check for it.
