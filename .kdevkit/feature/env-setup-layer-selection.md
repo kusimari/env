@@ -20,12 +20,12 @@ caller supplies — the envKind and an optional envKind-specific repo path
 — so the public driver names no private repo yet drives its layers when
 present.
 
-**Scope boundary — `layer-run` drives L1–L7, not L0.** Layer 0 is the
+**Scope boundary — `layer-run` drives L1–L6; L0 and L7 are bookends.** Layer 0 is the
 curl bootstrapper: the pre-clone, curl-able entrypoint that brings the
 repos onto a brand-new machine (and on kelasa runs the L1 machine prep
 before `env` exists). The existing clone-only `env-setup.sh` already
 plays that role. `layer-run` only exists *after* L0 has put it on disk,
-so it owns L1–L7 (day-2 rebuilds and post-bootstrap first runs); it does
+so it owns L1–L6 (day-2 rebuilds and post-bootstrap first runs); it does
 not own L0 or first-run-L1-on-kelasa. This is the clean split for the
 three planning open questions.
 
@@ -45,18 +45,29 @@ scripts. Observable surface:
   selected layer that lives only in the private repo is reported as
   skipped (not an error).
 - **`--layer <list>`** is a comma-list of layer numbers, e.g.
-  `--layer 1,2,3` or `--layer 5`. No range shorthand. Omitted →
-  **L1–L6** (the always-on base env + tooling). L7 never runs unless
-  explicitly listed — it is per-project and on-demand.
+  `--layer 1,2,3` or `--layer 5`. No range shorthand. Valid values are
+  **1–6**. Omitted → **all of L1–L6** (the always-on base env + tooling).
+  **L0 and L7 are not runnable values** — L0 is the pre-clone curl
+  bootstrap and L7 is per-project (owned by `project-workspace-tools`);
+  both appear in the `--help` legend for orientation but are rejected
+  with a pointer to the right tool if passed to `--layer`.
+- **For a layer present in both repos (L5, L6), the env/public half runs
+  before the envkind/private half.** When `--repo` is set, `layer-run`
+  invokes the private half, which already chains the public half first
+  (from Stream 1) — so env-before-envkind holds and the public half runs
+  once. No `--repo` → the public half runs directly.
 - **`--dry-run`** prints what each selected layer would do without
   changing anything (forwarded to each layer script, which already
   supports it).
-- **`--help`** prints a **layer-number → purpose** legend (L0 = curl
-  bootstrap [external — not run by this driver], L1 = make nix-ready,
-  L2 = clone env gits, … L7 = project workspaces) plus usage, so the
-  caller never has to remember the numbering. L0 appears in the legend
-  for orientation but is rejected as a `--layer` value (it predates the
-  driver).
+- **`--help`** prints a **layer-number → purpose** legend plus usage, so
+  the caller never has to remember the numbering:
+  - L0 = curl bootstrap *(external — pre-clone, not run here)*
+  - L1 = make nix-ready · L2 = clone env gits · L3 = setup nix ·
+    L4 = setup non-nix · L5 = get tools/stores · L6 = build tools
+  - L7 = project workspaces *(per-project — use `project-workspace-tools`,
+    not this driver)*
+  L0 and L7 show in the legend for orientation but are rejected as
+  `--layer` values, each with a one-line pointer to the right tool.
 - Re-running any selection is safe: every layer is idempotent, so the
   driver does not track state or guard against re-execution.
 - Output names each layer as it runs (number + purpose + which script),
@@ -70,14 +81,20 @@ Per `project.md` Testing (bash Test Gate):
 - `bash -n` on the new driver; `shellcheck` clean.
 
 ### Functional (dry-run / arg-parsing, user-observable)
-- `--help` prints the full layer legend (L1–L7) and usage.
+- `--help` prints the full layer legend (L0–L7, with L0/L7 marked
+  not-runnable) and usage.
 - `--layer 2,3 --envkind mane --dry-run` runs exactly L2 then L3, in
   order, invoking neither L1 nor others.
 - Bad input rejected: unknown layer number, malformed list, missing
   `--envkind` → clear error, non-zero exit.
+- **`--layer 0` and `--layer 7` rejected** with a pointer to the right
+  tool (L0 = curl bootstrap; L7 = `project-workspace-tools`), non-zero
+  exit — not silently skipped.
 - `--repo` omitted + a private-only layer selected (e.g. `--layer 4`) →
   reported skipped, exit stays 0 (or a documented "nothing to run" code).
-- Default (no `--layer`) → plan shows L1–L6 in order, not L7.
+- For L5/L6 with `--repo` set, the private half is invoked and the run
+  shows public-then-private ordering (the S1 chain).
+- Default (no `--layer`) → plan shows L1–L6 in order (never L0 or L7).
 - Layer ordering: `--layer 6,2,5` executes as 2,5,6.
 
 ### Live-only (manual)
@@ -109,14 +126,27 @@ this table as the legend. Resolution per selected layer:
 
 - Public-only (L2, L3): under the driver's repo (`layers/…`). L3
   substitutes `<envKind>`.
-- Private-only (L4, L7): under `--repo`; skipped if no `--repo`.
+- Private-only (L4): under `--repo`; skipped if no `--repo`.
 - Both (L1, L5, L6): L1 is public for `mane`, private for kelasa
   envKinds — resolved by which file exists for the envKind. (On a *fresh*
   kelasa machine, L1 is run by L0 pre-clone; `layer-run` driving L1 is a
   `mane` / day-2 path. L1 is idempotent, so a day-2 re-run via the driver
-  is safe.) L5/L6 have a public and a private half; when `--repo` is set,
-  run the private half (it chains the public), else run the public half
-  directly.
+  is safe.) For L5/L6: when `--repo` is set, run the **private half**
+  (it already chains the public half first — verified S1); else run the
+  **public half** directly.
+- Not driven: L0 (pre-clone bootstrap) and L7 (per-project; reached only
+  through `project-workspace-tools` / `workplace-setup.sh`, which takes
+  the project from cwd — there is no "run all projects" step by design).
+
+**Public-before-private — reuse S1's chain, no S1 change.** The rule
+"env half before envkind half" is already guaranteed by Stream 1: the
+private L5/L6 self-chain the public half (private invocation runs
+public-then-private). So `layer-run` honors the rule for free — for a
+both-repos layer with `--repo` set, it invokes only the private half and
+the chain orders it correctly; the public half runs exactly once. No
+edit to the S1-shipped private scripts. (Verified by dry-run: private L5
+logs "Chaining public driver" → "Layer 5 (public)" → "Layer 5
+(private)".)
 
 **Ordering.** Selected numbers are sorted ascending before execution,
 so `--layer 6,2` runs 2 then 6. Within a layer that has public+private
@@ -139,7 +169,7 @@ is deferred — see open questions.)
 - **L0 = the curl bootstrapper.** The pre-clone, curl-able entrypoint
   (today's clone-only `env-setup.sh`) becomes Layer 0: it gets the repos
   onto a fresh machine and, on kelasa, runs L1 machine prep before `env`
-  exists. `layer-run` drives L1–L7 only; it never owns L0 or first-run
+  exists. `layer-run` drives L1–L6 only; it never owns L0, L7, or first-run
   L1-on-kelasa. Clean split — `layer-run` is a day-2 + post-bootstrap
   driver, L0 is the from-nothing bootstrap. (L0 formalization beyond
   naming it in the legend is out of scope for this feature; tracked as a
@@ -153,7 +183,9 @@ is deferred — see open questions.)
 - [ ] Layer registry table (number → purpose, scope, path template) +
       `--help` legend rendering (includes L0 as external/not-runnable).
 - [ ] Resolution logic: public vs private vs both; `<envKind>`
-      substitution; null-repo skip path; reject `--layer 0`.
+      substitution; null-repo skip path; reject `--layer 0` and
+      `--layer 7` with pointers; for L5/L6 invoke the private half when
+      `--repo` set (reuses S1 chain).
 - [ ] Ordered execution with `--dry-run` forwarding + run/skip/fail
       summary.
 - [ ] Static gate (`bash -n`, `shellcheck`) + functional dry-run tests
@@ -164,7 +196,7 @@ is deferred — see open questions.)
 
 - *Risk note:* public-repo hygiene — the driver and its `--help` text
   must name no private repo; refer to it only via `--repo`/placeholders.
-- *Risk note:* `layer-run` owns L1–L7 only; L0 (curl bootstrap) and
+- *Risk note:* `layer-run` owns L1–L6 only; L0 (curl bootstrap) and
   first-run L1-on-kelasa are out of scope by design.
 - *Risk note:* this is S2; it builds on S1's clean L5/L6 split, already
   on `main`. No cross-stream rebase needed (S1 shipped).
@@ -182,10 +214,16 @@ is deferred — see open questions.)
 - 2026-06-18 · Planning round 2 (user resolved the 3 open questions):
   (1) driver name = **`layer-run`**; (2) `--envkind` **always explicit**,
   no auto-detect; (3) introduce **Layer 0** = the curl bootstrapper
-  (today's clone-only `env-setup.sh`). `layer-run` drives L1–L7 only; L0
+  (today's clone-only `env-setup.sh`). `layer-run` drives L1–L6 only; L0 and L7
   owns from-nothing bootstrap + first-run L1-on-kelasa. This is a model
   refinement — propagate L0 into the seven-layer docs at closure (the
   model is now L0–L7).
+- 2026-06-18 · Planning round 3 (user): (1) L7 is **not** a runnable
+  layer — `layer-run` drives L1–L6; L7 only via `project-workspace-tools`
+  (no "run all projects"). (2) For both-repos layers, env runs before
+  envkind — confirmed this already holds via S1's private→public chain,
+  so no S1 edit (checked: `--repo`-set kelasa path runs public-then-
+  private). Driver now owns the middle (L1–L6); L0 and L7 are bookends.
 
 ## Decision Log
 
@@ -217,3 +255,18 @@ is deferred — see open questions.)
   from nothing (incl. kelasa L1 machine prep), `layer-run` takes over
   once on disk. The seven-layer model becomes **L0–L7**; doc propagation
   happens at closure (§8.2 touches Layout/Testing across both repos).
+- **`layer-run` drives L1–L6 only; L7 is not runnable** (planning round
+  3, user). L7 is per-project and selective — a "run L7" with no project
+  argument could only mean "set up all projects," which is the
+  bulk-project-install anti-pattern the model forbids. L7 is reached only
+  through `project-workspace-tools` / `workplace-setup.sh` (project from
+  cwd). L0 and L7 are legend-only in `--help`; passing either to
+  `--layer` is a hard error with a pointer. (So the driver owns the
+  middle of the stack; L0 and L7 are the bookends owned by other tools.)
+- **env-before-envkind reuses S1's chain — no S1 edit** (planning round
+  3, user). The rule holds automatically: the private L5/L6 already
+  chain the public half first (verified by dry-run on the shipped S1
+  scripts), so `layer-run` invokes only the private half when `--repo`
+  is set. Considered de-chaining the private scripts so the runner owns
+  ordering explicitly; rejected — it would churn just-shipped S1 code
+  and change stand-alone private-script behavior for no real gain.
