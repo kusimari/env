@@ -7,40 +7,77 @@ fixed, debuggable sequence, and day-2 rebuilds are a single command.
 
 Read this file first — it is the map. Specific files only as needed.
 
-## envKinds
+## Naming contract — envKind, platform, target
 
-`envKind` is the single switch that distinguishes targets. It is passed
-into home-manager via `extraSpecialArgs` in `flake.nix` and consumed by
-`home/home.nix` and its imports.
+A machine is one **identity class** running on one **OS**. Two
+orthogonal axes name it; layer scripts and flake keys derive from them:
 
-| envKind value | Target name(s) | Where defined | Notes |
+| Term | Values | Meaning |
+|---|---|---|
+| **envKind** | `mane` · `kelasa` | machine class — personal (`mane`) vs work (`kelasa`). Drives git identity, what's installed, the L4 post-nix split. |
+| **platform** | `ubuntu` · `al2` · `al2023` · `darwin` | the operating system. |
+| **target** | `<platform>-<envKind>` | the full machine key = the `flake.nix` attribute name. Fully specifies a machine. `envKind` is the suffix after the last `-`. |
+
+| target | envKind | platform | Where defined | Notes |
+|---|---|---|---|---|
+| `ubuntu-mane` | `mane` | `ubuntu` | `flake.nix` `homeConfigurations.ubuntu-mane` | Home Ubuntu, graphical (rofi, chrome, desktop files). |
+| `al2-kelasa` | `kelasa` | `al2` | `flake.nix` `homeConfigurations.al2-kelasa` | Work Amazon Linux 2 (headless SSH). |
+| `al2023-kelasa` | `kelasa` | `al2023` | `flake.nix` `homeConfigurations.al2023-kelasa` | Work Amazon Linux 2023 (headless SSH). |
+| `darwin-kelasa` | `kelasa` | `darwin` | `flake.nix` `darwinConfigurations.darwin-kelasa` | Work macOS. |
+
+`flake.nix` passes `envKind` (the short string) into home-manager via
+`extraSpecialArgs`; code elsewhere tests `envKind`. The full `target`
+appears as the flake attribute key and as the suffix on per-machine
+layer scripts.
+
+**Which axis each layer varies on** is encoded in its filename suffix —
+a tight contract, so the suffix tells you the axis:
+
+| Suffix shape | Varies by | Layers | Example |
 |---|---|---|---|
-| `"mane"` | `ubuntu-mane` | `flake.nix` `homeConfigurations.ubuntu-mane` | Home Ubuntu, graphical (rofi, chrome, desktop files). |
-| `"kelasa"` | `darwin-kelasa`, `al2-kelasa`, `al2023-kelasa` | `flake.nix` `darwinConfigurations.darwin-kelasa` + `homeConfigurations.al2*-kelasa` | Work machines. AL2/AL2023 are headless SSH; darwin is macOS. |
+| `layer-N-<target>.sh` | platform **and** envKind | L1, L3 | `layer-3-al2023-kelasa.sh` |
+| `layer-N-<envKind>.sh` | envKind only (shared across that class's OSes) | L4 | `layer-4-kelasa.sh` |
+| `layer-N.sh` | nothing (envKind-agnostic) | L5, L6 | `layer-5.sh` |
 
-The envKind string is `"mane"` or `"kelasa"` — *not* the full target
-name. Target names (`al2-kelasa` etc.) only appear in `flake.nix`
-attribute keys; code elsewhere tests `envKind`.
+The `layer-run` driver (below) takes `--target` and derives `envKind`
+from it, so it can resolve every layer's filename from one input.
 
-## Seven-layer build system
+## Layer build system (L0–L7)
 
 Each layer is one script, run independently. No chaining — different
-change rates and different trust domains. L1–L5 are the always-installed
-base env + tooling fetch (run in order on a fresh machine, individually
-on day-2). L6 builds the tools and is separable — a bare rebuild stops
-at L5. L7 is per-project, on-demand — never run as part of bootstrap.
+change rates and different trust domains. **L0** is the pre-clone curl
+bootstrap (gets the repos onto a fresh machine; on kelasa runs L1 prep
+before `env` exists). **L1–L5** are the always-installed base env +
+tooling fetch (run in order on a fresh machine, individually on day-2).
+**L6** builds the tools and is separable — a bare rebuild stops at L5.
+**L7** is per-project, on-demand — never run as part of bootstrap. The
+`layer-run` driver runs **L1–L6** in one command (see its row); L0 and
+L7 are owned by other entrypoints (curl bootstrap; `workplace-setup.sh`).
 See `README.md` for the full discussion; the table below is the
-operational summary.
+operational summary. Per-machine scripts use the naming contract above
+(`<target>` for L1/L3, `<envKind>` for L4).
 
 | Layer | Script | Repo | Runs when | Purpose |
 |---|---|---|---|---|
-| 1 | `layer-1-<envKind>.sh` | `env` (public) or `<kelasa-specific env repo>` | New machine | Native OS prep: auth, certs, sudoers, package mirrors. Makes machine nix-ready. |
+| 0 | curl bootstrap (clone-only `env-setup.sh`) | `<kelasa-specific env repo>` | Brand-new machine | Pre-clone: gets the env repos onto the machine; on kelasa runs L1 prep. Not run by `layer-run`. |
+| 1 | `layer-1-<target>.sh` | `env` (public) or `<kelasa-specific env repo>` | New machine | Native OS prep: auth, certs, sudoers, package mirrors. Makes machine nix-ready. |
 | 2 | `layers/layer-2.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
-| 3 | `layers/layer-3-<envKind>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
+| 3 | `layers/layer-3-<target>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
 | 4 | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa, or any day-2 change to envKind-specific post-nix content | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
 | 5 | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | New machine | **Get only.** Runs one inline `{ ... }` block per workspace and store: clone/fetch. Workspaces clone under `~/tool-workplace/<name>/<repo>/`; stores clone flat under `~/dabba/<repo>/`. Also `mkdir -p ~/workplace/` (Layer 7 populates per-project). Does **not** run any cloned repo's install — that is Layer 6. On kelasa run the private `layer-5.sh`; it chains the public one first. |
 | 6 | `layers/layer-6.sh` (driver) | `env` (public) + `<kelasa-specific env repo>` (private) | On demand | **Build tools.** Thin wrapper: walks the tool workplaces L5 cloned and runs each one's own root `install`/`setup` entry-point. **Not part of env setup** — a bare rebuild stops at L5. The normal fast path is running a tool workspace's entry-point from inside it; L6 is the run-them-all convenience. |
 | 7 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | On demand, per project | **Projects, bidirectional.** *Hydrate:* replay a project recipe inside `~/workplace/<project>/` (symlinks, `.envrc`, optional per-project `bootstrap.sh`). *Capture:* start tracking an untracked workspace by writing its recipe back under `projects/<project>/`. **Not** part of bootstrap; never mutates the environment. |
+
+**`layer-run` — one-run driver for L1–L6.**
+`layer-run --target <target> [--repo <path>] [--layer 1,2,3] [--dry-run]`
+runs the selected layers in ascending order; default (no `--layer`) runs
+L1–L6. It takes the full `target` (deriving `envKind` for L4) and an
+optional `--repo` path to the envKind-specific companion (its private
+layers are skipped when `--repo` is absent). L0 and L7 are **not**
+runnable through it — they appear in `layer-run --help` for orientation
+but are owned by the curl bootstrap (L0) and `workplace-setup.sh` (L7).
+For L5/L6 with `--repo` set it invokes the private half, which chains
+the public half first. Relies on every layer being idempotent.
 
 **L3 vs L4 post-nix split.** L3's `layer-3-post-nix-common.sh` is
 envKind-agnostic; L4 is envKind-specific. If a post-nix step is
@@ -210,10 +247,11 @@ env/
 ├── env-verify.nix         # nix run .#env-verify — tier-1/2 PATH check
 ├── flake.lock
 ├── README.md              # layer system, envKinds, install commands
-├── setup-notes.md         # operator cheat-sheet, post-install tasks
+├── setup-notes.md         # manual steps the layers don't automate (rclone, etc.)
+├── layer-run              # one-run driver for L1–L6 (--target/--repo/--layer/--dry-run)
 │
 ├── layers/                # Every layer script for the public side: L1 (ubuntu-mane) + L2 + L3 + L5 + L6, plus L1/L3 helpers
-│   ├── layer-1-ubuntu-mane.sh        # L1 for ubuntu-mane (public envKind)
+│   ├── layer-1-ubuntu-mane.sh        # L1 for the ubuntu-mane target (public; kelasa L1 is private)
 │   ├── layer-2.sh                    # L2 — clone env
 │   ├── layer-3-ubuntu-mane.sh        # L3 for ubuntu-mane
 │   ├── layer-3-al2-kelasa.sh         # L3 for AL2
@@ -319,9 +357,9 @@ validation requires an activated machine, so it stays manual:
   MISS because they were never installed there — that is by design;
   the check is meaningful only after L3 has switched the
   home-manager generation. Run it after every day-2 rebuild.
-- L1 machine prep (`layer-1-<envKind>.sh`) only matters on a fresh
+- L1 machine prep (`layer-1-<target>.sh`) only matters on a fresh
   OS install and mutates system state — out of the loop entirely.
-- L3 / L4 activation (`layer-3-<envKind>.sh`, then `layer-4-kelasa.sh`
+- L3 / L4 activation (`layer-3-<target>.sh`, then `layer-4-<envKind>.sh`
   on kelasa) actually swap the home-manager generation and write
   `~/.post-nix-rc` — verifiable only by re-running them and
   observing shell behaviour after the next login.
@@ -371,13 +409,13 @@ layer that owns what changed rather than re-running everything.
 - Day-2 update flows (each layer re-runs independently; chase the
   layer that owns what changed):
   - `env` flake / `home.nix` edits: `layers/test-flake.sh` →
-    `layers/layer-3-<envKind>.sh`.
+    `layers/layer-3-<target>.sh`.
   - kelasa-specific env-repo post-nix content (site-managed tools,
     aliases, `~/.post-nix-rc`):
     `desktop-layers/layer-4-<envKind>.sh` (in the kelasa env repo).
   - L5 workspace / store changes:
     `desktop-layers/layer-5.sh` on kelasa, else `layers/layer-5.sh`.
-  - A specific project workspace recipe (L6, on demand only):
+  - A specific project workspace recipe (L7, on demand only):
     `cd ~/workplace/<project> && projects/workplace-setup.sh`
     from inside the envKind repo with project recipes.
   Multi-area changes: pull the relevant repos with `git pull --ff-only`,
