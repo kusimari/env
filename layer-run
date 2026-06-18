@@ -31,14 +31,7 @@
 # public half first (so env runs before envkind, public runs once).
 # Every layer is idempotent, so re-running any selection is safe.
 #
-# Options:
-#   --target <target>   Required. See above.
-#   --repo <path>       Optional. envKind-specific companion repo.
-#   --layer <list>      Comma-list of layer numbers, e.g. 1,2,3 (1–6).
-#                       Omitted: run all of L1–L6.
-#   --dry-run           Print planned actions; forwarded to each layer.
-#   --help, -h          Show this header and exit.
-# END-USAGE
+# Run `layer-run --help` for the option/target/layer reference.
 
 set -uo pipefail
 
@@ -73,6 +66,17 @@ declare -A LAYER_POINTER=(
     [7]="L7 is per-project — run 'workplace-setup.sh' from inside ~/workplace/<project>"
 )
 
+# Supported --target values, shown in --help. Order is presentation
+# order; descriptions are <envKind> · <OS>. These mirror the flake.nix
+# attribute names.
+SUPPORTED_TARGETS=(ubuntu-mane al2-kelasa al2023-kelasa darwin-kelasa)
+declare -A TARGET_DESC=(
+    [ubuntu-mane]="personal · Ubuntu"
+    [al2-kelasa]="work · Amazon Linux 2"
+    [al2023-kelasa]="work · Amazon Linux 2023"
+    [darwin-kelasa]="work · macOS"
+)
+
 # Self dir (env repo root: this script ships at the repo root).
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -88,20 +92,31 @@ warn() { printf '!!! %s\n' "$*" >&2; }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 usage() {
-    awk '/^# END-USAGE$/{exit} NR>1 && /^#/{sub(/^# ?/,""); print}' \
-        "${BASH_SOURCE[0]}"
-    printf '\nLayer legend:\n'
-    local n scope tag
-    for n in "${LAYER_NUMS[@]}"; do
-        scope="${LAYER_SCOPE[$n]}"
-        if [[ -z "$scope" ]]; then
-            tag="not runnable here"
-        else
-            tag="$scope"
-        fi
-        printf '  L%s  %-22s [%s]\n' "$n" "${LAYER_PURPOSE[$n]}" "$tag"
+    local t n note
+    printf 'layer-run — rebuild this machine env in one run (drives L1–L6).\n\n'
+    printf 'Usage: layer-run --target <target> [--repo <path>] [--layer <list>] [--dry-run]\n\n'
+
+    printf '  --target <target>   Required. Which machine to build for:\n'
+    for t in "${SUPPORTED_TARGETS[@]}"; do
+        printf '                        %-16s %s\n' "$t" "${TARGET_DESC[$t]}"
     done
-    printf '\nlayer-run drives L1–L6. L0 and L7 are owned elsewhere.\n'
+
+    printf '  --repo <path>       Optional. Path to the envKind-specific companion repo\n'
+    printf '                      (carries the private L1/L4/L5/L6). Omit for public-only.\n'
+
+    printf '  --layer <list>      Optional. Comma-list of layers to run, e.g. 1,2,3.\n'
+    printf '                      Omitted: run all of L1–L6. Layers:\n'
+    for n in "${LAYER_NUMS[@]}"; do
+        if [[ -z "${LAYER_SCOPE[$n]}" ]]; then
+            note="not runnable — ${LAYER_POINTER[$n]#* — }"
+        else
+            note="${LAYER_SCOPE[$n]}"
+        fi
+        printf '                        L%s  %-16s %s\n' "$n" "${LAYER_PURPOSE[$n]}" "$note"
+    done
+
+    printf '  --dry-run           Preview without changing anything.\n'
+    printf '  --help, -h          Show this help.\n'
 }
 
 # ── Arg parsing ─────────────────────────────────────────────────────
