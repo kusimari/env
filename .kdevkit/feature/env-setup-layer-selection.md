@@ -10,25 +10,35 @@ envKind-specific private companion repo's `.kdevkit/initiative/`).
 
 ## Feature Brief
 
-A single `env-setup` driver that rebuilds a machine's environment in one
+A single `layer-run` driver that rebuilds a machine's environment in one
 run, with layer selection. Today the layers (L1–L7) are run by hand, one
 script at a time, in the right order — easy to misorder or forget which
-number does what. `env-setup --layer 1,2,3` runs the chosen layers in
+number does what. `layer-run --layer 1,2,3` runs the chosen layers in
 order; with no `--layer`, it runs the always-on base + tooling (L1–L6).
 It resolves the public and private layer scripts from two inputs the
 caller supplies — the envKind and an optional envKind-specific repo path
 — so the public driver names no private repo yet drives its layers when
 present.
 
+**Scope boundary — `layer-run` drives L1–L7, not L0.** Layer 0 is the
+curl bootstrapper: the pre-clone, curl-able entrypoint that brings the
+repos onto a brand-new machine (and on kelasa runs the L1 machine prep
+before `env` exists). The existing clone-only `env-setup.sh` already
+plays that role. `layer-run` only exists *after* L0 has put it on disk,
+so it owns L1–L7 (day-2 rebuilds and post-bootstrap first runs); it does
+not own L0 or first-run-L1-on-kelasa. This is the clean split for the
+three planning open questions.
+
 ## Requirements
 
 The user runs one command instead of a hand-ordered sequence of layer
 scripts. Observable surface:
 
-- **`env-setup --envkind <kind> [--repo <path>] [--layer <list>] [--dry-run] [--yes]`**
+- **`layer-run --envkind <kind> [--repo <path>] [--layer <list>] [--dry-run] [--yes]`**
   runs the selected layers in ascending order.
-- **`--envkind <kind>`** (e.g. `mane`, `kelasa`) selects which
-  per-envKind layer scripts run (L1, L3, L4 are envKind-specific).
+- **`--envkind <kind>`** (e.g. `mane`, `kelasa`) is **required and
+  explicit** — no auto-detection. Selects which per-envKind layer
+  scripts run (L1, L3, L4 are envKind-specific).
 - **`--repo <path>`** points at the envKind-specific companion repo that
   carries the private layers (L1-kelasa, L4, the private L5/L6, L7).
   Optional — when omitted/null, only the public layers run, and any
@@ -41,9 +51,12 @@ scripts. Observable surface:
 - **`--dry-run`** prints what each selected layer would do without
   changing anything (forwarded to each layer script, which already
   supports it).
-- **`--help`** prints a **layer-number → purpose** legend (L1 = make
-  nix-ready, L2 = clone env gits, … L7 = project workspaces) plus usage,
-  so the caller never has to remember the numbering.
+- **`--help`** prints a **layer-number → purpose** legend (L0 = curl
+  bootstrap [external — not run by this driver], L1 = make nix-ready,
+  L2 = clone env gits, … L7 = project workspaces) plus usage, so the
+  caller never has to remember the numbering. L0 appears in the legend
+  for orientation but is rejected as a `--layer` value (it predates the
+  driver).
 - Re-running any selection is safe: every layer is idempotent, so the
   driver does not track state or guard against re-execution.
 - Output names each layer as it runs (number + purpose + which script),
@@ -98,9 +111,12 @@ this table as the legend. Resolution per selected layer:
   substitutes `<envKind>`.
 - Private-only (L4, L7): under `--repo`; skipped if no `--repo`.
 - Both (L1, L5, L6): L1 is public for `mane`, private for kelasa
-  envKinds — resolved by which file exists for the envKind. L5/L6 have
-  a public and a private half; when `--repo` is set, run the private
-  half (it chains the public), else run the public half directly.
+  envKinds — resolved by which file exists for the envKind. (On a *fresh*
+  kelasa machine, L1 is run by L0 pre-clone; `layer-run` driving L1 is a
+  `mane` / day-2 path. L1 is idempotent, so a day-2 re-run via the driver
+  is safe.) L5/L6 have a public and a private half; when `--repo` is set,
+  run the private half (it chains the public), else run the public half
+  directly.
 
 **Ordering.** Selected numbers are sorted ascending before execution,
 so `--layer 6,2` runs 2 then 6. Within a layer that has public+private
@@ -112,41 +128,44 @@ driver invokes one entry-point per layer, not two.
 `--dry-run` never fails on layer work. (Whether to add a `--keep-going`
 is deferred — see open questions.)
 
-### Open design questions (resolve during implementation)
+### Resolved design questions (were open at planning)
 
-- **Driver location + name.** `env/env-setup.sh` vs `env/bin/env-setup`
-  vs a `layers/`-adjacent path. The existing clone-only bootstrap script
-  with this name lives in the private repo; confirm the public driver's
-  home and whether the two converge later.
-- **envKind auto-detection.** Whether `--envkind` can default from a
-  detector (hostname / uname / an existing marker) or must always be
-  explicit. Start explicit; revisit.
-- **L1 resolution for kelasa.** L1 for kelasa lives only in the private
-  repo and is curl-bootstrapped on a brand-new machine before `env` is
-  even cloned — so driving L1 through this script may only make sense
-  for `mane` / day-2. Confirm scope of L1 in the driver.
+- **Driver name + location** → **`layer-run`**, shipping in the public
+  `env` repo (alongside `layers/`, exact path settled in slice 1). It
+  does **not** converge with the existing clone-only `env-setup.sh` —
+  that script is **L0** (see below), a different layer.
+- **envKind** → **always explicit** (`--envkind` required), no
+  hostname/uname auto-detection.
+- **L0 = the curl bootstrapper.** The pre-clone, curl-able entrypoint
+  (today's clone-only `env-setup.sh`) becomes Layer 0: it gets the repos
+  onto a fresh machine and, on kelasa, runs L1 machine prep before `env`
+  exists. `layer-run` drives L1–L7 only; it never owns L0 or first-run
+  L1-on-kelasa. Clean split — `layer-run` is a day-2 + post-bootstrap
+  driver, L0 is the from-nothing bootstrap. (L0 formalization beyond
+  naming it in the legend is out of scope for this feature; tracked as a
+  follow-up if the existing script needs renaming/moving.)
 
 ## Implementation Plan
 
-- [ ] Scaffold `env-setup` driver: arg parser (`--envkind`, `--repo`,
+- [ ] Scaffold `layer-run` driver: arg parser (`--envkind`, `--repo`,
       `--layer`, `--dry-run`, `--yes`, `--help`) in the layer-script
       idiom.
 - [ ] Layer registry table (number → purpose, scope, path template) +
-      `--help` legend rendering.
+      `--help` legend rendering (includes L0 as external/not-runnable).
 - [ ] Resolution logic: public vs private vs both; `<envKind>`
-      substitution; null-repo skip path.
+      substitution; null-repo skip path; reject `--layer 0`.
 - [ ] Ordered execution with `--dry-run` forwarding + run/skip/fail
       summary.
 - [ ] Static gate (`bash -n`, `shellcheck`) + functional dry-run tests
       per Test Strategy.
-- [ ] Update `README.md` + `.kdevkit/project.md`: document `env-setup`
+- [ ] Update `README.md` + `.kdevkit/project.md`: document `layer-run`
       as the one-run rebuild entrypoint (Day-2 flows table + fresh-
-      machine commands).
+      machine commands), and name L0 as the curl bootstrap step.
 
 - *Risk note:* public-repo hygiene — the driver and its `--help` text
   must name no private repo; refer to it only via `--repo`/placeholders.
-- *Risk note:* L1-kelasa is curl-bootstrapped pre-clone; the driver may
-  not own first-run L1 on kelasa (open question).
+- *Risk note:* `layer-run` owns L1–L7 only; L0 (curl bootstrap) and
+  first-run L1-on-kelasa are out of scope by design.
 - *Risk note:* this is S2; it builds on S1's clean L5/L6 split, already
   on `main`. No cross-stream rebase needed (S1 shipped).
 
@@ -160,6 +179,13 @@ is deferred — see open questions.)
   comma-list only (no ranges); default = L1–L6; `--help` must show the
   layer-number→purpose legend; rely on layer idempotency rather than
   re-run guards.
+- 2026-06-18 · Planning round 2 (user resolved the 3 open questions):
+  (1) driver name = **`layer-run`**; (2) `--envkind` **always explicit**,
+  no auto-detect; (3) introduce **Layer 0** = the curl bootstrapper
+  (today's clone-only `env-setup.sh`). `layer-run` drives L1–L7 only; L0
+  owns from-nothing bootstrap + first-run L1-on-kelasa. This is a model
+  refinement — propagate L0 into the seven-layer docs at closure (the
+  model is now L0–L7).
 
 ## Decision Log
 
@@ -179,3 +205,15 @@ is deferred — see open questions.)
   (user): every layer is already idempotent, so re-running a selection
   is safe; a stateful driver would duplicate that guarantee. `--help`
   carries the layer legend because the numbering isn't memorable.
+- **Driver name = `layer-run`** (planning round 2, user). Plain verb on
+  the noun; no collision with the L0 `env-setup.sh` bootstrapper.
+- **`--envkind` always explicit** (user). No hostname/uname detection —
+  avoids a wrong-envKind rebuild from a misfiring detector; the caller
+  always states intent. Alternative rejected: auto-detect with override.
+- **Layer 0 = the curl bootstrapper** (user). Formalizes the pre-clone,
+  curl-able step (today's clone-only `env-setup.sh`) as L0, distinct
+  from `layer-run`'s L1–L7. Resolves the driver-convergence and
+  first-run-L1-on-kelasa questions by *not* merging them: L0 bootstraps
+  from nothing (incl. kelasa L1 machine prep), `layer-run` takes over
+  once on disk. The seven-layer model becomes **L0–L7**; doc propagation
+  happens at closure (§8.2 touches Layout/Testing across both repos).
