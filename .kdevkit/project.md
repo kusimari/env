@@ -247,7 +247,8 @@ env/
 ├── env-verify.nix         # nix run .#env-verify — tier-1/2 PATH check
 ├── flake.lock
 ├── README.md              # layer system, envKinds, install commands
-├── setup-notes.md         # operator cheat-sheet, post-install tasks
+├── setup-notes.md         # manual steps the layers don't automate (rclone, etc.)
+├── layer-run              # one-run driver for L1–L6 (--target/--repo/--layer/--dry-run)
 │
 ├── layers/                # Every layer script for the public side: L1 (ubuntu-mane) + L2 + L3 + L5 + L6, plus L1/L3 helpers
 │   ├── layer-1-ubuntu-mane.sh        # L1 for the ubuntu-mane target (public; kelasa L1 is private)
