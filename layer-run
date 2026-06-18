@@ -80,6 +80,7 @@ SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET=""
 REPO=""
 LAYER_LIST=""
+LAYER_SET=0          # 1 once --layer is passed (distinguish from omitted)
 DRY_RUN=0
 
 log()  { printf '==> %s\n' "$*"; }
@@ -108,7 +109,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --target)   [[ $# -ge 2 ]] || die "--target needs a value"; TARGET="$2"; shift 2 ;;
         --repo)     [[ $# -ge 2 ]] || die "--repo needs a value";   REPO="$2";   shift 2 ;;
-        --layer)    [[ $# -ge 2 ]] || die "--layer needs a value";  LAYER_LIST="$2"; shift 2 ;;
+        --layer)    [[ $# -ge 2 ]] || die "--layer needs a value";  LAYER_LIST="$2"; LAYER_SET=1; shift 2 ;;
         --dry-run)  DRY_RUN=1; shift ;;
         --help|-h)  usage; exit 0 ;;
         *) die "Unknown argument: $1 (use --help)" ;;
@@ -118,19 +119,25 @@ done
 # ── Validate inputs ─────────────────────────────────────────────────
 [[ -n "$TARGET" ]] || die "--target is required (e.g. --target al2023-kelasa). See --help."
 
-# Derive envKind = suffix after the last '-'. A target must be
-# <platform>-<envKind>, so it must contain a '-'.
-[[ "$TARGET" == *-* ]] || die "--target '$TARGET' is not <platform>-<envKind> (e.g. al2023-kelasa)"
+# A target is <platform>-<envKind>; both parts must be non-empty.
+# envKind = suffix after the last '-'.
+[[ "$TARGET" =~ ^[A-Za-z0-9]+-[A-Za-z0-9]+$ ]] \
+    || die "--target '$TARGET' is not <platform>-<envKind> (e.g. al2023-kelasa)"
 ENVKIND="${TARGET##*-}"
 
 if [[ -n "$REPO" && ! -d "$REPO" ]]; then
     die "--repo path does not exist: $REPO"
 fi
 
-# Build the ordered, validated list of layers to run.
+# Build the ordered, validated list of layers to run. Distinguish
+# "--layer omitted" (default L1–L6) from "--layer '' " (an explicit
+# empty value, which is an error — never silently fall back to the
+# full default, which could run a real L3 nix switch).
 SELECTED=()
-if [[ -z "$LAYER_LIST" ]]; then
-    SELECTED=(1 2 3 4 5 6)            # default: all runnable layers
+if (( ! LAYER_SET )); then
+    SELECTED=(1 2 3 4 5 6)            # flag omitted → default: all runnable layers
+elif [[ -z "${LAYER_LIST//[, ]/}" ]]; then
+    die "--layer was given but empty. Pass numbers (e.g. --layer 1,2,3) or omit --layer for L1–L6."
 else
     # Split on commas; validate each is a runnable layer number.
     IFS=',' read -r -a _req <<< "$LAYER_LIST"
@@ -196,7 +203,7 @@ resolve_layer() {
 # ── Execute ─────────────────────────────────────────────────────────
 log "layer-run: target=$TARGET envKind=$ENVKIND repo=${REPO:-<none>} layers=${SELECTED[*]}$( (( DRY_RUN )) && echo ' (dry-run)')"
 
-RAN=() SKIPPED=() FAILED_LAYERS=()
+RAN=() SKIPPED=() ANNOUNCED=() FAILED_LAYERS=()
 for n in "${SELECTED[@]}"; do
     resolve_layer "$n"
     script="$RESOLVED"
@@ -207,8 +214,9 @@ for n in "${SELECTED[@]}"; do
     fi
     if (( DRY_RUN )); then
         # Forward --dry-run only to layers that honor it; for the rest
-        # (L3 nix switch), announce and skip — never run them for real
-        # under a dry-run.
+        # (L3 nix switch), announce — never run them for real under a
+        # dry-run. Announced ≠ skipped (the layer resolved fine; we
+        # just won't exercise it in preview).
         if [[ "${LAYER_DRYRUN[$n]}" == 1 ]]; then
             log "L$n (${LAYER_PURPOSE[$n]}): $script --dry-run"
             if "$script" --dry-run; then RAN+=("$n"); else
@@ -216,8 +224,8 @@ for n in "${SELECTED[@]}"; do
                 FAILED_LAYERS+=("$n"); break
             fi
         else
-            log "L$n (${LAYER_PURPOSE[$n]}): $script  [no --dry-run support; would run for real]"
-            SKIPPED+=("$n")
+            log "L$n (${LAYER_PURPOSE[$n]}): $script  [no --dry-run support — would run for real; announced only]"
+            ANNOUNCED+=("$n")
         fi
     else
         log "L$n (${LAYER_PURPOSE[$n]}): $script"
@@ -230,6 +238,9 @@ for n in "${SELECTED[@]}"; do
 done
 
 # ── Summary ─────────────────────────────────────────────────────────
-log "Summary: ran=[${RAN[*]:-}] skipped=[${SKIPPED[*]:-}] failed=[${FAILED_LAYERS[*]:-}]"
+summary="Summary: ran=[${RAN[*]:-}] skipped=[${SKIPPED[*]:-}]"
+(( DRY_RUN )) && summary+=" announced=[${ANNOUNCED[*]:-}]"
+summary+=" failed=[${FAILED_LAYERS[*]:-}]"
+log "$summary"
 [[ ${#FAILED_LAYERS[@]} -eq 0 ]] || exit 1
 log "layer-run done."

@@ -238,6 +238,15 @@ is deferred — see open questions.)
   (shellcheck clean; ordering, rejection, null-repo skip, repo-resolve,
   idempotency all verified). Note: L1-mane path can't be fully exercised
   from a kelasa box (its platform guard exits — correct behavior).
+- 2026-06-18 · Code Review Gate (fresh-context, public-repo): 82/100,
+  no leaks, shellcheck clean. Fixed: (#1 HIGH) `--layer ''` fell through
+  to the L1–L6 default and ran a real L3 nix switch — added a `LAYER_SET`
+  sentinel so an explicit empty value errors instead of defaulting;
+  (#2 MED) trailing-dash target (`al2023-`) accepted with empty envKind
+  — tightened to a `^[A-Za-z0-9]+-[A-Za-z0-9]+$` match; (#3 LOW) L3
+  announced-not-run was bucketed as "skipped" — added a distinct
+  `announced` bucket in the dry-run summary. (#4 dry-run abort-on-fail
+  kept by design — mirrors the real run; documented.) Re-verified.
 - 2026-06-18 · Planning round 3 (user): (1) L7 is **not** a runnable
   layer — `layer-run` drives L1–L6; L7 only via `project-workspace-tools`
   (no "run all projects"). (2) For both-repos layers, env runs before
