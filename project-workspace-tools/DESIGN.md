@@ -1,5 +1,13 @@
 # Design: Reproducible Project Workspace Management
 
+This is the **Layer 7** tooling — the capture/replay instructions for
+the on-demand project workspaces under `~/workplace/<project>/`. It
+pairs with the L7 driver `projects/workplace-setup.sh`: the driver
+mechanizes hydrate (replay) + capture, and these instructions guide a
+coding agent through the same two directions. "Project workspaces"
+(L7, `~/workplace/`) are distinct from "tool workspaces" (L5/L6,
+`~/tool-workplace/`) — hence this dir is `project-workspace-tools`.
+
 ## Core Principle
 
 **Simplicity through Natural Language**: Instead of complex parsers, scripts, and configuration formats, we use markdown files with clear instructions that coding agents can execute.
@@ -15,7 +23,7 @@
 ```
 ~/env-workplace/
 ├── env/
-│   └── workspace-tools/
+│   └── project-workspace-tools/
 │       ├── DESIGN.md (this file)
 │       ├── workspace-capture-instruction.md
 │       └── workspace-setup-instruction.md

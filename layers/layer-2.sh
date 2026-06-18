@@ -5,7 +5,7 @@
 # clones or fetches env. That's it. No chaining — when this script
 # finishes, the next step (Layer 3 nix build) is something the user
 # runs directly. AI-tooling repos (mAId and any private siblings)
-# are pulled in Layer 5; see env/layers/layer-5a.sh. See env/README.md
+# are pulled in Layer 5; see env/layers/layer-5.sh. See env/README.md
 # for the full layer design.
 #
 # Runs either from a checkout or via curl pipe; auto-detects.

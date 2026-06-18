@@ -22,13 +22,14 @@ The envKind string is `"mane"` or `"kelasa"` — *not* the full target
 name. Target names (`al2-kelasa` etc.) only appear in `flake.nix`
 attribute keys; code elsewhere tests `envKind`.
 
-## Six-layer build system
+## Seven-layer build system
 
 Each layer is one script, run independently. No chaining — different
-change rates and different trust domains. L1-L5 are the always-installed
-base env (run in order on a fresh machine, individually on day-2). L6
-is per-project, on-demand — never run as part of bootstrap. See
-`README.md` for the full discussion; the table below is the
+change rates and different trust domains. L1–L5 are the always-installed
+base env + tooling fetch (run in order on a fresh machine, individually
+on day-2). L6 builds the tools and is separable — a bare rebuild stops
+at L5. L7 is per-project, on-demand — never run as part of bootstrap.
+See `README.md` for the full discussion; the table below is the
 operational summary.
 
 | Layer | Script | Repo | Runs when | Purpose |
@@ -37,55 +38,71 @@ operational summary.
 | 2 | `layers/layer-2.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
 | 3 | `layers/layer-3-<envKind>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
 | 4 | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa, or any day-2 change to envKind-specific post-nix content | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
-| 5a | `layers/layer-5a.sh` | `env` (public) | On demand | Runs one inline `{ ... }` block per workspace and store. Workspaces clone under `~/tool-workplace/<name>/<repo>/`; stores clone flat under `~/dabba/<repo>/`. Also `mkdir -p ~/workplace/` (Layer 6 populates per-project). Each entry runs its own `install` after clone/fetch. |
-| 5b | `desktop-layers/layer-5b.sh` | `<kelasa-specific env repo>` (private) | On demand | Chains 5a first, then runs one inline block per private workspace and store with the kelasa work-identity (configured inside the kelasa env repo's L5b driver). |
-| 6 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | On demand, per project | Replays a project recipe inside `~/workplace/<project>/`: clones source repos, writes symlinks back to the recipe, generates `.envrc`. **Not** part of fresh-machine bootstrap — run only when actually working on that project on this machine. |
+| 5 | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | New machine | **Get only.** Runs one inline `{ ... }` block per workspace and store: clone/fetch. Workspaces clone under `~/tool-workplace/<name>/<repo>/`; stores clone flat under `~/dabba/<repo>/`. Also `mkdir -p ~/workplace/` (Layer 7 populates per-project). Does **not** run any cloned repo's install — that is Layer 6. On kelasa run the private `layer-5.sh`; it chains the public one first. |
+| 6 | `layers/layer-6.sh` (driver) | `env` (public) + `<kelasa-specific env repo>` (private) | On demand | **Build tools.** Thin wrapper: walks the tool workplaces L5 cloned and runs each one's own root `install`/`setup` entry-point. **Not part of env setup** — a bare rebuild stops at L5. The normal fast path is running a tool workspace's entry-point from inside it; L6 is the run-them-all convenience. |
+| 7 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | On demand, per project | **Projects, bidirectional.** *Hydrate:* replay a project recipe inside `~/workplace/<project>/` (symlinks, `.envrc`, optional per-project `bootstrap.sh`). *Capture:* start tracking an untracked workspace by writing its recipe back under `projects/<project>/`. **Not** part of bootstrap; never mutates the environment. |
 
 **L3 vs L4 post-nix split.** L3's `layer-3-post-nix-common.sh` is
 envKind-agnostic; L4 is envKind-specific. If a post-nix step is
 useful on every envKind, it belongs in L3. If it's meaningful only
 on one envKind, it belongs in L4.
 
-**L5 framework — three roots, inline workspace + store blocks.** L5
-is not for nix-managed content. It exists as a staging area for
-things that change faster than the base env — workspace repos with
-their own install flows. The driver only clones and hands off; it
-never builds content. Three roots, distinct semantics:
+**L5 framework — three roots, get-only.** L5 is not for nix-managed
+content. It exists as a staging area for things that change faster
+than the base env — workspace repos with their own install flows.
+**L5 only clones/fetches; it never runs a cloned repo's install (that
+is L6) and never builds content.** Three roots, distinct semantics:
 
 - `~/tool-workplace/` — env-tooling under active churn. Backed up
   via git remotes only. Workspace blocks clone here.
 - `~/dabba/` — stores. Cross-machine state that must be backed up
-  off the local disk (git-backed repos like Gorantls-store and, in
-  future, rclone mounts). Store blocks clone flat here.
+  off the local disk (git-backed repos and, in future, rclone
+  mounts). Store blocks clone flat here.
 - `~/workplace/` — per-project workspaces. L5 only `mkdir -p`s the
-  root; Layer 6 populates entries on demand.
+  root; Layer 7 populates entries on demand.
 
-Each workspace or store owns its own `install` entry-point.
-Graduation (into L3 or L4) is a deliberate decision once a workspace
-stabilizes.
+Each workspace or store owns its own `install`/`setup` entry-point;
+L6 runs it. Graduation (into L3 or L4) is a deliberate decision once
+a workspace stabilizes.
 
-**L6 framework — capture once, replay on demand.** L6 owns the
+**L6 framework — build the tools, separable.** L6 is a thin wrapper
+with no registry of its own: it walks the tool workplaces L5 cloned
+under `~/tool-workplace/` and runs each workspace's own root
+`install`/`setup` entry-point (preferring `setup` when both exist).
+The content repo owns its install; L6 only invokes it.
+
+L6 is **not part of env setup.** A bare rebuild (L1–L5) leaves the
+tools un-built; L6 is an explicit, separate step. The normal fast
+path is running a tool workspace's entry-point from inside it (the
+fast iteration loop); L6 is the run-them-all convenience and the
+layer the rebuild driver targets when tooling should be rebuilt.
+
+**L7 framework — projects, bidirectional, on demand.** L7 owns the
 `~/workplace/<project>/` tree. Each project has a recipe checked
 into the envKind repo under `projects/<project>/`: a `workspace.md`
-(natural-language setup steps), an optional Nix flake, optional tool
-configs. The driver `projects/workplace-setup.sh` replays a recipe
-inside the matching `~/workplace/<project>/` directory.
+(natural-language setup steps), an optional Nix flake, an optional
+`bootstrap.sh` (project-specific setup the driver runs after
+symlinks/`.envrc`), optional tool configs. The driver
+`projects/workplace-setup.sh` is bidirectional:
 
-Two halves:
+- **Hydrate (replay)** runs every time the project is needed on a
+  machine. The driver writes the recipe symlink, generates `.envrc`,
+  runs any `bootstrap.sh`, invokes direnv. Idempotent — safe to
+  re-run.
+- **Capture** runs when a machine has a workspace not yet tracked.
+  The developer (or a coding agent — see
+  `env/project-workspace-tools/workspace-capture-instruction.md`) writes
+  the recipe back to `projects/<project>/` so future machines can
+  hydrate it.
 
-- **Capture** runs once per project, when the workspace first
-  exists. The developer (or a coding agent — see
-  `env/workspace-tools/workspace-capture-instruction.md`) writes the
-  recipe to `projects/<project>/workspace.md`.
-- **Replay** runs every time the project is needed on a machine.
-  The driver clones source repos, writes a symlink from the
-  workspace back to the recipe directory, generates `.envrc`,
-  invokes direnv. Idempotent — safe to re-run.
-
-L6 is **not** part of bootstrap. Project workspaces are recreated
-only when a developer wants to work on a specific project on this
-machine. The base env (L1-L4) and tooling (L5) are always-installed;
-L6 is per-project and on-demand.
+L7 is **not** part of bootstrap and never mutates the environment
+(no nix, no rc files, no PATH) — only the `~/workplace/<project>/`
+tree. Project workspaces are recreated only when a developer wants to
+work on a specific project on this machine. The base env (L1–L4) is
+always-installed; tooling (L5 get + L6 build) runs on every machine
+but L6 is separable; L7 is per-project and on-demand. Declarations
+live in the envKind repos — discovered across whichever are present,
+not a single hardcoded path.
 
 **Shell hook bridge.** Layers 1 and 4 are not nix-managed, but they can
 inject shell state into the nix-managed zsh by writing to
@@ -195,7 +212,7 @@ env/
 ├── README.md              # layer system, envKinds, install commands
 ├── setup-notes.md         # operator cheat-sheet, post-install tasks
 │
-├── layers/                # Every layer script for the public side: L1 (ubuntu-mane) + L2 + L3 + L5a, plus L1/L3 helpers
+├── layers/                # Every layer script for the public side: L1 (ubuntu-mane) + L2 + L3 + L5 + L6, plus L1/L3 helpers
 │   ├── layer-1-ubuntu-mane.sh        # L1 for ubuntu-mane (public envKind)
 │   ├── layer-2.sh                    # L2 — clone env
 │   ├── layer-3-ubuntu-mane.sh        # L3 for ubuntu-mane
@@ -204,7 +221,8 @@ env/
 │   ├── layer-3-darwin-kelasa.sh      # L3 for darwin
 │   ├── layer-3-common.sh             # shared body sourced by every L3 envKind script
 │   ├── layer-3-post-nix-common.sh    # L3 tail — universal non-nixable post-nix nudges
-│   ├── layer-5a.sh                   # L5a (public): inline workspace + store blocks
+│   ├── layer-5.sh                    # L5 (public): get — inline workspace + store clone/fetch blocks
+│   ├── layer-6.sh                    # L6 (public): build — fd-discovers + runs each tool's setup/install
 │   └── test-flake.sh                 # flake eval without building (tooling, not a layer)
 │
 ├── home/                  # home-manager user-level config
@@ -240,7 +258,7 @@ env/
 ├── rofi-desktop/          # .desktop files for rofi (applied only to ubuntu-mane)
 │   └── system-{reboot,shutdown,sleep}.desktop
 │
-├── workspace-tools/       # L6 design docs — capture/setup instructions for project workspaces
+├── project-workspace-tools/  # L7 design docs — capture/replay instructions for project workspaces
 │   ├── DESIGN.md
 │   └── workspace-{capture,setup}-instruction.md
 │
@@ -280,10 +298,13 @@ here. From `env/`:
   bugs that pass `bash -n`. `shellcheck` is in tier-1 `home.packages`,
   so it lands on PATH on every activated envKind and is therefore
   also picked up as an env-verify invariant.
-- L5 dry-run with `bash layers/layer-5a.sh --dry-run`. Walks the
-  inline workspace + store blocks without cloning, fetching, or
-  invoking entry-points; verifies the arg parser and that each
-  block evaluates.
+- L5 dry-run with `bash layers/layer-5.sh --dry-run`. Walks the
+  inline workspace + store blocks without cloning or fetching;
+  verifies the arg parser and that each block evaluates. (L5 is
+  get-only — it never invokes entry-points; that is L6.)
+- L6 dry-run with `bash layers/layer-6.sh --dry-run`. Lists the
+  tool entry-points `fd` discovers under `~/tool-workplace/` without
+  running them; verifies discovery + the `setup`-over-`install` pick.
 
 Together these are the format / lint / type-check / test commands
 the kdevkit loop reads out of this section. There is no separate
@@ -304,9 +325,12 @@ validation requires an activated machine, so it stays manual:
   on kelasa) actually swap the home-manager generation and write
   `~/.post-nix-rc` — verifiable only by re-running them and
   observing shell behaviour after the next login.
-- L5 real install (`bash layers/layer-5a.sh` without `--dry-run`)
-  clones into `~/tool-workplace/` and `~/dabba/` and hands off to
-  each entry-point. Verified by inspecting those trees.
+- L5 real clone (`bash layers/layer-5.sh` without `--dry-run`)
+  clones into `~/tool-workplace/` and `~/dabba/` (get-only).
+  Verified by inspecting those trees.
+- L6 real build (`bash layers/layer-6.sh` without `--dry-run`) runs
+  each discovered tool's `setup`/`install`. Separable from the base
+  env. Verified by the tool's own post-install state.
 - `~/.pre-nix-rc` / `~/.post-nix-rc` shell behaviour requires an
   interactive shell on an activated machine — there is no
   evaluation-time check for it.
@@ -338,8 +362,8 @@ layer that owns what changed rather than re-running everything.
   `claude-code-internalize`). L1 and L2 scripts accept `--branch`
   / `--env-branch` so feature branches can be bootstrapped
   end-to-end. L5 pins workspaces and stores to default branches via
-  inline `{ ... }` blocks in `layers/layer-5a.sh` (and
-  `desktop-layers/layer-5b.sh` in the private repo) — one block per
+  inline `{ ... }` blocks in `layers/layer-5.sh` (and
+  `desktop-layers/layer-5.sh` in the private repo) — one block per
   workspace or store, hand-edited when adding a new entry.
 - Conventional-commit style messages.
 - Feature design docs in `.kdevkit/feature/<name>.md`; active ones in
@@ -352,7 +376,7 @@ layer that owns what changed rather than re-running everything.
     aliases, `~/.post-nix-rc`):
     `desktop-layers/layer-4-<envKind>.sh` (in the kelasa env repo).
   - L5 workspace / store changes:
-    `desktop-layers/layer-5b.sh` on kelasa, else `layers/layer-5a.sh`.
+    `desktop-layers/layer-5.sh` on kelasa, else `layers/layer-5.sh`.
   - A specific project workspace recipe (L6, on demand only):
     `cd ~/workplace/<project> && projects/workplace-setup.sh`
     from inside the envKind repo with project recipes.

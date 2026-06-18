@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
-# env/layers/layer-5a.sh — Layer 5a (public) of the five-layer bootstrap.
+# env/layers/layer-5.sh — Layer 5 (public) of the seven-layer
+# bootstrap. Get-only.
 #
-# Ensures three roots and runs one inline block per known workspace and
-# store:
+# Ensures three roots and clones/fetches one inline block per known
+# workspace and store:
 #   ~/tool-workplace/   workspaces (env-tooling under active churn)
 #   ~/dabba/            stores (cross-machine, backed-up content)
 #   ~/workplace         mkdir-only; humans populate machine-specific work
 #
 # Each workspace block clones/fetches the repo into
-# ~/tool-workplace/<name>/<repo-basename>/, pins the public git identity,
-# and hands off to the repo's own `install` entry-point.
+# ~/tool-workplace/<name>/<repo-basename>/ and pins the public git
+# identity. Each store block clones/fetches flat into
+# ~/dabba/<repo-basename>/ and pins identity.
 #
-# Each store block clones/fetches flat into ~/dabba/<repo-basename>/,
-# pins identity, and hands off to install.
-#
-# This script does not know what any given workspace or store does —
-# the content repo owns its own install. L5a only clones and hands off.
+# L5 is GET-ONLY: it clones/fetches and stops. It does NOT run any
+# cloned repo's install/setup — that is Layer 6 (layers/layer-6.sh),
+# which walks the tool workplaces L5 fetched and runs each one's own
+# entry-point. The content repo owns its install; L5 only gets it.
 #
 # Adding a workspace or store: copy an existing { ... } block and edit
 # the name/url. Each block is wrapped with `|| { warn ...; FAILED=1; }`
@@ -24,9 +25,6 @@
 #
 # Options:
 #   --dry-run        Log planned actions; make no changes.
-#   --skip-install   Clone/fetch only; do not invoke entry-points.
-#                    Useful when the entry-point doesn't exist yet
-#                    (e.g., a new workspace still being built out).
 #   --help, -h       Show this header and exit.
 # END-USAGE
 
@@ -41,7 +39,6 @@ PUBLIC_USER_EMAIL="kusimari@gmail.com"
 
 # ── Defaults ────────────────────────────────────────────────────────
 DRY_RUN=0
-SKIP_INSTALL=0
 FAILED=0
 
 log()  { printf '==> %s\n' "$*"; }
@@ -65,7 +62,6 @@ usage() {
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)       DRY_RUN=1; shift ;;
-        --skip-install)  SKIP_INSTALL=1; shift ;;
         --help|-h)       usage; exit 0 ;;
         *) die "Unknown argument: $1 (use --help)" ;;
     esac
@@ -116,32 +112,9 @@ repo_basename() {
     printf '%s' "$base"
 }
 
-run_entry_point() {
-    local clone_dir="$1" entry="$2" name="$3"
-    local entry_path="$clone_dir/$entry"
-    if (( SKIP_INSTALL )); then
-        log "$name: --skip-install set, not invoking $entry"
-        return 0
-    fi
-    if [[ ! -e "$entry_path" ]]; then
-        warn "$name: entry point not found: $entry_path (skipping)"
-        return 0
-    fi
-    if [[ ! -x "$entry_path" ]]; then
-        warn "$name: entry point not executable: $entry_path (skipping)"
-        return 0
-    fi
-    log "$name: invoking $entry"
-    if (( DRY_RUN )); then
-        printf 'dry-run: (cd %s && ./%s)\n' "$clone_dir" "$entry"
-    else
-        ( cd "$clone_dir" && "./$entry" )
-    fi
-}
-
 # ── Flow ────────────────────────────────────────────────────────────
 
-log "Layer 5a (public): roots and registries$( (( DRY_RUN )) && echo ' (dry-run)')"
+log "Layer 5 (public): roots and registries$( (( DRY_RUN )) && echo ' (dry-run)')"
 
 # Ensure the three roots exist before iterating. workplace is
 # mkdir-only by design — no registry, no clones.
@@ -153,11 +126,11 @@ for root in "$TOOL_WORKPLACE_ROOT" "$DABBA_ROOT" "$WORKPLACE_ROOT"; do
 done
 
 # Workspace: ai-workspace/mAId — hosts mAId (and private siblings on
-# the kelasa side, handled by L5b).
+# the kelasa side, handled by the private L5). Get-only: cloned/fetched here;
+# built by L6 (runs its install/setup).
 {
     name="ai-workspace"
     url="git@github.com:kusimari/mAId.git"
-    entry="install"
     clone_base="$(repo_basename "$url")"
     ws_dir="$TOOL_WORKPLACE_ROOT/$name"
     clone_dir="$ws_dir/$clone_base"
@@ -169,7 +142,6 @@ done
     fi
     clone_or_fetch "$name/$clone_base" "$url" "$clone_dir"
     ensure_git_identity "$clone_dir" "$PUBLIC_USER_NAME" "$PUBLIC_USER_EMAIL"
-    run_entry_point "$clone_dir" "$entry" "$name/$clone_base"
 } || { warn "ai-workspace/mAId: failed (continuing)"; FAILED=1; }
 
 # Stores: none today. Add a `{ ... } || { warn ...; FAILED=1; }` block
@@ -177,8 +149,8 @@ done
 # workspace block but clone flat into "$DABBA_ROOT/$clone_base".
 
 if (( FAILED )); then
-    warn "Layer 5a finished with failures."
+    warn "Layer 5 finished with failures."
     exit 1
 fi
 
-log "Layer 5a done."
+log "Layer 5 done."
