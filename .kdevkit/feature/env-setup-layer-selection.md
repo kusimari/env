@@ -16,9 +16,9 @@ script at a time, in the right order — easy to misorder or forget which
 number does what. `layer-run --layer 1,2,3` runs the chosen layers in
 order; with no `--layer`, it runs the always-on base + tooling (L1–L6).
 It resolves the public and private layer scripts from two inputs the
-caller supplies — the envKind and an optional envKind-specific repo path
-— so the public driver names no private repo yet drives its layers when
-present.
+caller supplies — the target (full machine key; envKind derived from it)
+and an optional envKind-specific repo path — so the public driver names
+no private repo yet drives its layers when present.
 
 **Scope boundary — `layer-run` drives L1–L6; L0 and L7 are bookends.** Layer 0 is the
 curl bootstrapper: the pre-clone, curl-able entrypoint that brings the
@@ -34,11 +34,12 @@ three planning open questions.
 The user runs one command instead of a hand-ordered sequence of layer
 scripts. Observable surface:
 
-- **`layer-run --envkind <kind> [--repo <path>] [--layer <list>] [--dry-run] [--yes]`**
+- **`layer-run --target <target> [--repo <path>] [--layer <list>] [--dry-run]`**
   runs the selected layers in ascending order.
-- **`--envkind <kind>`** (e.g. `mane`, `kelasa`) is **required and
-  explicit** — no auto-detection. Selects which per-envKind layer
-  scripts run (L1, L3, L4 are envKind-specific).
+- **`--target <target>`** (e.g. `al2023-kelasa`, `ubuntu-mane`) is
+  **required and explicit** — no auto-detection. It is the full machine
+  key; `envKind` is derived as the suffix after the last `-`. Resolves
+  the per-machine layer scripts (L1/L3 by target, L4 by envKind).
 - **`--repo <path>`** points at the envKind-specific companion repo that
   carries the private layers (L1-kelasa, L4, the private L5/L6, L7).
   Optional — when omitted/null, only the public layers run, and any
@@ -57,8 +58,9 @@ scripts. Observable surface:
   (from Stream 1) — so env-before-envkind holds and the public half runs
   once. No `--repo` → the public half runs directly.
 - **`--dry-run`** prints what each selected layer would do without
-  changing anything (forwarded to each layer script, which already
-  supports it).
+  changing anything. Forwarded to layers that honor `--dry-run`; layers
+  that don't (L3, the nix switch) are **announced and skipped** under
+  `--dry-run`, never run for real.
 - **`--help`** prints a **layer-number → purpose** legend plus usage, so
   the caller never has to remember the numbering:
   - L0 = curl bootstrap *(external — pre-clone, not run here)*
@@ -83,10 +85,11 @@ Per `project.md` Testing (bash Test Gate):
 ### Functional (dry-run / arg-parsing, user-observable)
 - `--help` prints the full layer legend (L0–L7, with L0/L7 marked
   not-runnable) and usage.
-- `--layer 2,3 --envkind mane --dry-run` runs exactly L2 then L3, in
+- `--layer 2,3 --target ubuntu-mane --dry-run` runs exactly L2 then L3, in
   order, invoking neither L1 nor others.
 - Bad input rejected: unknown layer number, malformed list, missing
-  `--envkind` → clear error, non-zero exit.
+  `--target`, non-`<platform>-<envKind>` target → clear error, non-zero
+  exit.
 - **`--layer 0` and `--layer 7` rejected** with a pointer to the right
   tool (L0 = curl bootstrap; L7 = `project-workspace-tools`), non-zero
   exit — not silently skipped.
@@ -112,23 +115,23 @@ re-run guard. It mirrors the existing argument-parsing idiom in the layer
 scripts (`while/case`, `--help` via the `END-USAGE` awk banner, a `run`
 wrapper for dry-run) rather than introducing a new style.
 
-**Two inputs, no hardcoded private name.** The driver takes `--envkind`
+**Two inputs, no hardcoded private name.** The driver takes `--target`
 and `--repo`. The public layers resolve relative to the driver's own
-location (it ships in `env/`); the private layers resolve under
+location (it ships at the `env/` root); the private layers resolve under
 `--repo`. With no `--repo`, private layers are skipped. This is the
 "convention, not hardcoded names" contract from the initiative — the
 public source names no private repo; the caller supplies the path.
 
 **Layer registry.** A small in-script table maps each layer number to:
-its purpose string, whether it is public / private / both, and the
-script path template (with `<envKind>` substituted). `--help` renders
-this table as the legend. Resolution per selected layer:
+its purpose string, scope (public / private / both), and whether it
+honors `--dry-run`. `--help` renders this table as the legend.
+Resolution per selected layer:
 
 - Public-only (L2, L3): under the driver's repo (`layers/…`). L3
-  substitutes `<envKind>`.
+  substitutes `<target>`.
 - Private-only (L4): under `--repo`; skipped if no `--repo`.
-- Both (L1, L5, L6): L1 is public for `mane`, private for kelasa
-  envKinds — resolved by which file exists for the envKind. (On a *fresh*
+- Both (L1, L5, L6): L1 is public for the mane target, private for kelasa
+  envKinds — resolved by which file exists for the target. (On a *fresh*
   kelasa machine, L1 is run by L0 pre-clone; `layer-run` driving L1 is a
   `mane` / day-2 path. L1 is idempotent, so a day-2 re-run via the driver
   is safe.) For L5/L6: when `--repo` is set, run the **private half**
@@ -177,22 +180,27 @@ is deferred — see open questions.)
 
 ## Implementation Plan
 
-- [ ] Scaffold `layer-run` driver: arg parser (`--envkind`, `--repo`,
-      `--layer`, `--dry-run`, `--yes`, `--help`) in the layer-script
-      idiom.
-- [ ] Layer registry table (number → purpose, scope, path template) +
-      `--help` legend rendering (includes L0 as external/not-runnable).
-- [ ] Resolution logic: public vs private vs both; `<envKind>`
-      substitution; null-repo skip path; reject `--layer 0` and
+- [x] Naming-contract tightening (slice 0, folded in per user): define
+      envKind / platform / **target** in `project.md`; fix L1/L3 docs to
+      `<target>`, L4 stays `<envKind>`; reframe table as L0–L7. Files
+      already complied — docs were the loose part.
+- [x] Scaffold `layer-run` driver: arg parser (`--target`, `--repo`,
+      `--layer`, `--dry-run`, `--help`) in the layer-script idiom.
+      (Dropped `--envkind` for `--target`; dropped reserved `--yes`.)
+- [x] Layer registry table (number → purpose, scope, dry-run capability)
+      + `--help` legend rendering (L0/L7 shown as not-runnable).
+- [x] Resolution logic: public vs private vs both; `<target>` for L1/L3,
+      `<envKind>` for L4; null-repo skip path; reject `--layer 0` and
       `--layer 7` with pointers; for L5/L6 invoke the private half when
       `--repo` set (reuses S1 chain).
-- [ ] Ordered execution with `--dry-run` forwarding + run/skip/fail
-      summary.
-- [ ] Static gate (`bash -n`, `shellcheck`) + functional dry-run tests
-      per Test Strategy.
+- [x] Ordered execution with `--dry-run` forwarding (gated on per-layer
+      capability — L3 announced-not-run) + run/skip/fail summary.
+- [x] Static gate (`bash -n`, `shellcheck` clean) + functional dry-run
+      tests per Test Strategy (all pass).
 - [ ] Update `README.md` + `.kdevkit/project.md`: document `layer-run`
       as the one-run rebuild entrypoint (Day-2 flows table + fresh-
       machine commands), and name L0 as the curl bootstrap step.
+      (project.md L0–L7 + `layer-run` row done; README pending.)
 
 - *Risk note:* public-repo hygiene — the driver and its `--help` text
   must name no private repo; refer to it only via `--repo`/placeholders.
@@ -218,6 +226,17 @@ is deferred — see open questions.)
   owns from-nothing bootstrap + first-run L1-on-kelasa. This is a model
   refinement — propagate L0 into the seven-layer docs at closure (the
   model is now L0–L7).
+- 2026-06-18 · Dev. Built `env/layer-run` (registry + resolution +
+  ordered exec). Two findings during build, both folded in: (a) layer
+  scripts name by **two axes** — L1/L3 by full `target`, L4 by
+  `envKind` — so the flag became `--target` (envKind derived as suffix);
+  added the naming contract to `project.md` (slice 0). (b) **L3 has no
+  `--dry-run`** and would run a real nix switch if forwarded — added a
+  per-layer `LAYER_DRYRUN` capability map; non-capable layers are
+  announced-not-run under `--dry-run`. Quality + Test gates green
+  (shellcheck clean; ordering, rejection, null-repo skip, repo-resolve,
+  idempotency all verified). Note: L1-mane path can't be fully exercised
+  from a kelasa box (its platform guard exits — correct behavior).
 - 2026-06-18 · Planning round 3 (user): (1) L7 is **not** a runnable
   layer — `layer-run` drives L1–L6; L7 only via `project-workspace-tools`
   (no "run all projects"). (2) For both-repos layers, env runs before
@@ -270,3 +289,18 @@ is deferred — see open questions.)
   is set. Considered de-chaining the private scripts so the runner owns
   ordering explicitly; rejected — it would churn just-shipped S1 code
   and change stand-alone private-script behavior for no real gain.
+- **Flag is `--target`, not `--envkind`** (build finding). Layer scripts
+  name by two axes — L1/L3 by full target (`al2023-kelasa`), L4 by
+  envKind (`kelasa`). `--envkind` alone can't resolve L1/L3, so the
+  driver takes the full `target` and derives `envKind` as the suffix
+  after the last `-`. Codified the envKind/platform/target naming
+  contract in `project.md`. Alternative rejected: two flags
+  (`--target` + `--envkind`) — redundant, target implies envKind.
+- **Per-layer `--dry-run` capability map** (build finding). L3 (the nix
+  switch) ignores args and has no `--dry-run`; blindly forwarding it
+  would run a real `home-manager`/`nix-darwin switch` under a dry-run.
+  The driver carries a `LAYER_DRYRUN` map; non-capable layers are
+  announced (and skipped) under `--dry-run`, never executed. Keeps
+  `layer-run --dry-run` actually safe.
+- **Dropped `--yes`** (reserved-but-unused) — YAGNI; add when an
+  interactive prompt actually exists to gate. shellcheck SC2034 too.

@@ -1,0 +1,235 @@
+#!/usr/bin/env bash
+# env/layer-run — one-run driver for the layered environment rebuild.
+#
+# Runs the selected base-env + tooling layers (L1–L6) in ascending
+# order, in a single command, instead of invoking each layer script by
+# hand. Resolves public and private layer scripts from two inputs:
+#
+#   --target <target>   The full machine key (a flake attribute name):
+#                       ubuntu-mane, al2-kelasa, al2023-kelasa,
+#                       darwin-kelasa. Required. envKind (mane|kelasa)
+#                       is derived as the suffix after the last '-'.
+#   --repo <path>       Path to the envKind-specific companion repo that
+#                       carries the private layers (L1-kelasa, L4, the
+#                       private L5/L6). Optional — when omitted, only
+#                       public layers run; private-only layers are
+#                       reported skipped (not an error).
+#
+# Layers (the naming contract — see env/.kdevkit/project.md):
+#   L1 layer-1-<target>.sh    make nix-ready          public|private
+#   L2 layers/layer-2.sh      clone env gits          public
+#   L3 layer-3-<target>.sh    setup nix               public
+#   L4 layer-4-<envKind>.sh   setup non-nix           private
+#   L5 layer-5.sh             get tools/stores        both
+#   L6 layer-6.sh             build tools             both
+#
+# L0 (curl bootstrap) and L7 (per-project, via workplace-setup.sh) are
+# NOT run by this driver — they are owned by other entrypoints. They
+# appear in --help for orientation and are rejected as --layer values.
+#
+# For L5/L6 with --repo set, the private half is invoked; it chains the
+# public half first (so env runs before envkind, public runs once).
+# Every layer is idempotent, so re-running any selection is safe.
+#
+# Options:
+#   --target <target>   Required. See above.
+#   --repo <path>       Optional. envKind-specific companion repo.
+#   --layer <list>      Comma-list of layer numbers, e.g. 1,2,3 (1–6).
+#                       Omitted: run all of L1–L6.
+#   --dry-run           Print planned actions; forwarded to each layer.
+#   --help, -h          Show this header and exit.
+# END-USAGE
+
+set -uo pipefail
+
+# ── Layer registry ──────────────────────────────────────────────────
+# Per layer: purpose, scope (public|private|both), and resolution. L0/L7
+# carry an empty scope and a pointer — present for --help, not runnable.
+LAYER_NUMS=(0 1 2 3 4 5 6 7)
+declare -A LAYER_PURPOSE=(
+    [0]="curl bootstrap (pre-clone)"
+    [1]="make nix-ready"
+    [2]="clone env gits"
+    [3]="setup nix"
+    [4]="setup non-nix"
+    [5]="get tools / stores"
+    [6]="build tools"
+    [7]="project workspaces"
+)
+declare -A LAYER_SCOPE=(
+    [0]="" [1]="both" [2]="public" [3]="public"
+    [4]="private" [5]="both" [6]="both" [7]=""
+)
+# Which layers honor --dry-run. L3 (nix switch) does NOT — forwarding
+# --dry-run to it would run a real home-manager/nix-darwin switch. For
+# non-capable layers, --dry-run mode announces and skips invocation
+# rather than running them for real.
+declare -A LAYER_DRYRUN=(
+    [1]=1 [2]=1 [3]=0 [4]=1 [5]=1 [6]=1
+)
+# Pointer shown when a non-runnable layer (L0/L7) is requested.
+declare -A LAYER_POINTER=(
+    [0]="L0 is the curl bootstrap — run it before cloning, not via layer-run"
+    [7]="L7 is per-project — run 'workplace-setup.sh' from inside ~/workplace/<project>"
+)
+
+# Self dir (env repo root: this script ships at the repo root).
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ── Defaults ────────────────────────────────────────────────────────
+TARGET=""
+REPO=""
+LAYER_LIST=""
+DRY_RUN=0
+
+log()  { printf '==> %s\n' "$*"; }
+warn() { printf '!!! %s\n' "$*" >&2; }
+die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+
+usage() {
+    awk '/^# END-USAGE$/{exit} NR>1 && /^#/{sub(/^# ?/,""); print}' \
+        "${BASH_SOURCE[0]}"
+    printf '\nLayer legend:\n'
+    local n scope tag
+    for n in "${LAYER_NUMS[@]}"; do
+        scope="${LAYER_SCOPE[$n]}"
+        if [[ -z "$scope" ]]; then
+            tag="not runnable here"
+        else
+            tag="$scope"
+        fi
+        printf '  L%s  %-22s [%s]\n' "$n" "${LAYER_PURPOSE[$n]}" "$tag"
+    done
+    printf '\nlayer-run drives L1–L6. L0 and L7 are owned elsewhere.\n'
+}
+
+# ── Arg parsing ─────────────────────────────────────────────────────
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --target)   [[ $# -ge 2 ]] || die "--target needs a value"; TARGET="$2"; shift 2 ;;
+        --repo)     [[ $# -ge 2 ]] || die "--repo needs a value";   REPO="$2";   shift 2 ;;
+        --layer)    [[ $# -ge 2 ]] || die "--layer needs a value";  LAYER_LIST="$2"; shift 2 ;;
+        --dry-run)  DRY_RUN=1; shift ;;
+        --help|-h)  usage; exit 0 ;;
+        *) die "Unknown argument: $1 (use --help)" ;;
+    esac
+done
+
+# ── Validate inputs ─────────────────────────────────────────────────
+[[ -n "$TARGET" ]] || die "--target is required (e.g. --target al2023-kelasa). See --help."
+
+# Derive envKind = suffix after the last '-'. A target must be
+# <platform>-<envKind>, so it must contain a '-'.
+[[ "$TARGET" == *-* ]] || die "--target '$TARGET' is not <platform>-<envKind> (e.g. al2023-kelasa)"
+ENVKIND="${TARGET##*-}"
+
+if [[ -n "$REPO" && ! -d "$REPO" ]]; then
+    die "--repo path does not exist: $REPO"
+fi
+
+# Build the ordered, validated list of layers to run.
+SELECTED=()
+if [[ -z "$LAYER_LIST" ]]; then
+    SELECTED=(1 2 3 4 5 6)            # default: all runnable layers
+else
+    # Split on commas; validate each is a runnable layer number.
+    IFS=',' read -r -a _req <<< "$LAYER_LIST"
+    declare -A _seen=()
+    for tok in "${_req[@]}"; do
+        tok="${tok// /}"
+        [[ -n "$tok" ]] || continue
+        [[ "$tok" =~ ^[0-9]+$ ]] || die "--layer: '$tok' is not a layer number"
+        if [[ -n "${LAYER_POINTER[$tok]:-}" ]]; then
+            die "L$tok is not runnable via layer-run. ${LAYER_POINTER[$tok]}."
+        fi
+        [[ -n "${LAYER_PURPOSE[$tok]:-}" && -n "${LAYER_SCOPE[$tok]}" ]] \
+            || die "--layer: unknown layer L$tok (runnable: 1–6)"
+        _seen[$tok]=1
+    done
+    # Ascending order from the canonical sequence.
+    for n in "${LAYER_NUMS[@]}"; do
+        [[ -n "${_seen[$n]:-}" ]] && SELECTED+=("$n")
+    done
+    [[ ${#SELECTED[@]} -gt 0 ]] || die "--layer: no layers selected"
+fi
+
+# ── Resolution ──────────────────────────────────────────────────────
+# Resolve the script to run for a layer, given target/envKind/repo.
+# Sets two parent-scope vars (no subshell, so both survive): RESOLVED
+# = the script path, or "" to skip; RESOLVE_NOTE = why, for logging.
+RESOLVED=""
+RESOLVE_NOTE=""
+resolve_layer() {
+    local n="$1" pub="" priv=""
+    RESOLVED=""
+    RESOLVE_NOTE=""
+    case "$n" in
+        1)  pub="$SELF_DIR/layers/layer-1-$TARGET.sh"
+            [[ -n "$REPO" ]] && priv="$REPO/desktop-layers/layer-1-$TARGET.sh" ;;
+        2)  pub="$SELF_DIR/layers/layer-2.sh" ;;
+        3)  pub="$SELF_DIR/layers/layer-3-$TARGET.sh" ;;
+        4)  [[ -n "$REPO" ]] && priv="$REPO/desktop-layers/layer-4-$ENVKIND.sh" ;;
+        5)  pub="$SELF_DIR/layers/layer-5.sh"
+            [[ -n "$REPO" ]] && priv="$REPO/desktop-layers/layer-5.sh" ;;
+        6)  pub="$SELF_DIR/layers/layer-6.sh"
+            [[ -n "$REPO" ]] && priv="$REPO/desktop-layers/layer-6.sh" ;;
+    esac
+
+    # Prefer the private half when present: for both-repo layers it
+    # chains the public half first (so env runs before envkind); for
+    # private-only layers (L1-kelasa, L4) it is the only script.
+    if [[ -n "$priv" ]]; then
+        if [[ -x "$priv" ]]; then RESOLVED="$priv"; return 0; fi
+        RESOLVE_NOTE="private script not found/executable: $priv"
+        # Fall through to public half if the layer has one.
+    fi
+    if [[ -n "$pub" ]]; then
+        if [[ -x "$pub" ]]; then RESOLVED="$pub"; return 0; fi
+        RESOLVE_NOTE="script not found/executable: $pub"
+        return 0
+    fi
+    # No public half and no usable private half.
+    [[ -z "$RESOLVE_NOTE" ]] && RESOLVE_NOTE="private-only layer (L$n); pass --repo to run it"
+    return 0
+}
+
+# ── Execute ─────────────────────────────────────────────────────────
+log "layer-run: target=$TARGET envKind=$ENVKIND repo=${REPO:-<none>} layers=${SELECTED[*]}$( (( DRY_RUN )) && echo ' (dry-run)')"
+
+RAN=() SKIPPED=() FAILED_LAYERS=()
+for n in "${SELECTED[@]}"; do
+    resolve_layer "$n"
+    script="$RESOLVED"
+    if [[ -z "$script" ]]; then
+        warn "L$n (${LAYER_PURPOSE[$n]}): skipped — ${RESOLVE_NOTE}"
+        SKIPPED+=("$n")
+        continue
+    fi
+    if (( DRY_RUN )); then
+        # Forward --dry-run only to layers that honor it; for the rest
+        # (L3 nix switch), announce and skip — never run them for real
+        # under a dry-run.
+        if [[ "${LAYER_DRYRUN[$n]}" == 1 ]]; then
+            log "L$n (${LAYER_PURPOSE[$n]}): $script --dry-run"
+            if "$script" --dry-run; then RAN+=("$n"); else
+                rc=$?; warn "L$n dry-run reported an error (exit $rc)."
+                FAILED_LAYERS+=("$n"); break
+            fi
+        else
+            log "L$n (${LAYER_PURPOSE[$n]}): $script  [no --dry-run support; would run for real]"
+            SKIPPED+=("$n")
+        fi
+    else
+        log "L$n (${LAYER_PURPOSE[$n]}): $script"
+        if "$script"; then RAN+=("$n"); else
+            rc=$?
+            warn "L$n failed (exit $rc). Stopping — later layers depend on it."
+            FAILED_LAYERS+=("$n"); break
+        fi
+    fi
+done
+
+# ── Summary ─────────────────────────────────────────────────────────
+log "Summary: ran=[${RAN[*]:-}] skipped=[${SKIPPED[*]:-}] failed=[${FAILED_LAYERS[*]:-}]"
+[[ ${#FAILED_LAYERS[@]} -eq 0 ]] || exit 1
+log "layer-run done."
