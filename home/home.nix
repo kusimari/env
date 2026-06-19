@@ -57,14 +57,10 @@ in
     jq       # JSON processor, used by rclone-env backends
     shellcheck  # bash linter; required by the kdevkit Test Gate
 
-    # mise — runtime version manager. The manager is global; the runtimes
-    # a workspace pins with it stay workspace-scoped. See project.md
-    # "Workspace runtimes — global or scoped".
+    # Global manager only; workspaces pin their own runtimes (project.md).
     mise
-    # gnupg — full gpg + gpg-agent. AL2023 ships only minimal GnuPG (no
-    # agent), which breaks mise's GPG verification of runtime downloads
-    # (e.g. node). nixpkgs gnupg bundles the agent, so verification stays
-    # on. nix equivalent of AWS's "swap gnupg2-minimal → gnupg2-full".
+    # Full GnuPG: AL2023's minimal build lacks gpg-agent, which mise needs
+    # to verify runtime downloads.
     gnupg
 
     # rclone-env: list, browse, check, copy, sync across rclone remotes
