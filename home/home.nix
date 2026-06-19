@@ -57,6 +57,12 @@ in
     jq       # JSON processor, used by rclone-env backends
     shellcheck  # bash linter; required by the kdevkit Test Gate
 
+    # Global manager only; workspaces pin their own runtimes (project.md).
+    mise
+    # Full GnuPG: AL2023's minimal build lacks gpg-agent, which mise needs
+    # to verify runtime downloads.
+    gnupg
+
     # rclone-env: list, browse, check, copy, sync across rclone remotes
     (pkgs.writeShellScriptBin "rclone-env" (builtins.readFile ../rclone-env/rclone-env.sh))
 
