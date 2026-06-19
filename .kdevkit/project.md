@@ -191,6 +191,24 @@ external tool must drop a binary onto PATH whose name matches the nix
 package's `meta.mainProgram` (often the package name, but not always —
 e.g. `claude-code` exposes `claude`).
 
+## Workspace runtimes — global or scoped
+
+A tool or project workspace (under `~/tool-workplace/` or
+`~/workplace/`) gets its runtimes one of two ways:
+
+1. **Global** — the env provides them, either nix (tiers above) or the
+   non-nix layer (L4). Use this when the dependency is wanted across the
+   environment anyway.
+2. **Scoped to the workspace** — pinned with the workspace and active
+   only in its directory, via **either** a `flake.nix` + direnv **or**
+   `mise` (`.tool-versions`). The choice between the two is the
+   workspace's; both keep the runtime out of the base env (remove the
+   workspace, the runtime goes with it).
+
+Only the *manager* a scoped workspace relies on is global: `direnv`
+(`programs.direnv`) and `mise` (tier-1 `home.packages`) are installed by
+nix on every envKind. The runtimes they pin are never tiered.
+
 ## flake.nix structure
 
 Outputs are composed by **stacking module lists** — every target pulls
@@ -389,6 +407,10 @@ layer that owns what changed rather than re-running everything.
   `meta.mainProgram`. Before assuming a tier-2 handoff works, confirm
   the package's main program name matches what the external installer
   produces on PATH.
+- **A workspace's scoped runtime is not a tiered package.** A runtime
+  pinned with a single workspace (via its flake or `.tool-versions`) is
+  never added to a tier; only the managers (`direnv`, `mise`) are tier 1.
+  See "Workspace runtimes — global or scoped."
 - **`~/.pre-nix-rc` and `~/.post-nix-rc` are the only non-nix → nix
   shell bridge.** Any other shell-init hack will drift.
 - **`layers/test-flake.sh`** evaluates the flake without building — use
