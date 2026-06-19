@@ -61,6 +61,11 @@ in
     # a workspace pins with it stay workspace-scoped. See project.md
     # "Workspace runtimes — global or scoped".
     mise
+    # gnupg — full gpg + gpg-agent. AL2023 ships only minimal GnuPG (no
+    # agent), which breaks mise's GPG verification of runtime downloads
+    # (e.g. node). nixpkgs gnupg bundles the agent, so verification stays
+    # on. nix equivalent of AWS's "swap gnupg2-minimal → gnupg2-full".
+    gnupg
 
     # rclone-env: list, browse, check, copy, sync across rclone remotes
     (pkgs.writeShellScriptBin "rclone-env" (builtins.readFile ../rclone-env/rclone-env.sh))
