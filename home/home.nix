@@ -57,6 +57,11 @@ in
     jq       # JSON processor, used by rclone-env backends
     shellcheck  # bash linter; required by the kdevkit Test Gate
 
+    # mise — runtime version manager. The manager is global; the runtimes
+    # a workspace pins with it stay workspace-scoped. See project.md
+    # "Workspace runtimes — global or scoped".
+    mise
+
     # rclone-env: list, browse, check, copy, sync across rclone remotes
     (pkgs.writeShellScriptBin "rclone-env" (builtins.readFile ../rclone-env/rclone-env.sh))
 
