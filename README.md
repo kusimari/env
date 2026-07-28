@@ -306,7 +306,8 @@ Three tiers, read before adding packages. Full detail at the top of
 - `flake.nix` — entry point; tier-layering explained at the top.
 - `env-verify.nix` — on-demand PATH check for tier-1 + tier-2
   invariants.
-- `setup-notes.md` — operator cheat-sheet and post-install steps.
+- `setup-manual-notes.md` — manual steps the layers don't automate
+  (cloud file storage, interactive-auth remotes).
 - `.kdevkit/feature/wip/` — active feature specs and design docs.
 
 ## Adding a new project folder

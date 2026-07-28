@@ -226,6 +226,15 @@ multi-repo); this feature only records the dependency.
 
 <!-- Newest at top. -->
 
+- Bug (operator-found, real L3 run): the `setup-notes.md` →
+  `setup-manual-notes.md` rename missed three live references —
+  `layers/layer-3-common.sh` (`cat "$FLAKE_DIR/setup-notes.md"`, which
+  broke L3 with a missing-file error), `README.md`, and the
+  `project.md` directory map. Fixed all three. Root cause of the miss:
+  the Test Gate's L3 is *announced, not executed* under `layer-run
+  --dry-run` (L3 does a real nix switch), so the `cat` line was never
+  exercised until a real L1-5 run. Lesson: `git grep` the old name
+  across the whole repo on any rename, not just docs + home.nix.
 - Code Review Gate: score 86/100 (threshold 70 — pass). Applied two
   machine-relevant findings: `status` matched bare `nfs` (would catch
   corporate NFS home dirs on kelasa work machines) → narrowed to
