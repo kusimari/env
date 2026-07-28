@@ -226,6 +226,14 @@ multi-repo); this feature only records the dependency.
 
 <!-- Newest at top. -->
 
+- Code Review Gate: score 86/100 (threshold 70 — pass). Applied two
+  machine-relevant findings: `status` matched bare `nfs` (would catch
+  corporate NFS home dirs on kelasa work machines) → narrowed to
+  rclone's own mounts (`fuse.rclone` on Linux, localhost NFS on macOS);
+  Linux `umount` gained a lazy `fusermount -uz` fallback mirroring the
+  macOS `diskutil ... force` path. Left as nits: unbounded VFS cache
+  (`--vfs-cache-max-size` unset) and `is_mounted` regex-escaping (paths
+  are operator-controlled). Re-ran parse/shellcheck/test-flake — green.
 - Implemented (dev loop): `kusimari-dabba` store block added to
   `layers/layer-5.sh` (flat into `$DABBA_ROOT`, public identity);
   `mount`/`umount`/`status` added to `rclone-env.sh` (platform-split
