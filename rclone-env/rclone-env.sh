@@ -149,7 +149,9 @@ cmd_umount() {
   if [[ "$(uname -s)" == "Darwin" ]]; then
     umount "$mnt" || diskutil unmount force "$mnt"
   else
-    fusermount -u "$mnt"
+    # Fall back to a lazy unmount if the mount is busy (matches the
+    # macOS force fallback).
+    fusermount -u "$mnt" || fusermount -uz "$mnt"
   fi
   echo "Unmounted $mnt"
 }
@@ -164,12 +166,14 @@ cmd_status() {
     printf '%s\n' "$remotes" | sed 's/^/  /'
   fi
   echo ""
-  # `mount` doesn't reliably name the backing remote (esp. macOS NFS
-  # mounts to localhost), so report the active rclone/fuse/nfs mounts
-  # rather than claim a per-remote mapping.
+  # `mount` doesn't reliably name the backing remote, so report the
+  # rclone-created mounts rather than claim a per-remote mapping. Match
+  # only what rclone produces: `fuse.rclone` on Linux, and a localhost
+  # NFS mount on macOS (rclone nfsmount serves 127.0.0.1). Bare `nfs`
+  # would wrongly catch corporate NFS home dirs on work machines.
   local active
-  active=$(mount | grep -iE 'fuse\.rclone|rclone|nfs' || true)
-  echo "Active rclone/fuse/nfs mounts:"
+  active=$(mount | grep -iE 'fuse\.rclone|rclone|127\.0\.0\.1:|localhost:' || true)
+  echo "Active rclone mounts:"
   if [[ -z "$active" ]]; then
     echo "  (none)"
   else
