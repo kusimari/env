@@ -195,22 +195,23 @@ Maps to `project.md`'s Testing section (bash track):
 
 ## Implementation Plan
 
-- [ ] Add `kusimari-dabba` store block to `layers/layer-5.sh`.
-- [ ] Add `mount`/`umount`/`status` subcommands to
+- [x] Add `kusimari-dabba` store block to `layers/layer-5.sh`.
+- [x] Add `mount`/`umount`/`status` subcommands to
       `rclone-env/rclone-env.sh` (platform-split nfsmount vs mount).
-- [ ] Extend `rclone-env/_rclone-env` completion.
-- [ ] `git mv setup-notes.md setup-manual-notes.md`; prune to terse
+- [x] Extend `rclone-env/_rclone-env` completion.
+- [x] `git mv setup-notes.md setup-manual-notes.md`; prune to terse
       manual steps (cloud storage under `~/dabba/`, any name).
-- [ ] `layer-run` echoes a one-line pointer to the notes file at the end.
+- [x] `layer-run` echoes a one-line pointer to the notes file at the end.
 - [ ] At closure, bubble into `project.md`: (a) the two-owner `~/dabba/`
       model — L5 adds git repos (personal + work); operator adds
       cloud-storage symlinks; (b) the renamed manual-notes file + the
       `layer-run` echo; (c) the "layers don't touch cloud storage"
       invariant (Non-obvious invariants).
-- [ ] `git rm` the stale `.kdevkit/feature/rclone-gdrive.md` at closure.
+- [x] `git rm` the stale `.kdevkit/feature/rclone-gdrive.md` at closure.
+      (Already absent — removed when the backlog item was filed.)
 - [ ] Prune the `kusimari-dabba` repo to README + `inbox/` (separate
       repo; done outside this branch).
-- [ ] Run the bash Test Gate (parse, shellcheck, L5 + layer-run dry-run,
+- [x] Run the bash Test Gate (parse, shellcheck, L5 + layer-run dry-run,
       test-flake).
 
 ## Companion change (separate repo)
@@ -225,6 +226,20 @@ multi-repo); this feature only records the dependency.
 
 <!-- Newest at top. -->
 
+- Implemented (dev loop): `kusimari-dabba` store block added to
+  `layers/layer-5.sh` (flat into `$DABBA_ROOT`, public identity);
+  `mount`/`umount`/`status` added to `rclone-env.sh` (platform-split
+  `nfsmount` vs `mount`, `--daemon --vfs-cache-mode full
+  --dir-cache-time 24h`, idempotent via `is_mounted`); `_rclone-env`
+  completion extended (`mount` → remote then dir, `umount` → dir);
+  `setup-notes.md` → `setup-manual-notes.md` pruned to terse cloud +
+  remote steps; `layer-run` echoes the notes pointer at the very end of
+  every run. `status` reports configured remotes + active
+  rclone/fuse/nfs mounts rather than claiming a per-remote mapping
+  (`mount` doesn't reliably name the backing remote, esp. macOS NFS to
+  localhost). Test Gate green: `bash -n`, `shellcheck`, L5 dry-run,
+  `layer-run --layer 5 --dry-run` (pointer echoes), `test-flake.sh`
+  (rclone-env.drv rebuilt).
 - Public-repo hygiene: first draft of this spec named internal stores
   directly; rewritten to abstract them (generic "OneDrive"/"the private
   companion repo") per project.md's `<kelasa-specific env repo>`

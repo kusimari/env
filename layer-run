@@ -257,5 +257,11 @@ summary="Summary: ran=[${RAN[*]:-}] skipped=[${SKIPPED[*]:-}]"
 (( DRY_RUN )) && summary+=" announced=[${ANNOUNCED[*]:-}]"
 summary+=" failed=[${FAILED_LAYERS[*]:-}]"
 log "$summary"
+
+# Manual-setup reminder — echoed at the very end of every run (success
+# or failure) so it surfaces no matter which layers ran. Layers never
+# set up cloud file storage; that is wired by hand per these notes.
+log "Manual steps the layers don't automate (cloud storage, remotes): see $SELF_DIR/setup-manual-notes.md"
+
 [[ ${#FAILED_LAYERS[@]} -eq 0 ]] || exit 1
 log "layer-run done."
