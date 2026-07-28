@@ -96,6 +96,27 @@ The remote is not hardcoded; the operator runs e.g.
 remote→mountpoint mappings and an auto-mount-at-login service are
 explicitly **out of scope** (see backlog).
 
+### What `~/dabba/` holds — two kinds of store
+
+`~/dabba/` is the stores root, and it holds exactly two kinds of entry,
+by two different owners:
+
+1. **Git-backed stores — added explicitly by L5.** One inline
+   `{ ... }` block per repo in `layers/layer-5.sh`, personal
+   (`kusimari` identity, public repos) *and* work-related (private
+   identity, in the companion L5). L5 clones/fetches these and pins
+   identity. This is the *only* thing the layers do for `~/dabba/`.
+2. **Cloud file storage — added manually by the operator.** Symlinks
+   into `~/dabba/` pointing at cloud mounts: an app-owned mount like
+   OneDrive (`ln -s ~/Library/CloudStorage/OneDrive-… ~/dabba/<name>`),
+   or an `rclone-env mount` point for Google Drive / another remote.
+   Any name, any envKind, wired by hand — layers never create these.
+
+This two-owner model (L5 = git repos; operator = cloud-storage links)
+is the durable invariant this feature establishes; **at closure it
+bubbles into `project.md`** (the L5-framework / `~/dabba/` description),
+so the split is documented where the layer model lives.
+
 ### Cloud storage is manual — layers stay out of it
 
 Layer scripts fetch git-backed stores only. Cloud file storage
@@ -150,8 +171,11 @@ Maps to `project.md`'s Testing section (bash track):
 - [ ] `git mv setup-notes.md setup-manual-notes.md`; prune to terse
       manual steps (cloud storage under `~/dabba/`, any name).
 - [ ] `layer-run` echoes a one-line pointer to the notes file at the end.
-- [ ] Update `project.md` references to the renamed notes file + the
-      "layers don't touch cloud storage" invariant.
+- [ ] At closure, bubble into `project.md`: (a) the two-owner `~/dabba/`
+      model — L5 adds git repos (personal + work); operator adds
+      cloud-storage symlinks; (b) the renamed manual-notes file + the
+      `layer-run` echo; (c) the "layers don't touch cloud storage"
+      invariant (Non-obvious invariants).
 - [ ] `git rm` the stale `.kdevkit/feature/rclone-gdrive.md` at closure.
 - [ ] Prune the `kusimari-dabba` repo to README + `inbox/` (separate
       repo; done outside this branch).
@@ -188,6 +212,10 @@ multi-repo); this feature only records the dependency.
 
 <!-- Newest at top. -->
 
+- `~/dabba/` has a two-owner model, to be documented in `project.md` at
+  closure: L5 explicitly adds git-backed stores (personal + work);
+  the operator manually adds cloud-storage symlinks (OneDrive-style
+  app mounts or `rclone-env mount` points). The two never overlap.
 - Cloud storage fully manual; layers do nothing for it. Makes public and
   companion L5 identical on the cloud-storage axis; the companion's
   OneDrive symlink block is removed (its repo). Rationale: the real
