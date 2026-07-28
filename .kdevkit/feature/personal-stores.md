@@ -202,15 +202,17 @@ Maps to `project.md`'s Testing section (bash track):
 - [x] `git mv setup-notes.md setup-manual-notes.md`; prune to terse
       manual steps (cloud storage under `~/dabba/`, any name).
 - [x] `layer-run` echoes a one-line pointer to the notes file at the end.
-- [ ] At closure, bubble into `project.md`: (a) the two-owner `~/dabba/`
+- [x] At closure, bubble into `project.md`: (a) the two-owner `~/dabba/`
       model — L5 adds git repos (personal + work); operator adds
       cloud-storage symlinks; (b) the renamed manual-notes file + the
-      `layer-run` echo; (c) the "layers don't touch cloud storage"
-      invariant (Non-obvious invariants).
+      `layer-run` cat-at-end; (c) the "layers don't touch cloud storage"
+      invariant (Non-obvious invariants). Done in the L5-framework
+      `~/dabba/` bullet + a new Manual-setup-notes paragraph + a new
+      Non-obvious invariant.
 - [x] `git rm` the stale `.kdevkit/feature/rclone-gdrive.md` at closure.
       (Already absent — removed when the backlog item was filed.)
-- [ ] Prune the `kusimari-dabba` repo to README + `inbox/` (separate
-      repo; done outside this branch).
+- [x] Prune the `kusimari-dabba` repo to README + `inbox/` (separate
+      repo; done outside this branch — see Backlog status pre-work).
 - [x] Run the bash Test Gate (parse, shellcheck, L5 + layer-run dry-run,
       test-flake).
 
@@ -226,6 +228,15 @@ multi-repo); this feature only records the dependency.
 
 <!-- Newest at top. -->
 
+- Closure (§8): PR #42 approved. Two minor review comments (drop the
+  explanatory comments on `layer-3-common.sh`'s tail and `layer-run`'s
+  `banner()`) applied in `3630d83`. Bubbled into `project.md`: the
+  two-owner `~/dabba/` model (L5 = git stores; operator = cloud-storage
+  links), the `setup-manual-notes.md` + cat-at-end-of-`layer-run`
+  behaviour, and a new Non-obvious invariant "layers never set up cloud
+  file storage." Ticked the remaining Implementation-Plan boxes
+  (project.md bubble-ups, kusimari-dabba prune done out-of-branch).
+  Squash-merged to `main`.
 - Thorough follow-up (operator-requested) to the notes-file miss: moved
   the manual-notes print out of L3 entirely (`layer-3-common.sh` no
   longer cats the file) to the end of `layer-run`, which now cats the

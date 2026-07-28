@@ -93,14 +93,25 @@ is L6) and never builds content.** Three roots, distinct semantics:
 - `~/tool-workplace/` — env-tooling under active churn. Backed up
   via git remotes only. Workspace blocks clone here.
 - `~/dabba/` — stores. Cross-machine state that must be backed up
-  off the local disk (git-backed repos and, in future, rclone
-  mounts). Store blocks clone flat here.
+  off the local disk. **Two owners, never overlapping:** (1) L5
+  clones git-backed stores flat here (personal via the public L5,
+  work via the private companion L5); (2) the operator manually
+  wires cloud file storage here — an `rclone-env mount` point or a
+  symlink to an app-owned mount (OneDrive, Google Drive, …). Layers
+  do the git stores only; cloud storage is always by hand (see the
+  cloud-storage invariant below).
 - `~/workplace/` — per-project workspaces. L5 only `mkdir -p`s the
   root; Layer 7 populates entries on demand.
 
 Each workspace or store owns its own `install`/`setup` entry-point;
 L6 runs it. Graduation (into L3 or L4) is a deliberate decision once
 a workspace stabilizes.
+
+**Manual setup notes.** Steps the layers deliberately don't automate
+(interactive auth, cloud file storage, one-off remotes) live in
+`setup-manual-notes.md`. `layer-run` cats it in full at the very end
+of every run — after all requested layers, on success or failure —
+so the reminder surfaces regardless of which layers ran.
 
 **L6 framework — build the tools, separable.** L6 is a thin wrapper
 with no registry of its own: it walks the tool workplaces L5 cloned
@@ -415,6 +426,11 @@ layer that owns what changed rather than re-running everything.
   shell bridge.** Any other shell-init hack will drift.
 - **`layers/test-flake.sh`** evaluates the flake without building — use
   it as the first check after any flake edit.
+- **Layers never set up cloud file storage.** No layer creates a
+  symlink, mounts a remote, or assumes a cloud-store name. Any cloud
+  store (OneDrive, Google Drive, …) is wired by the operator, by hand,
+  under `~/dabba/` — per `setup-manual-notes.md`. This keeps the public
+  and private L5s identical on the cloud-storage axis: both do nothing.
 
 ## Agent Development
 
