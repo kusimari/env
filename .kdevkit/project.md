@@ -416,6 +416,17 @@ layer that owns what changed rather than re-running everything.
 - **`layers/test-flake.sh`** evaluates the flake without building — use
   it as the first check after any flake edit.
 
+## Agent Development
+
+```yaml
+kdevkit:
+  code_review:
+    reviewer: host-native
+    threshold: 70
+    authority: hard-stop
+    retry_budget: 2
+```
+
 ## Conventions
 
 - Branch naming: short, purpose-first (e.g. `feature-build-layers`,
