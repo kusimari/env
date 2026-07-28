@@ -16,11 +16,42 @@ fetch git-backed stores. A manual-setup notes file, echoed at the end
 of every `layer-run`, reminds the operator to wire cloud storage under
 `~/dabba/` by hand.
 
-Supersedes the stale `.kdevkit/feature/rclone-gdrive.md`, which claimed
-a mount-capable `rclone-env` was already implemented (it is not — the
-shipped wrapper has no mount subcommand) and specified a heavier design
-(separate nix module, macFUSE cask, `fuse3` in the flake, config-file
-mount mappings) than this feature adopts.
+Supersedes the stale `.kdevkit/feature/rclone-gdrive.md` (deleted when
+this was filed), which claimed a mount-capable `rclone-env` was already
+implemented (it is not — the shipped wrapper has no mount subcommand)
+and specified a heavier design (separate nix module, macFUSE cask,
+`fuse3` in the flake, config-file mount mappings) than this adopts.
+
+## Backlog status & pickup
+
+**Status: deferred — fully planned, not yet implemented.** Planning is
+complete and every design decision below is settled; nothing here needs
+re-litigating. Promote with
+`git mv .kdevkit/backlog/personal-stores.md .kdevkit/feature/` and start
+the dev loop straight from the Implementation Plan.
+
+**Pre-work already done outside this repo** (no action needed):
+
+- The private notes repo `kusimari/kusimari-dabba` is created (verified
+  owner-only), cloned to `~/dabba/kusimari-dabba`, and pruned to a
+  plain-Markdown `README.md` + `inbox/`.
+- A Google Drive `rclone` remote (`google-drive:`) is added via
+  `rclone-env add`, and `rclone nfsmount` is verified working on macOS.
+
+**Where to pick this up:** any machine — the code is envKind-agnostic
+(the `kusimari-dabba` git block is in the *public* L5 so it comes up
+everywhere; the `rclone-env` subcommands are just tooling). A **kelasa
+Linux** machine is a fine place to implement it: this repo is public and
+present there, and the `mount` path is exercised via `rclone mount`
+(Linux) rather than `nfsmount` (macOS). Note the *runtime scoping* —
+Google Drive is wired manually only on `mane` machines — is a use-time
+choice, not an implement-time constraint.
+
+**Companion change:** a matching L5 edit in the private kelasa-side env
+repo (removing its OneDrive symlink block) is tracked as its own backlog
+item there — see that repo's `.kdevkit/backlog/`. On a kelasa machine
+both repos are checked out under `~/env-workplace/`, so a coding agent
+can work both from the two backlog files.
 
 ## Requirements
 
