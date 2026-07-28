@@ -16,3 +16,10 @@ or anything else — by hand under `~/dabba/`, under any name. Two options:
 - **client installable + symlink**: install/sign in to the vendor
   client, then `ln -s <client-mount-path> ~/dabba/<name>` (e.g. macOS
   OneDrive under `~/Library/CloudStorage/OneDrive-<tenant>`).
+
+Some corporate backends permit neither — third-party clients are
+blocked and the machine has no route to one that is signed in. Those
+stores get **no `~/dabba/` entry** and are reached through whatever
+sanctioned API tooling exists instead. That means no local path, so
+`grep`/editors/scripts can't see them; it is a real limitation, not an
+oversight. Don't add a layer script to work around it.
