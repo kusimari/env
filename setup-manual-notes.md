@@ -8,13 +8,11 @@ storage. The layered rebuild itself (L1–L6 via `layer-run`, L7 via
 ## Cloud file storage — wire it manually under `~/dabba/`
 
 Layer scripts never set up cloud file storage (no symlink, no mount,
-no naming assumptions). Wire any cloud store by hand, under any name:
+no naming assumptions). Wire any store — Google Drive, OneDrive, SSHFS,
+or anything else — by hand under `~/dabba/`, under any name. Two options:
 
-- **Google Drive (or any rclone remote):** `rclone-env add`
-  (interactive auth), then `rclone-env mount google-drive: ~/dabba/<name>`.
-- **OneDrive (macOS):** install + sign in to the OneDrive app, then
-  `ln -s ~/Library/CloudStorage/OneDrive-<tenant> ~/dabba/<name>`.
-
-## Other one-off remotes
-
-- Add ssh remote for desktop-aka: `rclone-env add` (interactive auth).
+- **rclone** (when the backend supports it): `rclone-env add`
+  (interactive auth), then `rclone-env mount <remote>: ~/dabba/<name>`.
+- **client installable + symlink**: install/sign in to the vendor
+  client, then `ln -s <client-mount-path> ~/dabba/<name>` (e.g. macOS
+  OneDrive under `~/Library/CloudStorage/OneDrive-<tenant>`).
