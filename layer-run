@@ -91,9 +91,6 @@ log()  { printf '==> %s\n' "$*"; }
 warn() { printf '!!! %s\n' "$*" >&2; }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
-# Full-width heavy rule + bold title, so each layer is easy to spot in
-# a long scrollback. Colour only when stdout is a terminal (NO_COLOR
-# and non-TTY pipes get plain rules). Rule width tracks the terminal.
 banner() {
     local title="$1" cols rule bold=$'\033[1;36m' dim=$'\033[36m' rst=$'\033[0m'
     if [[ ! -t 1 || -n "${NO_COLOR:-}" ]]; then bold=""; dim=""; rst=""; fi
