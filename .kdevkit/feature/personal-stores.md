@@ -228,6 +228,32 @@ multi-repo); this feature only records the dependency.
 
 <!-- Newest at top. -->
 
+- Post-ship follow-up (PR #43, operator-found on macOS). Two reported
+  symptoms + one latent bug:
+  (1) `mount`/`umount` didn't tab-complete while `browse` did — **not a
+  code bug**: the mac was on a pre-merge home-manager generation, so its
+  `_rclone-env` symlink predated the mount subcommands. Reproduced by
+  running the old file. No manual cache step is needed to pick up a new
+  one: `compinit` re-reads a completion's body from disk each shell, and
+  oh-my-zsh (which owns `compinit` here) deletes its own zcompdump when
+  `$fpath` changes — so L3 + a new shell suffices. An earlier suggestion
+  to `rm ~/.zcompdump*` was wrong and retracted.
+  (2) `mount` froze the terminal for seconds — `--daemon` makes rclone
+  wait for readiness, and on macOS/BSD that wait is a *constant sleep*
+  defaulting to 1m. Fixed with `--daemon-wait 5s` + a message printed
+  before the pause instead of after.
+  (3) Latent: `is_mounted` interpolated the mount point into a grep
+  regex, so `.`/`*` in a real path matched a different mount and the
+  idempotency guard falsely reported "Already mounted". Fixed with
+  `grep -qxF` over an extracted mount-point field (handles both the
+  Linux `type <fs>` and macOS table formats) plus path resolution for
+  symlinked mount points.
+  Added `rclone-env/test-rclone-env.sh` (mocks rclone/mount/uname/
+  fusermount; 16 cases; both platform paths from any machine) and
+  registered it in project.md's Test Gate. Confirmed the suite fails
+  against the pre-fix code, so it isn't vacuous. Lesson: the mount
+  surface had no automated coverage at all — dry-runs never exercise it,
+  which is why all three slipped past the original Test Gate.
 - Closure (§8): PR #42 approved. Two minor review comments (drop the
   explanatory comments on `layer-3-common.sh`'s tail and `layer-run`'s
   `banner()`) applied in `3630d83`. Bubbled into `project.md`: the
