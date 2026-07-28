@@ -372,6 +372,13 @@ here. From `env/`:
 - L6 dry-run with `bash layers/layer-6.sh --dry-run`. Lists the
   tool entry-points `fd` discovers under `~/tool-workplace/` without
   running them; verifies discovery + the `setup`-over-`install` pick.
+- `bash rclone-env/test-rclone-env.sh` — mock tests for the
+  `rclone-env` mount surface. Mocks `rclone`/`mount`/`uname`/
+  `fusermount` on a throwaway PATH, so both the macOS (`nfsmount`)
+  and Linux (`mount`) paths are exercised from any machine, with no
+  network, no rclone config, and no real mounts. Covers the
+  `is_mounted` idempotency guard (a mount point is a literal path,
+  not a regex) and the platform dispatch.
 
 Together these are the format / lint / type-check / test commands
 the kdevkit loop reads out of this section. There is no separate

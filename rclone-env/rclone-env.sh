@@ -104,14 +104,30 @@ cmd_sync() {
 
 MOUNT_FLAGS=(
   --daemon
+  # With --daemon, rclone waits for the background mount to report ready.
+  # On macOS/BSD that wait is a constant sleep (not an early-exit poll),
+  # so the default 1m would stall the terminal for a full minute.
+  --daemon-wait 5s
   --vfs-cache-mode full
   --dir-cache-time 24h
 )
 
-# True when $1 is a currently-mounted path. Uses `mount` output, which
-# lists the mount point on both macOS and Linux.
+# Mount points only, from `mount` output. Two formats to strip:
+#   Linux: <dev> on <mnt> type <fs> (opts)
+#   macOS: <dev> on <mnt> (fs, opts)
+mount_points() {
+  mount | sed -e 's/ type [^ ]* (.*$//' -e 's/ (.*$//' -e 's/^.* on //'
+}
+
+# True when $1 is a currently-mounted path. Compares whole lines with a
+# fixed string (-xF): a path is not a regex, and `.` or `*` in a real
+# path would otherwise match a different mount and wrongly report it
+# mounted. Resolves the path first so a symlinked mount point (e.g.
+# /home -> /local/home) matches what the kernel reports.
 is_mounted() {
-  mount | grep -q " on ${1%/} "
+  local target="${1%/}"
+  target="$(cd "$target" 2>/dev/null && pwd -P)" || target="${1%/}"
+  mount_points | grep -qxF "$target"
 }
 
 cmd_mount() {
@@ -126,6 +142,9 @@ cmd_mount() {
     return 0
   fi
   mkdir -p "$mnt"
+  # rclone blocks until the daemon reports ready (see --daemon-wait), so
+  # say what's happening before the pause rather than only after it.
+  echo "Mounting $remote at $mnt (waiting for the mount to become ready)..."
   # macOS has no FUSE by default; rclone's built-in NFS server + the OS
   # NFS client mounts without macFUSE. Linux uses stock fusermount.
   if [[ "$(uname -s)" == "Darwin" ]]; then
