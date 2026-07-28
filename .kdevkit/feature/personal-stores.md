@@ -226,6 +226,18 @@ multi-repo); this feature only records the dependency.
 
 <!-- Newest at top. -->
 
+- Thorough follow-up (operator-requested) to the notes-file miss: moved
+  the manual-notes print out of L3 entirely (`layer-3-common.sh` no
+  longer cats the file) to the end of `layer-run`, which now cats the
+  file in full — real content, not a "see …" pointer — after all
+  requested layers run, guarded by `[[ -f ]]` so a missing file warns
+  rather than fails. Added a `banner()` helper (full-width heavy rules +
+  bold title, colour only on a TTY / honours NO_COLOR, width from
+  COLUMNS/tput) and a banner per layer + SUMMARY + MANUAL SETUP NOTES,
+  so it's obvious which layer is running in a long scrollback. Notes now
+  print on every run regardless of which layers ran (they used to only
+  appear when L3 ran, buried mid-output). Parse + shellcheck clean;
+  dry-run verified banners + end-of-run cat.
 - Bug (operator-found, real L3 run): the `setup-notes.md` →
   `setup-manual-notes.md` rename missed three live references —
   `layers/layer-3-common.sh` (`cat "$FLAKE_DIR/setup-notes.md"`, which

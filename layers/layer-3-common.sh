@@ -65,5 +65,6 @@ echo "Done!"
 # shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/layer-3-post-nix-common.sh"
 
-printf '\n\033[1;33m=== Manual setup notes ===\033[0m\n'
-cat "$FLAKE_DIR/setup-manual-notes.md"
+# NOTE: the manual-setup notes are printed once at the end of the whole
+# run by layer-run, not here — printing them mid-run (inside L3) buried
+# them between layers and only surfaced when L3 was among the layers run.
