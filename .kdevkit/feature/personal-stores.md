@@ -195,22 +195,25 @@ Maps to `project.md`'s Testing section (bash track):
 
 ## Implementation Plan
 
-- [ ] Add `kusimari-dabba` store block to `layers/layer-5.sh`.
-- [ ] Add `mount`/`umount`/`status` subcommands to
+- [x] Add `kusimari-dabba` store block to `layers/layer-5.sh`.
+- [x] Add `mount`/`umount`/`status` subcommands to
       `rclone-env/rclone-env.sh` (platform-split nfsmount vs mount).
-- [ ] Extend `rclone-env/_rclone-env` completion.
-- [ ] `git mv setup-notes.md setup-manual-notes.md`; prune to terse
+- [x] Extend `rclone-env/_rclone-env` completion.
+- [x] `git mv setup-notes.md setup-manual-notes.md`; prune to terse
       manual steps (cloud storage under `~/dabba/`, any name).
-- [ ] `layer-run` echoes a one-line pointer to the notes file at the end.
-- [ ] At closure, bubble into `project.md`: (a) the two-owner `~/dabba/`
+- [x] `layer-run` echoes a one-line pointer to the notes file at the end.
+- [x] At closure, bubble into `project.md`: (a) the two-owner `~/dabba/`
       model — L5 adds git repos (personal + work); operator adds
       cloud-storage symlinks; (b) the renamed manual-notes file + the
-      `layer-run` echo; (c) the "layers don't touch cloud storage"
-      invariant (Non-obvious invariants).
-- [ ] `git rm` the stale `.kdevkit/feature/rclone-gdrive.md` at closure.
-- [ ] Prune the `kusimari-dabba` repo to README + `inbox/` (separate
-      repo; done outside this branch).
-- [ ] Run the bash Test Gate (parse, shellcheck, L5 + layer-run dry-run,
+      `layer-run` cat-at-end; (c) the "layers don't touch cloud storage"
+      invariant (Non-obvious invariants). Done in the L5-framework
+      `~/dabba/` bullet + a new Manual-setup-notes paragraph + a new
+      Non-obvious invariant.
+- [x] `git rm` the stale `.kdevkit/feature/rclone-gdrive.md` at closure.
+      (Already absent — removed when the backlog item was filed.)
+- [x] Prune the `kusimari-dabba` repo to README + `inbox/` (separate
+      repo; done outside this branch — see Backlog status pre-work).
+- [x] Run the bash Test Gate (parse, shellcheck, L5 + layer-run dry-run,
       test-flake).
 
 ## Companion change (separate repo)
@@ -225,6 +228,58 @@ multi-repo); this feature only records the dependency.
 
 <!-- Newest at top. -->
 
+- Closure (§8): PR #42 approved. Two minor review comments (drop the
+  explanatory comments on `layer-3-common.sh`'s tail and `layer-run`'s
+  `banner()`) applied in `3630d83`. Bubbled into `project.md`: the
+  two-owner `~/dabba/` model (L5 = git stores; operator = cloud-storage
+  links), the `setup-manual-notes.md` + cat-at-end-of-`layer-run`
+  behaviour, and a new Non-obvious invariant "layers never set up cloud
+  file storage." Ticked the remaining Implementation-Plan boxes
+  (project.md bubble-ups, kusimari-dabba prune done out-of-branch).
+  Squash-merged to `main`.
+- Thorough follow-up (operator-requested) to the notes-file miss: moved
+  the manual-notes print out of L3 entirely (`layer-3-common.sh` no
+  longer cats the file) to the end of `layer-run`, which now cats the
+  file in full — real content, not a "see …" pointer — after all
+  requested layers run, guarded by `[[ -f ]]` so a missing file warns
+  rather than fails. Added a `banner()` helper (full-width heavy rules +
+  bold title, colour only on a TTY / honours NO_COLOR, width from
+  COLUMNS/tput) and a banner per layer + SUMMARY + MANUAL SETUP NOTES,
+  so it's obvious which layer is running in a long scrollback. Notes now
+  print on every run regardless of which layers ran (they used to only
+  appear when L3 ran, buried mid-output). Parse + shellcheck clean;
+  dry-run verified banners + end-of-run cat.
+- Bug (operator-found, real L3 run): the `setup-notes.md` →
+  `setup-manual-notes.md` rename missed three live references —
+  `layers/layer-3-common.sh` (`cat "$FLAKE_DIR/setup-notes.md"`, which
+  broke L3 with a missing-file error), `README.md`, and the
+  `project.md` directory map. Fixed all three. Root cause of the miss:
+  the Test Gate's L3 is *announced, not executed* under `layer-run
+  --dry-run` (L3 does a real nix switch), so the `cat` line was never
+  exercised until a real L1-5 run. Lesson: `git grep` the old name
+  across the whole repo on any rename, not just docs + home.nix.
+- Code Review Gate: score 86/100 (threshold 70 — pass). Applied two
+  machine-relevant findings: `status` matched bare `nfs` (would catch
+  corporate NFS home dirs on kelasa work machines) → narrowed to
+  rclone's own mounts (`fuse.rclone` on Linux, localhost NFS on macOS);
+  Linux `umount` gained a lazy `fusermount -uz` fallback mirroring the
+  macOS `diskutil ... force` path. Left as nits: unbounded VFS cache
+  (`--vfs-cache-max-size` unset) and `is_mounted` regex-escaping (paths
+  are operator-controlled). Re-ran parse/shellcheck/test-flake — green.
+- Implemented (dev loop): `kusimari-dabba` store block added to
+  `layers/layer-5.sh` (flat into `$DABBA_ROOT`, public identity);
+  `mount`/`umount`/`status` added to `rclone-env.sh` (platform-split
+  `nfsmount` vs `mount`, `--daemon --vfs-cache-mode full
+  --dir-cache-time 24h`, idempotent via `is_mounted`); `_rclone-env`
+  completion extended (`mount` → remote then dir, `umount` → dir);
+  `setup-notes.md` → `setup-manual-notes.md` pruned to terse cloud +
+  remote steps; `layer-run` echoes the notes pointer at the very end of
+  every run. `status` reports configured remotes + active
+  rclone/fuse/nfs mounts rather than claiming a per-remote mapping
+  (`mount` doesn't reliably name the backing remote, esp. macOS NFS to
+  localhost). Test Gate green: `bash -n`, `shellcheck`, L5 dry-run,
+  `layer-run --layer 5 --dry-run` (pointer echoes), `test-flake.sh`
+  (rclone-env.drv rebuilt).
 - Public-repo hygiene: first draft of this spec named internal stores
   directly; rewritten to abstract them (generic "OneDrive"/"the private
   companion repo") per project.md's `<kelasa-specific env repo>`

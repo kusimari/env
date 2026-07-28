@@ -11,6 +11,9 @@ _rclone-env() {
     'check:Check differences between source and dest'
     'copy:Dry-run preview then copy with optimised defaults'
     'sync:Dry-run preview then sync with optimised defaults'
+    'mount:Mount a remote at a mount point (idempotent)'
+    'umount:Unmount a mount point'
+    'status:Show configured remotes and active mounts'
     'backends:Browse all supported storage backends'
   )
 
@@ -32,6 +35,18 @@ _rclone-env() {
     check|copy|sync)
       # Complete remote names for both source and dest positions
       (( CURRENT == 3 || CURRENT == 4 )) && _remotes
+      ;;
+    mount)
+      # First arg is a remote; second is the mount-point directory.
+      if (( CURRENT == 3 )); then
+        _remotes
+      elif (( CURRENT == 4 )); then
+        _files -/
+      fi
+      ;;
+    umount)
+      # Mount point is a directory.
+      (( CURRENT == 3 )) && _files -/
       ;;
   esac
 }

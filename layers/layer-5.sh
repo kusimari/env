@@ -144,9 +144,25 @@ done
     ensure_git_identity "$clone_dir" "$PUBLIC_USER_NAME" "$PUBLIC_USER_EMAIL"
 } || { warn "ai-workspace/mAId: failed (continuing)"; FAILED=1; }
 
-# Stores: none today. Add a `{ ... } || { warn ...; FAILED=1; }` block
-# here when a public, backed-up store gets a repo. Pattern: mirror a
-# workspace block but clone flat into "$DABBA_ROOT/$clone_base".
+# Store: kusimari-dabba — personal notes vault (plain Markdown).
+# Clones flat into ~/dabba/<repo> and pins the public identity. Comes
+# up on every machine (this is the public L5). Get-only: cloned/fetched
+# here; there is nothing to build.
+{
+    name="kusimari-dabba"
+    url="git@github.com:kusimari/kusimari-dabba.git"
+    clone_base="$(repo_basename "$url")"
+    clone_dir="$DABBA_ROOT/$clone_base"
+
+    log "Store: $name (repo: $clone_base)"
+    clone_or_fetch "store/$clone_base" "$url" "$clone_dir"
+    ensure_git_identity "$clone_dir" "$PUBLIC_USER_NAME" "$PUBLIC_USER_EMAIL"
+} || { warn "store/kusimari-dabba: failed (continuing)"; FAILED=1; }
+
+# Add another store the same way: copy the block above, edit name/url.
+# Cloud file storage (OneDrive, Google Drive, …) is NOT a store block —
+# it is wired manually under ~/dabba/ by the operator (see
+# setup-manual-notes.md); L5 does nothing for it.
 
 if (( FAILED )); then
     warn "Layer 5 finished with failures."

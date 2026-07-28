@@ -91,6 +91,16 @@ log()  { printf '==> %s\n' "$*"; }
 warn() { printf '!!! %s\n' "$*" >&2; }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
+banner() {
+    local title="$1" cols rule bold=$'\033[1;36m' dim=$'\033[36m' rst=$'\033[0m'
+    if [[ ! -t 1 || -n "${NO_COLOR:-}" ]]; then bold=""; dim=""; rst=""; fi
+    cols="${COLUMNS:-}"; [[ -n "$cols" ]] || cols="$(tput cols 2>/dev/null || echo 60)"
+    printf -v rule '%*s' "$cols" ''
+    rule="${rule// /━}"
+    printf '\n%s%s%s\n%s▶  %s%s\n%s%s%s\n' \
+        "$dim" "$rule" "$rst" "$bold" "$title" "$rst" "$dim" "$rule" "$rst"
+}
+
 usage() {
     local t n note
     printf 'layer-run — rebuild this machine env in one run (drives L1–L6).\n\n'
@@ -227,23 +237,24 @@ for n in "${SELECTED[@]}"; do
         SKIPPED+=("$n")
         continue
     fi
+    banner "LAYER $n — ${LAYER_PURPOSE[$n]}$( (( DRY_RUN )) && echo ' (dry-run)')"
     if (( DRY_RUN )); then
         # Forward --dry-run only to layers that honor it; for the rest
         # (L3 nix switch), announce — never run them for real under a
         # dry-run. Announced ≠ skipped (the layer resolved fine; we
         # just won't exercise it in preview).
         if [[ "${LAYER_DRYRUN[$n]}" == 1 ]]; then
-            log "L$n (${LAYER_PURPOSE[$n]}): $script --dry-run"
+            log "$script --dry-run"
             if "$script" --dry-run; then RAN+=("$n"); else
                 rc=$?; warn "L$n dry-run reported an error (exit $rc)."
                 FAILED_LAYERS+=("$n"); break
             fi
         else
-            log "L$n (${LAYER_PURPOSE[$n]}): $script  [no --dry-run support — would run for real; announced only]"
+            log "$script  [no --dry-run support — would run for real; announced only]"
             ANNOUNCED+=("$n")
         fi
     else
-        log "L$n (${LAYER_PURPOSE[$n]}): $script"
+        log "$script"
         if "$script"; then RAN+=("$n"); else
             rc=$?
             warn "L$n failed (exit $rc). Stopping — later layers depend on it."
@@ -253,9 +264,26 @@ for n in "${SELECTED[@]}"; do
 done
 
 # ── Summary ─────────────────────────────────────────────────────────
-summary="Summary: ran=[${RAN[*]:-}] skipped=[${SKIPPED[*]:-}]"
+banner "SUMMARY"
+summary="ran=[${RAN[*]:-}] skipped=[${SKIPPED[*]:-}]"
 (( DRY_RUN )) && summary+=" announced=[${ANNOUNCED[*]:-}]"
 summary+=" failed=[${FAILED_LAYERS[*]:-}]"
 log "$summary"
+
+# Manual-setup notes — printed in full at the very end of every run
+# (success or failure) so they surface once, after all requested layers
+# have run, no matter which layers those were. Layers never set up cloud
+# file storage; it is wired by hand per these notes. Guarded so a
+# missing file is a warning, never a failure that masks the run's real
+# exit status.
+NOTES_FILE="$SELF_DIR/setup-manual-notes.md"
+banner "MANUAL SETUP NOTES"
+if [[ -f "$NOTES_FILE" ]]; then
+    cat "$NOTES_FILE"
+else
+    warn "manual-setup notes not found: $NOTES_FILE"
+fi
+
 [[ ${#FAILED_LAYERS[@]} -eq 0 ]] || exit 1
+echo
 log "layer-run done."
