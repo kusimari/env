@@ -1,6 +1,6 @@
 # Emacs Modern Completion Stack Migration
 
-## ✅ STATUS: Phase 3 Partial - Embark Added for Contextual Actions
+## ✅ STATUS: Landed — Vertico/Consult/Marginalia/Embark in use
 **Goal:** Replace Ivy/Helm → Modern Vertico + Consult + Marginalia + Embark stack
 **Config:** `~/env/home/emacs.el`
 **Branch:** `feature/emacs-modern-completion`
@@ -20,10 +20,10 @@
   - `C-c d` - Default action (do what I mean)
   - `C-c B` - Show all available actions
 
-### Next Phase (Future) ⏳
-- **Corfu** - In-buffer completion (replace Company)
-- **Cape** - Completion-at-point extensions
-- **Search/Replace tools** - wgrep, anzu, visual-regexp
+### Deferred
+In-buffer completion (Corfu + Cape) was scoped out of this feature and
+now lives in `.kdevkit/backlog/emacs-in-buffer-completion.md`.
+Search/replace tooling (wgrep, anzu, visual-regexp) was dropped.
 
 ## Requirements Status
 - [x] Replace Ivy/Helm with modern stack
@@ -33,8 +33,6 @@
 - [x] Add contextual actions on completion targets
 - [x] Ensure terminal compatibility
 - [x] Install required tools (ripgrep, fd via homemanager)
-- [ ] Add in-buffer completion (Corfu) - Future
-- [ ] Add completion extensions (Cape) - Future
 
 ## Recent Progress
 ### 2026-01-15 - Added Embark for Contextual Actions
