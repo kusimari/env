@@ -11,8 +11,8 @@ Branch `misc-updates` bundles small, independent improvements to the env
 repo. The gittree CLI / lazygit rework and the bootstrap refactor have
 been carved out into their own feature branches:
 
-- `issue-emacs-gittree` — rework of the emacs-gittree CLI and the
-  lazygit `E` binding. See `.kdevkit/feature/issue-emacs-gittree.md`.
+- emacs-gittree CLI + lazygit `E` binding — reverted, now parked in
+  `.kdevkit/backlog/emacs-gittree-cli.md`.
 - `feature-build-layers` — four-layer bootstrap + mAId sibling repo.
   See `.kdevkit/feature/feature-build-layers.md`.
 
@@ -45,8 +45,8 @@ What stays on `misc-updates`:
 ✅ All landed on `misc-updates`. See commit history on the branch.
 
 ## Follow-ups (separate branches)
-- `issue-emacs-gittree` — gittree CLI + lazygit `E` rework. Current
-  state and known issues recorded in its own feature doc.
+- gittree CLI + lazygit `E` rework — demoted to backlog; known issues
+  and salvage notes in `.kdevkit/backlog/emacs-gittree-cli.md`.
 - `feature-build-layers` — four-layer bootstrap model + mAId content.
   See its feature doc for requirements/design.
 
