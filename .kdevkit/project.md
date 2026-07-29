@@ -7,6 +7,45 @@ fixed, debuggable sequence, and day-2 rebuilds are a single command.
 
 Read this file first — it is the map. Specific files only as needed.
 
+## Hard constraints
+
+- **This repo is public.** Never commit internal names — team,
+  product, ticket, CR, internal repo, internal host, or internal
+  email — to code, docs, `.kdevkit/`, commit messages, or PR bodies.
+  Where the private side must be referenced, use the placeholder
+  convention already in use here: `<kelasa-specific env repo>`.
+  Content that genuinely needs an internal name belongs in that
+  private companion instead.
+
+- **`main` is protected; direct pushes are rejected.** Every change
+  lands through a branch plus a pull request — including one-line doc
+  fixes. The GitHub ruleset (`push-thru-PR`, active since 2026-03-01)
+  enforces pull requests and blocks deletion and non-fast-forward
+  pushes on `refs/heads/main`. A push straight to `main` fails with:
+
+  ```
+  remote: - Changes must be made through a pull request.
+   ! [remote rejected] main -> main (push declined due to
+     repository rule violations)
+  ```
+
+  This is not overridable from the client side. Branch first; if work
+  has already been committed to a local `main`, branch off it and reset
+  `main` back before pushing.
+
+- **Four repos form the environment.** "Where does this change land"
+  is answered by role, so the split is worth knowing:
+
+  | Role | Owns |
+  |---|---|
+  | this repo (public) | base env — L1 `mane`, L2, L3, L5a; `flake.nix`; `home/home.nix` |
+  | `<kelasa-specific env repo>` (private) | envKind-specific L1, L4, private L5b/L6, L7 project recipes |
+  | AI tooling workspaces (`~/tool-workplace/`) | fast-moving agent tooling — skills, agents, sync |
+  | backed-up store (`~/dabba/`) | cross-machine state; cloud stores wired by hand |
+
+  The private companion's `project.md` carries the named map. Anything
+  envKind-specific, site-managed, or internal goes there, not here.
+
 ## Naming contract — envKind, platform, target
 
 A machine is one **identity class** running on one **OS**. Two
