@@ -101,6 +101,7 @@
           "google-chrome"
           "porting-kit"
           "obsidian"
+          "claude" # GUI app; no nixpkgs equivalent on any envKind
         ];
       };
 
