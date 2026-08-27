@@ -1,9 +1,23 @@
 #!/usr/bin/env bash
-# env/layers/layer-5-6-common.sh — shared helpers for layer-5.sh and
-# layer-6.sh. Sourced, not executed; caller must set DRY_RUN first.
+# env/layers/layer-common.sh — shared helpers for layers that can
+# source a sibling file. Sourced, not executed; caller must set
+# DRY_RUN first.
 #
-# Not sourced by L1/L2 — those stay single-file and curl-pipeable
-# (see project.md's Curl-able column), so they keep their own copies.
+# Sourced today by layer-5.sh and layer-6.sh, whose log/warn/die/run/
+# clone_or_fetch/ensure_git_identity/repo_basename are identical.
+# Deliberately NOT sourced by:
+#   - layer-1-*.sh / layer-2.sh — must stay single-file and
+#     curl-pipeable (`curl url | bash` has no sibling file to source),
+#     so they keep their own copies of log/warn/die/run.
+#   - layer-2.sh's own clone_or_fetch/ensure_git_identity — same names
+#     as the ones here, but a different shape (branch-switching,
+#     hardcoded identity); not the same function, so not folded in.
+#   - the layer-3 family (layer-3-common.sh, layer-3-post-nix-common.sh)
+#     — already has its own differently-scoped `pn_log`/`pn_warn`
+#     (distinct on purpose; not the same functions as these).
+# usage() is never moved here either, in any script: its
+# ${BASH_SOURCE[0]} self-reference must resolve to the caller's own
+# file, not this one.
 
 log()  { printf '==> %s\n' "$*"; }
 warn() { printf '!!! %s\n' "$*" >&2; }

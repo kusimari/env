@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # env/layers/layer-5.sh — Layer 5 (public): get stores.
 #
-# Ensures ~/dabba/ and ~/workplace/, then clones/fetches one inline
-# { ... } block per known store into ~/dabba/<repo-basename>/. See
-# project.md for the layer design.
+# Ensures ~/dabba/, then clones/fetches one inline { ... } block per
+# known store into ~/dabba/<repo-basename>/. See project.md for the
+# layer design.
 #
 # Adding a store: copy an existing { ... } block and edit the
 # name/url.
@@ -17,7 +17,6 @@ set -uo pipefail
 
 # ── Constants ───────────────────────────────────────────────────────
 DABBA_ROOT="$HOME/dabba"
-WORKPLACE_ROOT="$HOME/workplace"
 PUBLIC_USER_NAME="kusimari"
 PUBLIC_USER_EMAIL="kusimari@gmail.com"
 
@@ -25,7 +24,7 @@ PUBLIC_USER_EMAIL="kusimari@gmail.com"
 DRY_RUN=0
 FAILED=0
 
-source "$(dirname "${BASH_SOURCE[0]}")/layer-5-6-common.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/layer-common.sh"
 
 usage() {
     awk '/^# END-USAGE$/{exit} NR>1 && /^#/{sub(/^# ?/,""); print}' \
@@ -45,14 +44,10 @@ done
 
 log "Layer 5 (public): stores$( (( DRY_RUN )) && echo ' (dry-run)')"
 
-# Ensure the two roots exist before iterating. workplace is
-# mkdir-only by design — no registry, no clones.
-for root in "$DABBA_ROOT" "$WORKPLACE_ROOT"; do
-    if [[ ! -d "$root" ]]; then
-        log "Creating root: $root"
-        run mkdir -p "$root"
-    fi
-done
+if [[ ! -d "$DABBA_ROOT" ]]; then
+    log "Creating root: $DABBA_ROOT"
+    run mkdir -p "$DABBA_ROOT"
+fi
 
 # Store: kusimari-dabba — personal notes vault (plain Markdown).
 # Clones flat into ~/dabba/<repo> and pins the public identity. Comes

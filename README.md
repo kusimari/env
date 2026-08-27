@@ -67,17 +67,15 @@ other entrypoints.
   keyed to non-nix binaries. Lives in the envKind's own repo.
   Writes `~/.post-nix-rc`; never builds nix artifacts.
 
-- **Layer 5 — get the stores.** Two roots and a small set of inline
+- **Layer 5 — get the stores.** One root and a small set of inline
   `{ ... }` blocks, one per known store. L5 drivers
   (`layers/layer-5.sh` in `env`, `desktop-layers/layer-5.sh` in the
   envKind repo) clone flat into `~/dabba/<repo>/` (cross-machine,
-  backed-up content) and pin git identity. Both drivers also
-  `mkdir -p ~/workplace/`, which Layer 7 (below) populates
-  per-project on demand.
+  backed-up content) and pin git identity. Nothing else.
   Stores are knowledge-persistence repos (notes vaults, etc.) — they
   never have a build step, so **L5 is their entire lifecycle**: it
-  never touches `~/tool-workplace/` at all — that root belongs to
-  Layer 6.
+  never touches `~/tool-workplace/` (Layer 6's root) or `~/workplace/`
+  (Layer 7's root) — each root has exactly one owning layer.
   Adding a store: copy an existing `{ ... }` block in the relevant
   driver and edit the name/url.
 
@@ -101,17 +99,19 @@ other entrypoints.
   Adding a tool workspace: copy an existing `{ ... }` block in the
   relevant driver and edit the name/url.
 
-- **Layer 7 — per-project workplace recreation, on demand.** Project
-  workspaces under `~/workplace/<project>/` are **not** bulk-installed
-  during machine bootstrap. Each project owns a recipe (a
-  `workspace.md` plus optional Nix flake, optional `bootstrap.sh`,
-  and tool configs) checked into the envKind repo under
-  `projects/<project>/`. A small driver
-  (`projects/workplace-setup.sh`, sibling to the recipes) is
+- **Layer 7 — per-project workplace recreation, on demand.** L7 owns
+  the `~/workplace/` root and `~/workplace/<project>/` tree
+  end-to-end — no other layer creates or touches `~/workplace/`.
+  Project workspaces are **not** bulk-installed during machine
+  bootstrap. Each project owns a recipe (a `workspace.md` plus
+  optional Nix flake, optional `bootstrap.sh`, and tool configs)
+  checked into the envKind repo under `projects/<project>/`. A small
+  driver (`projects/workplace-setup.sh`, sibling to the recipes) is
   bidirectional:
     - **Hydrate (replay)** — every time that project is needed on a
-      machine, run the driver from inside `~/workplace/<project>/`:
-      it writes symlinks back to the recipe directory, generates
+      machine: `mkdir -p ~/workplace/<project>` (creates the root on
+      first use; a no-op on re-run), `cd` in, then run the driver: it
+      writes symlinks back to the recipe directory, generates
       `.envrc` for the project's Nix flake, runs any project
       `bootstrap.sh`, and hands the shell to direnv.
     - **Capture** — when a machine has a workspace not yet tracked,
@@ -142,7 +142,7 @@ alone.
 | 2 | `layers/layer-2.sh` | `env` | yes | env cloned |
 | 3 | `layers/layer-3-<target>.sh` → `layers/layer-3-common.sh` → `layers/layer-3-post-nix-common.sh` | `env` | no | nix build + universal post-nix nudges |
 | 4 | `desktop-layers/layer-4-<envKind>.sh` | `<kelasa-specific env repo>` | no | envKind-specific non-nixable post-install |
-| 5 | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | no | **Stores, get only.** Clone/fetch into `~/dabba/`; mkdir `~/workplace/`. Never touches `~/tool-workplace/` (that's L6). On kelasa run the private `layer-5.sh`; it chains the public one first. |
+| 5 | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | no | **Stores, get only.** Clone/fetch into `~/dabba/`. Nothing else — never touches `~/tool-workplace/` (L6's root) or `~/workplace/` (L7's root). On kelasa run the private `layer-5.sh`; it chains the public one first. |
 | 6 | `layers/layer-6.sh` (public) + `desktop-layers/layer-6.sh` (private) | `env` + `<kelasa-specific env repo>` | no | **Tools, get + build.** Clones/fetches into `~/tool-workplace/`, then runs each workspace's own `install`/`setup`. Separable — not part of the base env. On kelasa run the private `layer-6.sh`; it gets its private workspace first, then chains the public one (which gets + builds everything under `~/tool-workplace/`). |
 | 7 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | no | On demand, per-project. *Hydrate:* replay a recipe inside `~/workplace/<project>/` (symlinks, `.envrc`, `bootstrap.sh`). *Capture:* track an untracked workspace. Never mutates the env. |
 

@@ -103,9 +103,9 @@ operational summary. Per-machine scripts use the naming contract above
 | 2 | `layers/layer-2.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
 | 3 | `layers/layer-3-<target>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
 | 4 | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa, or any day-2 change to envKind-specific post-nix content | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
-| 5 | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | New machine | **Stores, get only.** Runs one inline `{ ... }` block per store: clone/fetch flat under `~/dabba/<repo>/`. Also `mkdir -p ~/workplace/` (Layer 7 populates per-project). Never touches `~/tool-workplace/` — that root belongs to Layer 6. On kelasa run the private `layer-5.sh`; it chains the public one first. |
+| 5 | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | New machine | **Stores, get only.** Runs one inline `{ ... }` block per store: clone/fetch flat under `~/dabba/<repo>/`. Nothing else — never touches `~/tool-workplace/` (Layer 6) or `~/workplace/` (Layer 7). On kelasa run the private `layer-5.sh`; it chains the public one first. |
 | 6 | `layers/layer-6.sh` (public) + `desktop-layers/layer-6.sh` (private) | `env` + `<kelasa-specific env repo>` | On demand | **Tools, get + build.** Runs one inline `{ ... }` block per tool workspace: clone/fetch under `~/tool-workplace/<name>/<repo>/`, pin identity, then discover (registry-free `fd` walk) and run each one's own root `install`/`setup` entry-point. **Not part of the base env** — a bare rebuild through L5 leaves `~/tool-workplace/` entirely absent. The normal fast path is running a tool workspace's entry-point from inside it; L6 is the get-them-all-and-build-them-all convenience. On kelasa run the private `layer-6.sh`: it gets its private workspace first, then chains the public one (which gets + builds everything present). |
-| 7 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | On demand, per project | **Projects, bidirectional.** *Hydrate:* replay a project recipe inside `~/workplace/<project>/` (symlinks, `.envrc`, optional per-project `bootstrap.sh`). *Capture:* start tracking an untracked workspace by writing its recipe back under `projects/<project>/`. **Not** part of bootstrap; never mutates the environment. |
+| 7 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | On demand, per project | **Projects, bidirectional.** Owns `~/workplace/` end-to-end — no other layer touches it. *Hydrate:* `mkdir -p ~/workplace/<project>` (creates the root on first use), `cd` in, then replay a project recipe (symlinks, `.envrc`, optional per-project `bootstrap.sh`). *Capture:* start tracking an untracked workspace by writing its recipe back under `projects/<project>/`. **Not** part of bootstrap; never mutates the environment. |
 
 **`layer-run` — one-run driver for L1–L6.**
 `layer-run --target <target> [--repo <path>] [--layer 1,2,3] [--dry-run]`
@@ -123,23 +123,19 @@ envKind-agnostic; L4 is envKind-specific. If a post-nix step is
 useful on every envKind, it belongs in L3. If it's meaningful only
 on one envKind, it belongs in L4.
 
-**L5 framework — two roots, stores only, get-only.** L5 is not for
+**L5 framework — one root, stores only, get-only.** L5 is not for
 nix-managed content. **L5 only clones/fetches stores; it never
-touches `~/tool-workplace/`** — that root, and everything under it,
-belongs to Layer 6. Two roots, distinct semantics:
-
-- `~/dabba/` — stores. Cross-machine state that must be backed up
-  off the local disk. Knowledge-persistence repos (notes vaults,
-  etc.) — they never have a build step, so L5 is their entire
-  lifecycle. **Two owners, never overlapping:** (1) L5 clones
-  git-backed stores flat here (personal via the public L5, work via
-  the private companion L5); (2) the operator manually wires cloud
-  file storage here — an `rclone-env mount` point or a symlink to an
-  app-owned mount (OneDrive, Google Drive, …). Layers do the git
-  stores only; cloud storage is always by hand (see the
-  cloud-storage invariant below).
-- `~/workplace/` — per-project workspaces. L5 only `mkdir -p`s the
-  root; Layer 7 populates entries on demand.
+touches `~/tool-workplace/`** (Layer 6's root) **or `~/workplace/`**
+(Layer 7's root) — each root has exactly one owning layer. L5's one
+root is `~/dabba/` — stores. Cross-machine state that must be backed
+up off the local disk. Knowledge-persistence repos (notes vaults,
+etc.) — they never have a build step, so L5 is their entire lifecycle.
+**Two owners, never overlapping:** (1) L5 clones git-backed stores
+flat here (personal via the public L5, work via the private companion
+L5); (2) the operator manually wires cloud file storage here — an
+`rclone-env mount` point or a symlink to an app-owned mount (OneDrive,
+Google Drive, …). Layers do the git stores only; cloud storage is
+always by hand (see the cloud-storage invariant below).
 
 **Manual setup notes.** Steps the layers deliberately don't automate
 (interactive auth, cloud file storage, one-off remotes) live in
@@ -169,17 +165,19 @@ them-all convenience and the layer the rebuild driver targets when
 tooling should be fetched and rebuilt.
 
 **L7 framework — projects, bidirectional, on demand.** L7 owns the
-`~/workplace/<project>/` tree. Each project has a recipe checked
-into the envKind repo under `projects/<project>/`: a `workspace.md`
-(natural-language setup steps), an optional Nix flake, an optional
-`bootstrap.sh` (project-specific setup the driver runs after
-symlinks/`.envrc`), optional tool configs. The driver
+`~/workplace/` root and `~/workplace/<project>/` tree end-to-end — no
+other layer creates or touches `~/workplace/`. Each project has a
+recipe checked into the envKind repo under `projects/<project>/`: a
+`workspace.md` (natural-language setup steps), an optional Nix flake,
+an optional `bootstrap.sh` (project-specific setup the driver runs
+after symlinks/`.envrc`), optional tool configs. The driver
 `projects/workplace-setup.sh` is bidirectional:
 
 - **Hydrate (replay)** runs every time the project is needed on a
-  machine. The driver writes the recipe symlink, generates `.envrc`,
-  runs any `bootstrap.sh`, invokes direnv. Idempotent — safe to
-  re-run.
+  machine: `mkdir -p ~/workplace/<project>` (creates the root on
+  first use — `mkdir -p` is a no-op on re-run), `cd` in, then run the
+  driver. It writes the recipe symlink, generates `.envrc`, runs any
+  `bootstrap.sh`, invokes direnv. Idempotent — safe to re-run.
 - **Capture** runs when a machine has a workspace not yet tracked.
   The developer (or a coding agent — see
   `env/project-workspace-tools/workspace-capture-instruction.md`) writes
@@ -333,6 +331,7 @@ env/
 │   ├── layer-3-post-nix-common.sh    # L3 tail — universal non-nixable post-nix nudges
 │   ├── layer-5.sh                    # L5 (public): stores, get-only — inline store clone/fetch blocks
 │   ├── layer-6.sh                    # L6 (public): tools, get + build — inline workspace blocks + fd-discovered setup/install
+│   ├── layer-common.sh               # shared log/warn/die/run/clone_or_fetch/ensure_git_identity/repo_basename, sourced by layer-5.sh + layer-6.sh
 │   └── test-flake.sh                 # flake eval without building (tooling, not a layer)
 │
 ├── home/                  # home-manager user-level config

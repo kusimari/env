@@ -32,7 +32,7 @@ MAX_DEPTH=3
 DRY_RUN=0
 FAILED=0
 
-source "$(dirname "${BASH_SOURCE[0]}")/layer-5-6-common.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/layer-common.sh"
 
 usage() {
     awk '/^# END-USAGE$/{exit} NR>1 && /^#/{sub(/^# ?/,""); print}' \
