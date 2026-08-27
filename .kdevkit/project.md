@@ -38,8 +38,8 @@ Read this file first — it is the map. Specific files only as needed.
 
   | Role | Owns |
   |---|---|
-  | this repo (public) | base env — L1 `mane`, L2, L3, L5a; `flake.nix`; `home/home.nix` |
-  | `<kelasa-specific env repo>` (private) | envKind-specific L1, L4, private L5b/L6, L7 project recipes |
+  | this repo (public) | base env — L1 `mane`, L2, L3, public L5/L6; `flake.nix`; `home/home.nix` |
+  | `<kelasa-specific env repo>` (private) | envKind-specific L1, L4, private L5/L6 (each chains the public one), L7 project recipes |
   | AI tooling workspaces (`~/tool-workplace/`) | fast-moving agent tooling — skills, agents, sync |
   | backed-up store (`~/dabba/`) | cross-machine state; cloud stores wired by hand |
 
@@ -103,8 +103,8 @@ operational summary. Per-machine scripts use the naming contract above
 | 2 | `layers/layer-2.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
 | 3 | `layers/layer-3-<target>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
 | 4 | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa, or any day-2 change to envKind-specific post-nix content | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
-| 5 | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | New machine | **Get only.** Runs one inline `{ ... }` block per workspace and store: clone/fetch. Workspaces clone under `~/tool-workplace/<name>/<repo>/`; stores clone flat under `~/dabba/<repo>/`. Also `mkdir -p ~/workplace/` (Layer 7 populates per-project). Does **not** run any cloned repo's install — that is Layer 6. On kelasa run the private `layer-5.sh`; it chains the public one first. |
-| 6 | `layers/layer-6.sh` (driver) | `env` (public) + `<kelasa-specific env repo>` (private) | On demand | **Build tools.** Thin wrapper: walks the tool workplaces L5 cloned and runs each one's own root `install`/`setup` entry-point. **Not part of env setup** — a bare rebuild stops at L5. The normal fast path is running a tool workspace's entry-point from inside it; L6 is the run-them-all convenience. |
+| 5 | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | New machine | **Stores, get only.** Runs one inline `{ ... }` block per store: clone/fetch flat under `~/dabba/<repo>/`. Also `mkdir -p ~/workplace/` (Layer 7 populates per-project). Never touches `~/tool-workplace/` — that root belongs to Layer 6. On kelasa run the private `layer-5.sh`; it chains the public one first. |
+| 6 | `layers/layer-6.sh` (public) + `desktop-layers/layer-6.sh` (private) | `env` + `<kelasa-specific env repo>` | On demand | **Tools, get + build.** Runs one inline `{ ... }` block per tool workspace: clone/fetch under `~/tool-workplace/<name>/<repo>/`, pin identity, then discover (registry-free `fd` walk) and run each one's own root `install`/`setup` entry-point. **Not part of the base env** — a bare rebuild through L5 leaves `~/tool-workplace/` entirely absent. The normal fast path is running a tool workspace's entry-point from inside it; L6 is the get-them-all-and-build-them-all convenience. On kelasa run the private `layer-6.sh`: it gets its private workspace first, then chains the public one (which gets + builds everything present). |
 | 7 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | On demand, per project | **Projects, bidirectional.** *Hydrate:* replay a project recipe inside `~/workplace/<project>/` (symlinks, `.envrc`, optional per-project `bootstrap.sh`). *Capture:* start tracking an untracked workspace by writing its recipe back under `projects/<project>/`. **Not** part of bootstrap; never mutates the environment. |
 
 **`layer-run` — one-run driver for L1–L6.**
@@ -123,28 +123,23 @@ envKind-agnostic; L4 is envKind-specific. If a post-nix step is
 useful on every envKind, it belongs in L3. If it's meaningful only
 on one envKind, it belongs in L4.
 
-**L5 framework — three roots, get-only.** L5 is not for nix-managed
-content. It exists as a staging area for things that change faster
-than the base env — workspace repos with their own install flows.
-**L5 only clones/fetches; it never runs a cloned repo's install (that
-is L6) and never builds content.** Three roots, distinct semantics:
+**L5 framework — two roots, stores only, get-only.** L5 is not for
+nix-managed content. **L5 only clones/fetches stores; it never
+touches `~/tool-workplace/`** — that root, and everything under it,
+belongs to Layer 6. Two roots, distinct semantics:
 
-- `~/tool-workplace/` — env-tooling under active churn. Backed up
-  via git remotes only. Workspace blocks clone here.
 - `~/dabba/` — stores. Cross-machine state that must be backed up
-  off the local disk. **Two owners, never overlapping:** (1) L5
-  clones git-backed stores flat here (personal via the public L5,
-  work via the private companion L5); (2) the operator manually
-  wires cloud file storage here — an `rclone-env mount` point or a
-  symlink to an app-owned mount (OneDrive, Google Drive, …). Layers
-  do the git stores only; cloud storage is always by hand (see the
+  off the local disk. Knowledge-persistence repos (notes vaults,
+  etc.) — they never have a build step, so L5 is their entire
+  lifecycle. **Two owners, never overlapping:** (1) L5 clones
+  git-backed stores flat here (personal via the public L5, work via
+  the private companion L5); (2) the operator manually wires cloud
+  file storage here — an `rclone-env mount` point or a symlink to an
+  app-owned mount (OneDrive, Google Drive, …). Layers do the git
+  stores only; cloud storage is always by hand (see the
   cloud-storage invariant below).
 - `~/workplace/` — per-project workspaces. L5 only `mkdir -p`s the
   root; Layer 7 populates entries on demand.
-
-Each workspace or store owns its own `install`/`setup` entry-point;
-L6 runs it. Graduation (into L3 or L4) is a deliberate decision once
-a workspace stabilizes.
 
 **Manual setup notes.** Steps the layers deliberately don't automate
 (interactive auth, cloud file storage, one-off remotes) live in
@@ -152,17 +147,26 @@ a workspace stabilizes.
 of every run — after all requested layers, on success or failure —
 so the reminder surfaces regardless of which layers ran.
 
-**L6 framework — build the tools, separable.** L6 is a thin wrapper
-with no registry of its own: it walks the tool workplaces L5 cloned
-under `~/tool-workplace/` and runs each workspace's own root
-`install`/`setup` entry-point (preferring `setup` when both exist).
-The content repo owns its install; L6 only invokes it.
+**L6 framework — get and build the tools, separable.** L6 owns tool
+workspaces end-to-end: it clones/fetches each declared workspace
+under `~/tool-workplace/<name>/<repo>/` (an inline `{ ... }` block per
+workspace, same shape as L5's store blocks) and pins identity, then
+discovers and runs each one's own root `install`/`setup` entry-point
+(preferring `setup` when both exist). The get step needs a declared
+list (you can't discover what to clone by walking a directory that
+doesn't exist yet); the build step stays a registry-free `fd` walk of
+whatever is actually present under `~/tool-workplace/`, so a workspace
+placed there by hand is still discovered and built. The content repo
+owns its install; L6 only clones it and invokes it. Graduation (into
+L3 or L4) is a deliberate decision once a workspace stabilizes.
 
-L6 is **not part of env setup.** A bare rebuild (L1–L5) leaves the
-tools un-built; L6 is an explicit, separate step. The normal fast
-path is running a tool workspace's entry-point from inside it (the
-fast iteration loop); L6 is the run-them-all convenience and the
-layer the rebuild driver targets when tooling should be rebuilt.
+L6 is **not part of the base env.** A bare rebuild through L5 leaves
+`~/tool-workplace/` entirely absent, not just unbuilt; L6 is an
+explicit, separate step that both creates the root and builds what it
+clones. The normal fast path is running a tool workspace's entry-point
+from inside it (the fast iteration loop); L6 is the get-and-build-
+them-all convenience and the layer the rebuild driver targets when
+tooling should be fetched and rebuilt.
 
 **L7 framework — projects, bidirectional, on demand.** L7 owns the
 `~/workplace/<project>/` tree. Each project has a recipe checked
@@ -327,8 +331,8 @@ env/
 │   ├── layer-3-darwin-kelasa.sh      # L3 for darwin
 │   ├── layer-3-common.sh             # shared body sourced by every L3 envKind script
 │   ├── layer-3-post-nix-common.sh    # L3 tail — universal non-nixable post-nix nudges
-│   ├── layer-5.sh                    # L5 (public): get — inline workspace + store clone/fetch blocks
-│   ├── layer-6.sh                    # L6 (public): build — fd-discovers + runs each tool's setup/install
+│   ├── layer-5.sh                    # L5 (public): stores, get-only — inline store clone/fetch blocks
+│   ├── layer-6.sh                    # L6 (public): tools, get + build — inline workspace blocks + fd-discovered setup/install
 │   └── test-flake.sh                 # flake eval without building (tooling, not a layer)
 │
 ├── home/                  # home-manager user-level config
@@ -405,12 +409,14 @@ here. From `env/`:
   so it lands on PATH on every activated envKind and is therefore
   also picked up as an env-verify invariant.
 - L5 dry-run with `bash layers/layer-5.sh --dry-run`. Walks the
-  inline workspace + store blocks without cloning or fetching;
-  verifies the arg parser and that each block evaluates. (L5 is
-  get-only — it never invokes entry-points; that is L6.)
-- L6 dry-run with `bash layers/layer-6.sh --dry-run`. Lists the
-  tool entry-points `fd` discovers under `~/tool-workplace/` without
-  running them; verifies discovery + the `setup`-over-`install` pick.
+  inline store blocks without cloning or fetching, and never
+  mentions `~/tool-workplace/`; verifies the arg parser and that
+  each block evaluates. (L5 is stores-only, get-only.)
+- L6 dry-run with `bash layers/layer-6.sh --dry-run`. Walks the
+  inline tool-workspace blocks without cloning or fetching, then
+  lists the entry-points `fd` discovers under `~/tool-workplace/`
+  without running them; verifies both the get blocks and the
+  `setup`-over-`install` discovery pick.
 - `bash rclone-env/test-rclone-env.sh` — mock tests for the
   `rclone-env` mount surface. Mocks `rclone`/`mount`/`uname`/
   `fusermount` on a throwaway PATH, so both the macOS (`nfsmount`)
@@ -439,11 +445,13 @@ validation requires an activated machine, so it stays manual:
   `~/.post-nix-rc` — verifiable only by re-running them and
   observing shell behaviour after the next login.
 - L5 real clone (`bash layers/layer-5.sh` without `--dry-run`)
-  clones into `~/tool-workplace/` and `~/dabba/` (get-only).
-  Verified by inspecting those trees.
-- L6 real build (`bash layers/layer-6.sh` without `--dry-run`) runs
-  each discovered tool's `setup`/`install`. Separable from the base
-  env. Verified by the tool's own post-install state.
+  clones into `~/dabba/` (stores, get-only). Verified by inspecting
+  that tree; `~/tool-workplace/` should be untouched.
+- L6 real get + build (`bash layers/layer-6.sh` without `--dry-run`)
+  creates `~/tool-workplace/` if absent, clones/fetches each declared
+  tool workspace, then runs its discovered `setup`/`install`.
+  Separable from the base env. Verified by inspecting
+  `~/tool-workplace/` and each tool's own post-install state.
 - `~/.pre-nix-rc` / `~/.post-nix-rc` shell behaviour requires an
   interactive shell on an activated machine — there is no
   evaluation-time check for it.
@@ -494,10 +502,12 @@ kdevkit:
 - Branch naming: short, purpose-first (e.g. `feature-build-layers`,
   `claude-code-internalize`). L1 and L2 scripts accept `--branch`
   / `--env-branch` so feature branches can be bootstrapped
-  end-to-end. L5 pins workspaces and stores to default branches via
-  inline `{ ... }` blocks in `layers/layer-5.sh` (and
-  `desktop-layers/layer-5.sh` in the private repo) — one block per
-  workspace or store, hand-edited when adding a new entry.
+  end-to-end. L5 pins stores to default branches via inline
+  `{ ... }` blocks in `layers/layer-5.sh` (and
+  `desktop-layers/layer-5.sh` in the private repo); L6 does the same
+  for tool workspaces in `layers/layer-6.sh` (and
+  `desktop-layers/layer-6.sh`) — one block per entry, hand-edited when
+  adding a new one.
 - Conventional-commit style messages.
 - Feature design docs in `.kdevkit/feature/<name>.md`; active ones in
   `.kdevkit/feature/wip/`.
@@ -508,8 +518,10 @@ kdevkit:
   - kelasa-specific env-repo post-nix content (site-managed tools,
     aliases, `~/.post-nix-rc`):
     `desktop-layers/layer-4-<envKind>.sh` (in the kelasa env repo).
-  - L5 workspace / store changes:
+  - L5 store changes:
     `desktop-layers/layer-5.sh` on kelasa, else `layers/layer-5.sh`.
+  - L6 tool-workspace changes:
+    `desktop-layers/layer-6.sh` on kelasa, else `layers/layer-6.sh`.
   - A specific project workspace recipe (L7, on demand only):
     `cd ~/workplace/<project> && projects/workplace-setup.sh`
     from inside the envKind repo with project recipes.
