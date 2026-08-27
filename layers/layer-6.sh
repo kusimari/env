@@ -1,31 +1,13 @@
 #!/usr/bin/env bash
-# env/layers/layer-6.sh — Layer 6 (public) of the seven-layer bootstrap.
-# Tools: get + build.
+# env/layers/layer-6.sh — Layer 6 (public): get + build tools.
 #
-# Owns tool workspaces end-to-end: clones/fetches each declared
-# workspace under ~/tool-workplace/<name>/<repo-basename>/ (an inline
-# { ... } block per workspace, same shape as L5's store blocks), pins
-# the public git identity, then discovers and runs every entry-point
-# found there. An entry-point is an executable `setup` or `install` at
-# either the workspace-root or the sub-repo level — discovered with
-# `fd`, so the depth isn't hardcoded. Where both `setup` and `install`
-# sit in the same dir, `setup` wins (it is the recommended composer).
+# Clones/fetches one inline { ... } block per known tool workspace
+# into ~/tool-workplace/<name>/<repo-basename>/, then discovers and
+# runs each workspace's own setup/install entry-point. See project.md
+# for the layer design.
 #
-# The get step needs a declared list (this script's inline blocks) —
-# you can't discover what to clone by walking a directory that doesn't
-# exist yet. The build step stays registry-free: it walks whatever is
-# actually present under ~/tool-workplace/, so a workspace placed there
-# by hand (no inline block) is still discovered and built. The content
-# repo owns its own install; L6 only clones it and invokes it.
-#
-# L6 is NOT part of the base env. A bare rebuild through L5 leaves
-# ~/tool-workplace/ entirely absent; L6 is an explicit, separate step
-# that both creates it and builds what it clones.
-#
-# Adding a tool workspace: copy an existing { ... } block and edit the
-# name/url — same pattern as L5's store blocks. Each get block and each
-# build is wrapped so one bad entry does not abort the rest; the script
-# exits non-zero at the end if anything failed.
+# Adding a tool workspace: copy an existing { ... } block and edit
+# the name/url.
 #
 # Options:
 #   --dry-run        Log planned actions; make no changes.
@@ -50,17 +32,7 @@ MAX_DEPTH=3
 DRY_RUN=0
 FAILED=0
 
-log()  { printf '==> %s\n' "$*"; }
-warn() { printf '!!! %s\n' "$*" >&2; }
-die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
-
-run() {
-    if (( DRY_RUN )); then
-        printf 'dry-run: %s\n' "$*"
-    else
-        "$@"
-    fi
-}
+source "$(dirname "${BASH_SOURCE[0]}")/layer-5-6-common.sh"
 
 usage() {
     awk '/^# END-USAGE$/{exit} NR>1 && /^#/{sub(/^# ?/,""); print}' \
@@ -77,44 +49,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 command -v fd >/dev/null 2>&1 || die "fd not found on PATH (required for tool discovery)"
-
-# ── Helpers (get step; same shape as env/layers/layer-5.sh) ─────────
-
-clone_or_fetch() {
-    local name="$1" url="$2" dest="$3"
-    if [[ -d "$dest/.git" ]]; then
-        log "$name: fetching updates"
-        run git -C "$dest" fetch --quiet origin
-    elif [[ -e "$dest" ]]; then
-        die "$dest exists and is not a git checkout"
-    else
-        log "$name: cloning $url -> $dest"
-        run git clone --quiet "$url" "$dest"
-    fi
-}
-
-ensure_git_identity() {
-    local dest="$1" want_name="$2" want_email="$3"
-    [[ -d "$dest/.git" ]] || return 0
-
-    local cur_name cur_email
-    cur_name="$(git -C "$dest" config --local user.name 2>/dev/null || true)"
-    cur_email="$(git -C "$dest" config --local user.email 2>/dev/null || true)"
-    if [[ "$cur_name" = "$want_name" && "$cur_email" = "$want_email" ]]; then
-        log "git identity pinned: $dest"
-        return
-    fi
-    log "Pinning git identity on $dest: $want_name <$want_email>"
-    run git -C "$dest" config --local user.name  "$want_name"
-    run git -C "$dest" config --local user.email "$want_email"
-}
-
-repo_basename() {
-    local url="$1" base
-    base="${url##*/}"
-    base="${base%.git}"
-    printf '%s' "$base"
-}
 
 # Run one entry-point from inside its directory.
 build_entry() {
