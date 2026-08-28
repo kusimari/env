@@ -1,27 +1,12 @@
 #!/usr/bin/env bash
-# env/layers/layer-5.sh — Layer 5 (public) of the seven-layer
-# bootstrap. Get-only.
+# env/layers/layer-5.sh — Layer 5 (public): get stores.
 #
-# Ensures three roots and clones/fetches one inline block per known
-# workspace and store:
-#   ~/tool-workplace/   workspaces (env-tooling under active churn)
-#   ~/dabba/            stores (cross-machine, backed-up content)
-#   ~/workplace         mkdir-only; humans populate machine-specific work
+# Ensures ~/dabba/, then clones/fetches one inline { ... } block per
+# known store into ~/dabba/<repo-basename>/. See project.md for the
+# layer design.
 #
-# Each workspace block clones/fetches the repo into
-# ~/tool-workplace/<name>/<repo-basename>/ and pins the public git
-# identity. Each store block clones/fetches flat into
-# ~/dabba/<repo-basename>/ and pins identity.
-#
-# L5 is GET-ONLY: it clones/fetches and stops. It does NOT run any
-# cloned repo's install/setup — that is Layer 6 (layers/layer-6.sh),
-# which walks the tool workplaces L5 fetched and runs each one's own
-# entry-point. The content repo owns its install; L5 only gets it.
-#
-# Adding a workspace or store: copy an existing { ... } block and edit
-# the name/url. Each block is wrapped with `|| { warn ...; FAILED=1; }`
-# so one bad entry does not abort the rest of the run; the script exits
-# non-zero at the end if any block failed.
+# Adding a store: copy an existing { ... } block and edit the
+# name/url.
 #
 # Options:
 #   --dry-run        Log planned actions; make no changes.
@@ -31,9 +16,7 @@
 set -uo pipefail
 
 # ── Constants ───────────────────────────────────────────────────────
-TOOL_WORKPLACE_ROOT="$HOME/tool-workplace"
 DABBA_ROOT="$HOME/dabba"
-WORKPLACE_ROOT="$HOME/workplace"
 PUBLIC_USER_NAME="kusimari"
 PUBLIC_USER_EMAIL="kusimari@gmail.com"
 
@@ -41,17 +24,7 @@ PUBLIC_USER_EMAIL="kusimari@gmail.com"
 DRY_RUN=0
 FAILED=0
 
-log()  { printf '==> %s\n' "$*"; }
-warn() { printf '!!! %s\n' "$*" >&2; }
-die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
-
-run() {
-    if (( DRY_RUN )); then
-        printf 'dry-run: %s\n' "$*"
-    else
-        "$@"
-    fi
-}
+source "$(dirname "${BASH_SOURCE[0]}")/layer-common.sh"
 
 usage() {
     awk '/^# END-USAGE$/{exit} NR>1 && /^#/{sub(/^# ?/,""); print}' \
@@ -67,88 +40,20 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ── Helpers (kept inline to avoid a cross-script library) ───────────
-
-# Clone $url into $dest, or fetch if already present.
-clone_or_fetch() {
-    local name="$1" url="$2" dest="$3"
-    if [[ -d "$dest/.git" ]]; then
-        log "$name: fetching updates"
-        run git -C "$dest" fetch --quiet origin
-    elif [[ -e "$dest" ]]; then
-        die "$dest exists and is not a git checkout"
-    else
-        log "$name: cloning $url -> $dest"
-        run git clone --quiet "$url" "$dest"
-    fi
-}
-
-# Pin a local commit identity on $dest. Idempotent; diff-checks
-# before writing.
-ensure_git_identity() {
-    local dest="$1" want_name="$2" want_email="$3"
-    [[ -d "$dest/.git" ]] || return 0
-
-    local cur_name cur_email
-    cur_name="$(git -C "$dest" config --local user.name 2>/dev/null || true)"
-    cur_email="$(git -C "$dest" config --local user.email 2>/dev/null || true)"
-    if [[ "$cur_name" = "$want_name" && "$cur_email" = "$want_email" ]]; then
-        log "git identity pinned: $dest"
-        return
-    fi
-    log "Pinning git identity on $dest: $want_name <$want_email>"
-    run git -C "$dest" config --local user.name  "$want_name"
-    run git -C "$dest" config --local user.email "$want_email"
-}
-
-# Extract the clone basename from a git URL:
-#   git@github.com:kusimari/mAId.git          → mAId
-#   ssh://host/pkg/Foo.git                    → Foo
-#   https://github.com/kusimari/env           → env
-repo_basename() {
-    local url="$1" base
-    base="${url##*/}"
-    base="${base%.git}"
-    printf '%s' "$base"
-}
-
 # ── Flow ────────────────────────────────────────────────────────────
 
-log "Layer 5 (public): roots and registries$( (( DRY_RUN )) && echo ' (dry-run)')"
+log "Layer 5 (public): stores$( (( DRY_RUN )) && echo ' (dry-run)')"
 
-# Ensure the three roots exist before iterating. workplace is
-# mkdir-only by design — no registry, no clones.
-for root in "$TOOL_WORKPLACE_ROOT" "$DABBA_ROOT" "$WORKPLACE_ROOT"; do
-    if [[ ! -d "$root" ]]; then
-        log "Creating root: $root"
-        run mkdir -p "$root"
-    fi
-done
-
-# Workspace: ai-workspace/mAId — hosts mAId (and private siblings on
-# the kelasa side, handled by the private L5). Get-only: cloned/fetched here;
-# built by L6 (runs its install/setup).
-{
-    name="ai-workspace"
-    url="git@github.com:kusimari/mAId.git"
-    clone_base="$(repo_basename "$url")"
-    ws_dir="$TOOL_WORKPLACE_ROOT/$name"
-    clone_dir="$ws_dir/$clone_base"
-
-    log "Workspace: $name (repo: $clone_base)"
-    if [[ ! -d "$ws_dir" ]]; then
-        log "Creating workspace dir: $ws_dir"
-        run mkdir -p "$ws_dir"
-    fi
-    clone_or_fetch "$name/$clone_base" "$url" "$clone_dir"
-    ensure_git_identity "$clone_dir" "$PUBLIC_USER_NAME" "$PUBLIC_USER_EMAIL"
-} || { warn "ai-workspace/mAId: failed (continuing)"; FAILED=1; }
+if [[ ! -d "$DABBA_ROOT" ]]; then
+    log "Creating root: $DABBA_ROOT"
+    run mkdir -p "$DABBA_ROOT"
+fi
 
 # Store: kusimari-dabba — personal notes vault (plain Markdown).
 # Clones flat into ~/dabba/<repo> and pins the public identity. Comes
 # up on every machine (this is the public L5). Get-only: cloned/fetched
 # here; there is nothing to build.
-{
+(
     name="kusimari-dabba"
     url="git@github.com:kusimari/kusimari-dabba.git"
     clone_base="$(repo_basename "$url")"
@@ -157,7 +62,7 @@ done
     log "Store: $name (repo: $clone_base)"
     clone_or_fetch "store/$clone_base" "$url" "$clone_dir"
     ensure_git_identity "$clone_dir" "$PUBLIC_USER_NAME" "$PUBLIC_USER_EMAIL"
-} || { warn "store/kusimari-dabba: failed (continuing)"; FAILED=1; }
+) || { warn "store/kusimari-dabba: failed (continuing)"; FAILED=1; }
 
 # Add another store the same way: copy the block above, edit name/url.
 # Cloud file storage (OneDrive, Google Drive, …) is NOT a store block —

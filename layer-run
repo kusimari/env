@@ -20,8 +20,8 @@
 #   L2 layers/layer-2.sh      clone env gits          public
 #   L3 layer-3-<target>.sh    setup nix               public
 #   L4 layer-4-<envKind>.sh   setup non-nix           private
-#   L5 layer-5.sh             get tools/stores        both
-#   L6 layer-6.sh             build tools             both
+#   L5 layer-5.sh             get stores              both
+#   L6 layer-6.sh             get + build tools       both
 #
 # L0 (curl bootstrap) and L7 (per-project, via workplace-setup.sh) are
 # NOT run by this driver — they are owned by other entrypoints. They
@@ -45,8 +45,8 @@ declare -A LAYER_PURPOSE=(
     [2]="clone env gits"
     [3]="setup nix"
     [4]="setup non-nix"
-    [5]="get tools / stores"
-    [6]="build tools"
+    [5]="get stores"
+    [6]="get + build tools"
     [7]="project workspaces"
 )
 declare -A LAYER_SCOPE=(
