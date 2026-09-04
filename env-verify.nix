@@ -17,17 +17,14 @@ let
   # as real home-manager activations.
   # Keep overlay list in sync with commonConfiguration in flake.nix; drift
   # here breaks `nix flake check`. Mirrors so the eval sees the same package
-  # set (including antigravity-cli) that real activations see.
+  # set (including google-antigravity-cli) that real activations see.
   mkPkgs = system: import nixpkgs {
     inherit system;
     overlays = [
       inputs.nix-vscode-extensions.overlays.default
       inputs.alacritty-theme.overlays.default
       inputs.claude-code.overlays.default
-      (final: _prev: {
-        antigravity-cli = final.callPackage
-          "${inputs.nixpkgs-antigravity-cli}/pkgs/by-name/an/antigravity-cli/package.nix" {};
-      })
+      inputs.antigravity.overlays.default
     ];
     config.allowUnfree = true;
   };
