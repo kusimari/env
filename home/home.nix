@@ -48,7 +48,6 @@ in
     rclone
     exiftool
 
-    antigravity-cli
     gh
 
     # Terminal utilities

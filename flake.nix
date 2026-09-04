@@ -41,11 +41,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     claude-code.url = "github:sadjow/claude-code-nix";
-    # Antigravity CLI — pinned to nixpkgs PR #522045 until merged upstream.
-    # Remove this input once antigravity-cli lands in nixpkgs-unstable.
-    nixpkgs-antigravity-cli = {
-      url = "github:deftdawg/nixpkgs/add-antigravity-cli-package";
-      flake = false;
+    # Antigravity CLI overlay
+    antigravity = {
+      url = "github:jacopone/antigravity-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     # Linux-specific
@@ -64,10 +63,7 @@
         inputs.nix-vscode-extensions.overlays.default
         inputs.alacritty-theme.overlays.default
         inputs.claude-code.overlays.default
-        (final: _prev: {
-          antigravity-cli = final.callPackage
-            "${inputs.nixpkgs-antigravity-cli}/pkgs/by-name/an/antigravity-cli/package.nix" {};
-        })
+        inputs.antigravity.overlays.default
         # Skip direnv's upstream test suite. Its zsh integration tests
         # occasionally hang inside the sandbox on aarch64-darwin; the
         # package itself is fine. Remove this overlay once nixpkgs
