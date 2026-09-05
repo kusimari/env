@@ -11,10 +11,7 @@ Install DigiKam with full HEIC/HEIF, AVIF, RAW, and extended format support on U
 
 ## Handoff
 
-- **Phase:** review
-- **Ready for:** reviewer verification and merge
-- **Carry forward:** Modular structure consolidates universal and platform baselines into `envKinds/common.nix` (`commonConfiguration` and `linuxCommonConfiguration`) and identity-class configurations under `envKinds/` (`mane/ubuntu.nix`, `kelasa/al2.nix`, `kelasa/darwin.nix`, and `home.nix` files). Wrapped digikam lives in `envKinds/mane/ubuntu.nix`.
-- **Deliberately left:** Headless targets (`al2-kelasa`, `al2023-kelasa`) and universal `home.nix` are untouched because digikam is a graphical desktop application for `ubuntu-mane`.
+Phase: closed
 
 ## Requirements
 

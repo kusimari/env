@@ -228,7 +228,7 @@ Three tiers, documented at the top of `flake.nix` and enforced by
 |---|---|---|---|
 | 1 — always installed via nix | `home/home.nix` unconditional `home.packages` list, or `programs.*.enable` | nix on every envKind | yes |
 | 2 — wanted everywhere, nix on some envs only | `home/home.nix`, wrapped in `++ lib.optionals (<envKind-predicate>) [...]` | nix where predicate admits; external tooling (e.g. Layer 4 post-install) elsewhere | yes — checks binary is on PATH regardless of source |
-| 3 — per-env differences | `home/envKind-<name>.nix` (user-level) or a `<envKind>Configuration` attrset in `flake.nix` (system-level) | only envs that opt in | no |
+| 3 — per-env differences | `envKinds/<envKind>/home.nix` (user-level) or `envKinds/<envKind>/<platform>.nix` (system-level) | only envs that opt in | no |
 
 **env-verify** (`env-verify.nix`, run via `nix run .#env-verify`) does
 not hand-maintain an invariant list. It evaluates the mane + kelasa
@@ -263,25 +263,29 @@ nix on every envKind. The runtimes they pin are never tiered.
 
 ## flake.nix structure
 
-Outputs are composed by **stacking module lists** — every target pulls
-`commonConfiguration` plus platform-specific modules plus
+Outputs are composed by **stacking modular configurations** from `envKinds/` —
+every target pulls `commonConfiguration` plus platform-specific modules plus
 `./home/home.nix`. The same `home.nix` file serves all targets; envKind
 branching happens inside it.
 
-Key attrsets:
-- `commonConfiguration` — overlays (claude-code, alacritty-theme,
-  vscode-extensions, direnv-no-check), flake experimental-features,
-  allowUnfree. Shared by every target.
-- `darwinConfiguration` — darwin-only: homebrew casks, touchID sudo,
-  `programs.zsh.enable` (a system option on darwin).
-- `linuxBaseConfiguration` — nixGL overlay, explicit `nix.package`.
-  Applied to every Linux target.
-- `linuxGraphicalConfiguration` — chrome, rofi, desktop files. Applied
-  only to `ubuntu-mane`.
-- `al2KelasaConfiguration` + `al2KelasaModules` — shared AL2/AL2023
-  bundle: username, home dir, `sessionPath` for single-user Nix, locale
-  packages + env vars. Fork into two lists if the kelasa Linux targets
+Modular structure in `envKinds/`:
+- `envKinds/common.nix` — exports:
+  - `commonConfiguration` — overlays (claude-code, alacritty-theme,
+    vscode-extensions, direnv-no-check, antigravity), flake experimental-features,
+    allowUnfree. Shared by every target.
+  - `linuxCommonConfiguration` — nixGL overlay, explicit `nix.package`.
+    Applied to every Linux target.
+- `envKinds/mane/ubuntu.nix` (`ubuntuManeConfiguration`) — chrome, rofi,
+  wrapped DigiKam (with `kimageformats` and `qtimageformats` for HEIC/AVIF/RAW),
+  `libheif`, desktop files. Applied only to `ubuntu-mane`.
+- `envKinds/mane/home.nix` — tier-3 user packages for mane (Tailscale, Antigravity).
+- `envKinds/kelasa/al2.nix` (`al2KelasaConfiguration` + `al2KelasaModules`) —
+  shared AL2/AL2023 bundle: username, home dir, `sessionPath` for single-user Nix,
+  locale packages + env vars. Fork into two lists if the kelasa Linux targets
   diverge.
+- `envKinds/kelasa/darwin.nix` (`darwinConfiguration`) — darwin-only: homebrew casks,
+  touchID sudo, `programs.zsh.enable` (a system option on darwin).
+- `envKinds/kelasa/home.nix` — tier-3 user packages for kelasa (Bubblewrap, nix.conf).
 
 Target declarations (bottom of file):
 - `darwinConfigurations.darwin-kelasa` — `extraSpecialArgs.envKind = "kelasa"`.
@@ -296,8 +300,8 @@ verification evaluate independently).
 
 One file, all envKinds. Order of top-to-bottom concerns:
 1. `imports` — pulls in `gittree/gittree-module.nix`, `tmux/tmux.nix`,
-   `home/envKind-${envKind}.nix` (tier-3 hook), `home/ssh-setup.nix`,
-   `home/emacs.nix`.
+   `../envKinds/${envKind}/home.nix` (tier-3 hook), `./ssh-setup.nix`,
+   `./emacs.nix`.
 2. `home.packages` — tier 1 and tier 2 packages (see table above).
 3. `programs.alacritty` — with nixGL wrapper on Linux (via
    `symlinkJoin` so app launchers still find the `.desktop` file).
@@ -320,6 +324,16 @@ env/
 ├── setup-manual-notes.md  # manual steps the layers don't automate (cloud storage, remotes)
 ├── layer-run              # one-run driver for L1–L6 (--target/--repo/--layer/--dry-run)
 │
+├── envKinds/              # modular platform & envKind configurations
+│   ├── common.nix         # commonConfiguration (overlays/settings) & linuxCommonConfiguration (nixGL/nix)
+│   ├── mane/
+│   │   ├── ubuntu.nix     # ubuntu-mane graphical desktop (chrome, rofi, wrapped digikam, libheif)
+│   │   └── home.nix       # tier-3 packages for mane (tailscale, antigravity)
+│   └── kelasa/
+│       ├── al2.nix        # AL2 / AL2023 headless configuration
+│       ├── darwin.nix     # darwin-kelasa system configuration
+│       └── home.nix       # tier-3 packages for kelasa (bubblewrap, nix.conf)
+│
 ├── layers/                # Every layer script for the public side: L1 (ubuntu-mane) + L2 + L3 + L5 + L6, plus L1/L3 helpers
 │   ├── layer-1-ubuntu-mane.sh        # L1 for the ubuntu-mane target (public; kelasa L1 is private)
 │   ├── layer-2.sh                    # L2 — clone env
@@ -336,8 +350,6 @@ env/
 │
 ├── home/                  # home-manager user-level config
 │   ├── home.nix                   # single entry consumed by every envKind
-│   ├── envKind-mane.nix           # tier-3 for mane (graphical home)
-│   ├── envKind-kelasa.nix         # tier-3 for kelasa (work)
 │   ├── user-host.nix              # user + hostname inputs
 │   ├── emacs.nix                  # programs.emacs module (pairs with emacs/)
 │   ├── ssh-setup.nix              # SSH config module

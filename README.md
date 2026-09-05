@@ -298,7 +298,7 @@ Three tiers, read before adding packages. Full detail at the top of
 |---|---|---|
 | **1** — nix-managed, every env | `home/home.nix` (packages list, `programs.*.enable`) | `pkgs.<name>` in the list, or a home-manager module. |
 | **2** — every env, nix on some, external bootstrap on others | Same files as Tier 1, wrapped in `lib.optionals (<envKind-predicate>) [...]` | Predicate-admitted envs get the nix install; excluded envs must provide the same binary on PATH via their own post-install tooling. `nix run .#env-verify` checks. |
-| **3** — per-env differences | `home/envKind-<name>.nix` (user-level) or `<envKind>Configuration` attrset in `flake.nix` (system-level) | Only the env(s) that want it see it. No verifier coverage. |
+| **3** — per-env differences | `envKinds/<envKind>/home.nix` (user-level) or `envKinds/<envKind>/<platform>.nix` (system-level) | Only the env(s) that want it see it. No verifier coverage. |
 
 ---
 
