@@ -11,9 +11,9 @@ Install DigiKam with full HEIC/HEIF, AVIF, RAW, and extended format support on U
 
 ## Handoff
 
-- **Phase:** dev
-- **Ready for:** dev implementation
-- **Carry forward:** Wrapping digikam in `linuxGraphicalConfiguration` with `kdePackages.kimageformats` and `kdePackages.qtimageformats` ensures Qt6 QImageReader resolves format plugins in both desktop launcher and terminal invocations. Adding `libheif` provides standalone CLI utilities (`heif-convert`, `heif-info`).
+- **Phase:** review
+- **Ready for:** review
+- **Carry forward:** Wrapped digikam in `linuxGraphicalConfiguration` provides full HEIC/AVIF/RAW support via `kimageformats` and `qtimageformats` without touching headless kelasa targets or universal `home.nix`.
 - **Deliberately left:** Headless targets (`al2-kelasa`, `al2023-kelasa`) and universal `home.nix` are untouched because digikam is a graphical desktop application for `ubuntu-mane`.
 
 ## Requirements
@@ -40,14 +40,15 @@ Install DigiKam with full HEIC/HEIF, AVIF, RAW, and extended format support on U
 
 ## Implementation Plan
 
-- [ ] Create wrapped `digikam` package with `kimageformats` and `qtimageformats` in `flake.nix` under `linuxGraphicalConfiguration`
-- [ ] Add wrapped `digikam` and `pkgs.libheif` to `linuxGraphicalConfiguration.home.packages`
-- [ ] Run `bash layers/test-flake.sh` to verify build integrity for `ubuntu-mane` and `al2-kelasa`
-- [ ] Verify binary execution and plugin resolution
+- [x] Create wrapped `digikam` package with `kimageformats` and `qtimageformats` in `flake.nix` under `linuxGraphicalConfiguration`
+- [x] Add wrapped `digikam` and `pkgs.libheif` to `linuxGraphicalConfiguration.home.packages`
+- [x] Run `bash layers/test-flake.sh` to verify build integrity for `ubuntu-mane` and `al2-kelasa`
+- [x] Verify binary execution and plugin resolution
 
 ## Session Log
 
 - 2026-09-05: Feature started. Grounded on Qt6 image format plugin requirements and confirmed `kimageformats` enables HEIC/AVIF/RAW in Qt6 `QImageReader`.
+- 2026-09-05: Wrapped `digikam` and `showfoto` with `kdePackages.kimageformats` and `kdePackages.qtimageformats` in `linuxGraphicalConfiguration` in `flake.nix`. Added `libheif` CLI tools. Built and verified cleanly via `layers/test-flake.sh`. Verified binary wrapper execution and plugin paths.
 
 ## Decision Log
 

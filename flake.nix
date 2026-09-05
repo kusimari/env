@@ -117,29 +117,47 @@
     # Graphical Linux add-on: chrome + rofi + rofi desktop files.
     # Applied only to ubuntu-mane. AL2/AL2023 kelasa are headless SSH-only
     # and have no desktop environment for these to act on.
-    linuxGraphicalConfiguration = { pkgs, lib, ... }: {
-      home.packages = [ pkgs.google-chrome ];
-      home.file = lib.mapAttrs' (name: _: {
-        name  = ".local/share/applications/${name}";
-        value.source = ./rofi-desktop + "/${name}";
-      }) (builtins.readDir ./rofi-desktop);
+    linuxGraphicalConfiguration = { pkgs, lib, ... }:
+      let
+        # DigiKam wrapped with KDE/Qt image format plugins (HEIC/HEIF, AVIF, RAW, etc.)
+        digikam-wrapped = pkgs.symlinkJoin {
+          name = "digikam";
+          paths = [ pkgs.digikam ];
+          nativeBuildInputs = [ pkgs.makeWrapper ];
+          postBuild = ''
+            wrapProgram $out/bin/digikam \
+              --prefix QT_PLUGIN_PATH : "${lib.makeSearchPath "lib/qt-6/plugins" [ pkgs.kdePackages.kimageformats pkgs.kdePackages.qtimageformats ]}"
+            wrapProgram $out/bin/showfoto \
+              --prefix QT_PLUGIN_PATH : "${lib.makeSearchPath "lib/qt-6/plugins" [ pkgs.kdePackages.kimageformats pkgs.kdePackages.qtimageformats ]}"
+          '';
+        };
+      in {
+        home.packages = [
+          pkgs.google-chrome
+          digikam-wrapped
+          pkgs.libheif
+        ];
+        home.file = lib.mapAttrs' (name: _: {
+          name  = ".local/share/applications/${name}";
+          value.source = ./rofi-desktop + "/${name}";
+        }) (builtins.readDir ./rofi-desktop);
 
-      # rofi: bind shortcut to "rofi -show drun" in GNOME Settings → Keyboard → Custom Shortcuts.
-      programs.rofi = {
-        enable = true;
-        extraConfig.show-icons = true;
-        theme = builtins.toString (pkgs.writeText "rofi-theme.rasi" ''
-          @theme "Arc-Dark"
-          * {
-            font: "Monospace 24";
-          }
-          window {
-            width:  50%;
-            height: 50%;
-          }
-        '');
+        # rofi: bind shortcut to "rofi -show drun" in GNOME Settings → Keyboard → Custom Shortcuts.
+        programs.rofi = {
+          enable = true;
+          extraConfig.show-icons = true;
+          theme = builtins.toString (pkgs.writeText "rofi-theme.rasi" ''
+            @theme "Arc-Dark"
+            * {
+              font: "Monospace 24";
+            }
+            window {
+              width:  50%;
+              height: 50%;
+            }
+          '');
+        };
       };
-    };
 
     # Shared module list for headless Amazon Linux kelasa machines.
     # al2-kelasa and al2023-kelasa have identical nix configs today; if they
