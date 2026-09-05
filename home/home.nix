@@ -13,11 +13,11 @@ in
 {
   # Import custom modules and environment-specific config.
   # envKind is "mane" or "kelasa", passed via extraSpecialArgs in flake.nix.
-  # Edit home/envKind-mane.nix or home/envKind-kelasa.nix to add tier-3 (env-specific) packages.
+  # Edit envKinds/<envKind>/home.nix to add tier-3 (env-specific) packages.
   imports = [
     ../gittree/gittree-module.nix
     ../tmux/tmux.nix
-    ./envKind-${envKind}.nix
+    ../envKinds/${envKind}/home.nix
     ./ssh-setup.nix
     ./emacs.nix
   ];

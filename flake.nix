@@ -13,8 +13,7 @@
   #            post-install tooling. `nix run .#env-verify` checks PATH.
   #
   #   Tier 3 — per-env differences
-  #     Where: home/envKind-<name>.nix (user-level) or the <envKind>Configuration
-  #            attrset in this file (system-level).
+  #     Where: envKinds/<name>/home.nix (user-level) or envKinds/<name>/ (system-level).
   #     How:   only the env(s) that want it see it. No verifier coverage.
   description = "Juice's unified darwin/ubuntu system";
 
@@ -55,138 +54,23 @@
   let
     inherit (import ./home/user-host.nix) user hostName;
 
-    # ── System-level configurations ────────────────────────────────────────
-    # Shared across all platforms: overlays, nix settings.
-    # Note: programs.zsh.enable is a darwin system option; see darwinConfiguration.
-    commonConfiguration = {
-      nixpkgs.overlays = [
-        inputs.nix-vscode-extensions.overlays.default
-        inputs.alacritty-theme.overlays.default
-        inputs.claude-code.overlays.default
-        inputs.antigravity.overlays.default
-        # Skip direnv's upstream test suite. Its zsh integration tests
-        # occasionally hang inside the sandbox on aarch64-darwin; the
-        # package itself is fine. Remove this overlay once nixpkgs
-        # ships a cached direnv build we actually pull.
-        (_final: prev: {
-          direnv = prev.direnv.overrideAttrs (_old: { doCheck = false; });
-        })
-      ];
-      nix.settings.experimental-features = "nix-command flakes";
-      nixpkgs.config.allowUnfree = true;
-    };
+    # ── Modular configurations ─────────────────────────────────────────────
+    # Common base: universal overlays & Linux base
+    commonConfiguration = import ./common/common.nix { inherit inputs; };
+    linuxBaseConfiguration = import ./common/linux.nix { inherit inputs; };
 
-    # darwin-only system settings
-    darwinConfiguration = { ... }: {
-      nix.enable = false; # determinate needs this
-      programs.zsh.enable = true;
-      system = {
-        configurationRevision = self.rev or self.dirtyRev or null;
-        stateVersion = 4;
-      };
+    # Machine-class configurations: kelasa & mane
+    al2KelasaConfiguration = import ./envKinds/kelasa/al2.nix { inherit user; };
+    darwinConfiguration = import ./envKinds/kelasa/darwin.nix { inherit self user; };
+    ubuntuManeConfiguration = ./envKinds/mane/graphical.nix;
 
-      nixpkgs.hostPlatform = "aarch64-darwin";
-
-      homebrew = {
-        enable = true;
-        user = "${user}";
-        onActivation.cleanup = "uninstall";
-        onActivation.autoUpdate = true;
-        casks = [
-          "raycast"
-          "google-chrome"
-          "porting-kit"
-          "obsidian"
-          "claude" # GUI app; no nixpkgs equivalent on any envKind
-        ];
-      };
-
-      security.pam.services.sudo_local.touchIdAuth = true;
-      security.pam.services.sudo_local.reattach = true;
-    };
-
-    # Linux base: shared by headless and graphical targets.
-    # nixGL provides host OpenGL drivers for GUI apps on non-NixOS distros;
-    # headless kelasa machines don't actually use it at runtime but pulling in
-    # the overlay is essentially free and keeps the module tree symmetric.
-    linuxBaseConfiguration = { pkgs, ... }: {
-      nix.package = pkgs.nix;
-      nixpkgs.overlays = [ inputs.nixgl.overlays.default ];
-    };
-
-    # Graphical Linux add-on: chrome + rofi + rofi desktop files.
-    # Applied only to ubuntu-mane. AL2/AL2023 kelasa are headless SSH-only
-    # and have no desktop environment for these to act on.
-    linuxGraphicalConfiguration = { pkgs, lib, ... }:
-      let
-        # DigiKam wrapped with KDE/Qt image format plugins (HEIC/HEIF, AVIF, RAW, etc.)
-        digikam-wrapped = pkgs.symlinkJoin {
-          name = "digikam";
-          paths = [ pkgs.digikam ];
-          nativeBuildInputs = [ pkgs.makeWrapper ];
-          postBuild = ''
-            wrapProgram $out/bin/digikam \
-              --prefix QT_PLUGIN_PATH : "${lib.makeSearchPath "lib/qt-6/plugins" [ pkgs.kdePackages.kimageformats pkgs.kdePackages.qtimageformats ]}"
-            wrapProgram $out/bin/showfoto \
-              --prefix QT_PLUGIN_PATH : "${lib.makeSearchPath "lib/qt-6/plugins" [ pkgs.kdePackages.kimageformats pkgs.kdePackages.qtimageformats ]}"
-          '';
-        };
-      in {
-        home.packages = [
-          pkgs.google-chrome
-          digikam-wrapped
-          pkgs.libheif
-        ];
-        home.file = lib.mapAttrs' (name: _: {
-          name  = ".local/share/applications/${name}";
-          value.source = ./rofi-desktop + "/${name}";
-        }) (builtins.readDir ./rofi-desktop);
-
-        # rofi: bind shortcut to "rofi -show drun" in GNOME Settings → Keyboard → Custom Shortcuts.
-        programs.rofi = {
-          enable = true;
-          extraConfig.show-icons = true;
-          theme = builtins.toString (pkgs.writeText "rofi-theme.rasi" ''
-            @theme "Arc-Dark"
-            * {
-              font: "Monospace 24";
-            }
-            window {
-              width:  50%;
-              height: 50%;
-            }
-          '');
-        };
-      };
-
-    # Shared module list for headless Amazon Linux kelasa machines.
-    # al2-kelasa and al2023-kelasa have identical nix configs today; if they
-    # diverge later, fork this into separate lists.
+    # Shared module list for headless Amazon Linux kelasa machines (al2 / al2023).
     al2KelasaModules = [
       commonConfiguration
       linuxBaseConfiguration
       al2KelasaConfiguration
       ./home/home.nix
     ];
-
-    # Shared configuration for AL2/AL2023 kelasa machines
-    al2KelasaConfiguration = { pkgs, ... }: {
-      home.username = "${user}";
-      home.homeDirectory = "/home/${user}";
-
-      # Fix PATH for single-user Nix installation
-      home.sessionPath = [
-        "/home/${user}/.nix-profile/bin"
-      ];
-
-      # Fix terminal encoding
-      home.packages = [ pkgs.glibcLocales ];
-      home.sessionVariables = {
-        LANG = "en_US.UTF-8";
-        LC_ALL = "en_US.UTF-8";
-        LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
-      };
-    };
 
   in {
     # darwin-kelasa: work macOS machine
@@ -222,7 +106,7 @@
       modules = [
         commonConfiguration
         linuxBaseConfiguration
-        linuxGraphicalConfiguration
+        ubuntuManeConfiguration
         {
           home.username = "${user}";
           home.homeDirectory = "/home/${user}";
