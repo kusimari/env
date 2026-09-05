@@ -56,18 +56,18 @@
 
     # ── Modular configurations ─────────────────────────────────────────────
     # Common base: universal overlays & Linux base
-    commonConfiguration = import ./common/common.nix { inherit inputs; };
-    linuxBaseConfiguration = import ./common/linux.nix { inherit inputs; };
+    common = import ./envKinds/common.nix { inherit inputs; };
+    inherit (common) commonConfiguration linuxCommonConfiguration;
 
     # Machine-class configurations: kelasa & mane
     al2KelasaConfiguration = import ./envKinds/kelasa/al2.nix { inherit user; };
     darwinConfiguration = import ./envKinds/kelasa/darwin.nix { inherit self user; };
-    ubuntuManeConfiguration = ./envKinds/mane/graphical.nix;
+    ubuntuManeConfiguration = ./envKinds/mane/ubuntu.nix;
 
     # Shared module list for headless Amazon Linux kelasa machines (al2 / al2023).
     al2KelasaModules = [
       commonConfiguration
-      linuxBaseConfiguration
+      linuxCommonConfiguration
       al2KelasaConfiguration
       ./home/home.nix
     ];
@@ -105,7 +105,7 @@
       extraSpecialArgs = { envKind = "mane"; };
       modules = [
         commonConfiguration
-        linuxBaseConfiguration
+        linuxCommonConfiguration
         ubuntuManeConfiguration
         {
           home.username = "${user}";
