@@ -5,7 +5,7 @@
 # home-manager configuration for each envKind and subtracting what the
 # per-env (tier-3) files contribute. Anything added through
 # programs.*.enable in home.nix or inline in home.nix's home.packages is
-# picked up automatically; anything added only in home/envKind-*.nix is
+# picked up automatically; anything added only in envKinds/<name>/home.nix is
 # excluded.
 { nixpkgs, home-manager, inputs }:
 
@@ -57,13 +57,13 @@ let
     manePkgs   = (mkConfig "mane").config.home.packages;
     kelasaPkgs = (mkConfig "kelasa").config.home.packages;
 
-    # Argset must match what envKind-*.nix files expect (config/lib/pkgs);
+    # Argset must match what envKinds/<name>/home.nix files expect (config/lib/pkgs);
     # a mismatch breaks tier-3 evaluation here even if home-manager is happy.
     # We pass a stub config because we only read .home.packages.
     tier3 = envFile:
       (import envFile { inherit pkgs lib; config = {}; }).home.packages or [];
-    maneOnly   = tier3 ./home/envKind-mane.nix;
-    kelasaOnly = tier3 ./home/envKind-kelasa.nix;
+    maneOnly   = tier3 ./envKinds/mane/home.nix;
+    kelasaOnly = tier3 ./envKinds/kelasa/home.nix;
 
     invariants = lib.subtractLists
       (toNames maneOnly ++ toNames kelasaOnly)

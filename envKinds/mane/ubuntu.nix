@@ -1,0 +1,41 @@
+{ pkgs, lib, ... }:
+let
+  # DigiKam wrapped with KDE/Qt image format plugins (HEIC/HEIF, AVIF, RAW, etc.)
+  digikam-wrapped = pkgs.symlinkJoin {
+    name = "digikam";
+    paths = [ pkgs.digikam ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/digikam \
+        --prefix QT_PLUGIN_PATH : "${lib.makeSearchPath "lib/qt-6/plugins" [ pkgs.kdePackages.kimageformats pkgs.kdePackages.qtimageformats ]}"
+      wrapProgram $out/bin/showfoto \
+        --prefix QT_PLUGIN_PATH : "${lib.makeSearchPath "lib/qt-6/plugins" [ pkgs.kdePackages.kimageformats pkgs.kdePackages.qtimageformats ]}"
+    '';
+  };
+in {
+  home.packages = [
+    pkgs.google-chrome
+    digikam-wrapped
+    pkgs.libheif
+  ];
+  home.file = lib.mapAttrs' (name: _: {
+    name  = ".local/share/applications/${name}";
+    value.source = ../../rofi-desktop + "/${name}";
+  }) (builtins.readDir ../../rofi-desktop);
+
+  # rofi: bind shortcut to "rofi -show drun" in GNOME Settings → Keyboard → Custom Shortcuts.
+  programs.rofi = {
+    enable = true;
+    extraConfig.show-icons = true;
+    theme = builtins.toString (pkgs.writeText "rofi-theme.rasi" ''
+      @theme "Arc-Dark"
+      * {
+        font: "Monospace 24";
+      }
+      window {
+        width:  50%;
+        height: 50%;
+      }
+    '');
+  };
+}
