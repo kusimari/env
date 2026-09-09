@@ -7,9 +7,11 @@ let
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       wrapProgram $out/bin/digikam \
-        --prefix QT_PLUGIN_PATH : "${lib.makeSearchPath "lib/qt-6/plugins" [ pkgs.kdePackages.kimageformats pkgs.kdePackages.qtimageformats ]}"
+        --prefix QT_PLUGIN_PATH : "${lib.makeSearchPath "lib/qt-6/plugins" [ pkgs.kdePackages.kimageformats pkgs.kdePackages.qtimageformats ]}" \
+        --set-default QT_XCB_GL_INTEGRATION none
       wrapProgram $out/bin/showfoto \
-        --prefix QT_PLUGIN_PATH : "${lib.makeSearchPath "lib/qt-6/plugins" [ pkgs.kdePackages.kimageformats pkgs.kdePackages.qtimageformats ]}"
+        --prefix QT_PLUGIN_PATH : "${lib.makeSearchPath "lib/qt-6/plugins" [ pkgs.kdePackages.kimageformats pkgs.kdePackages.qtimageformats ]}" \
+        --set-default QT_XCB_GL_INTEGRATION none
     '';
   };
 in {
