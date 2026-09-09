@@ -11,10 +11,7 @@ Wrap DigiKam and Showfoto with `QT_XCB_GL_INTEGRATION=none` to prevent fatal GLX
 
 ## Handoff
 
-- **Phase:** review
-- **Ready for:** user review and PR merge
-- **Carry forward:** DigiKam and Showfoto wrapped with `--set-default QT_XCB_GL_INTEGRATION none`.
-- **Deliberately left:** None.
+Phase: closed
 
 ## Requirements
 
@@ -40,12 +37,13 @@ Wrap DigiKam and Showfoto with `QT_XCB_GL_INTEGRATION=none` to prevent fatal GLX
 - [x] Update `envKinds/mane/ubuntu.nix` wrapper with `--set-default QT_XCB_GL_INTEGRATION none`
 - [x] Run `bash layers/test-flake.sh` to verify flake build
 - [x] Verify `nix flake check` and `shellcheck`
-- [ ] Push to `origin fix/digikam-video-glx` and open PR
+- [x] Push to `origin fix/digikam-video-glx` and open PR
 
 ## Session Log
 
 - 2026-09-08: Investigated crash when previewing video files. Traced to `qglx_findConfig: Failed to finding matching FBConfig` / `Could not initialize GLX` calling `qFatal` / `abort()`. Confirmed `QT_XCB_GL_INTEGRATION=none` resolves the crash.
 - 2026-09-08: Added `--set-default QT_XCB_GL_INTEGRATION none` to both `digikam` and `showfoto` wrappers in `envKinds/mane/ubuntu.nix`. Verified wrapper generation and test-flake / flake-check quality gates.
+- 2026-09-08: Opened PR #50 and verified all gates. Reconciled and closed out spec.
 
 ## Decision Log
 
