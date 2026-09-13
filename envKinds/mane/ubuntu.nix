@@ -14,6 +14,25 @@ let
         --set-default QT_XCB_GL_INTEGRATION none
     '';
   };
+
+  # Thunar wrapped with GVFS GIO modules for Trash/virtual URI schemes and archive plugin
+  thunar-with-plugins = pkgs.thunar.override {
+    thunarPlugins = [ pkgs.thunar-archive-plugin ];
+  };
+
+  thunar-wrapped = pkgs.symlinkJoin {
+    name = "thunar";
+    paths = [ thunar-with-plugins ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    postBuild = ''
+      wrapProgram $out/bin/thunar \
+        --prefix GIO_EXTRA_MODULES : "${pkgs.gvfs}/lib/gio/modules" \
+        --prefix XDG_DATA_DIRS : "${pkgs.gvfs}/share"
+      wrapProgram $out/bin/thunar-settings \
+        --prefix GIO_EXTRA_MODULES : "${pkgs.gvfs}/lib/gio/modules" \
+        --prefix XDG_DATA_DIRS : "${pkgs.gvfs}/share"
+    '';
+  };
 in {
   home.packages = [
     pkgs.google-chrome
@@ -21,8 +40,8 @@ in {
     pkgs.libheif
 
     # Declarative userland apps
-    pkgs.thunar
-    pkgs.thunar-archive-plugin
+    thunar-wrapped
+    pkgs.gvfs
     pkgs.xarchiver
     pkgs.viewnior
     pkgs.evince
@@ -30,6 +49,13 @@ in {
     pkgs.dust
     pkgs.imagemagick
   ];
+
+  # Provide GIO extension modules (GVfs) across the desktop session so D-Bus-activated
+  # services (e.g. org.xfce.FileManager.service) and other GUI apps (Evince, file pickers)
+  # inherit virtual URI schemes (trash://, etc.). Direct binary invocations are also wrapped above.
+  home.sessionVariables = {
+    GIO_EXTRA_MODULES = "${pkgs.gvfs}/lib/gio/modules";
+  };
 
   # Declarative default applications (MIME associations)
   xdg.mimeApps = {
