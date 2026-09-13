@@ -68,8 +68,8 @@ Deliberately left: Steam and GNOME System Monitor kept as native APT; XFCE sessi
 - [x] Create `layers/layer-3-ubuntu-mane-debloat.sh` with presence check (`dpkg -s`), `--dry-run`, and extensible bloat list
 - [x] Wire `layers/layer-3-ubuntu-mane.sh` to chain `layer-3-ubuntu-mane-debloat.sh` post-switch
 - [x] Run `bash layers/test-flake.sh` to verify build integrity for all targets
-- [ ] Rebuild Home Manager generation via `bash layers/layer-3-ubuntu-mane.sh` and verify debloat execution
-- [ ] Verify Rofi indexing, Thunar launching, and MIME defaults
+- [x] Rebuild Home Manager generation via `bash layers/layer-3-ubuntu-mane.sh` and verify debloat execution
+- [x] Verify Rofi indexing, Thunar launching, and MIME defaults
 
 ## Decision Log
 
@@ -82,3 +82,4 @@ Deliberately left: Steam and GNOME System Monitor kept as native APT; XFCE sessi
 - 2026-09-13: Pivoted scope from `thunar-file-manager` to `thinhost-declarative-userland`. Full spec authored.
 - 2026-09-13: Addressed PR review feedback on PR #52. Removed redundant preserved exceptions, established sub-script design with graceful degradation and extensible package array.
 - 2026-09-13: Refined naming to `layer-3-ubuntu-mane-debloat.sh` (suffix convention) and moved execution post-nix in Layer 3.
+- 2026-09-13: Implemented packages, MIME associations, and debloat sub-script. Verified with `test-flake.sh` and activated generation via `layer-3-ubuntu-mane.sh --dry-run`. Confirmed binaries on PATH and MIME defaults (`inode/directory -> thunar.desktop`).
