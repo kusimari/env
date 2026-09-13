@@ -19,7 +19,32 @@ in {
     pkgs.google-chrome
     digikam-wrapped
     pkgs.libheif
+
+    # Declarative userland apps
+    pkgs.thunar
+    pkgs.thunar-archive-plugin
+    pkgs.xarchiver
+    pkgs.viewnior
   ];
+
+  # Declarative default applications (MIME associations)
+  xdg.mimeApps = {
+    enable = true;
+    defaultApplications = {
+      "inode/directory" = "thunar.desktop";
+      "image/jpeg" = "viewnior.desktop";
+      "image/png" = "viewnior.desktop";
+      "image/webp" = "viewnior.desktop";
+      "image/gif" = "viewnior.desktop";
+      "application/zip" = "xarchiver.desktop";
+      "application/x-tar" = "xarchiver.desktop";
+      "application/x-gzip" = "xarchiver.desktop";
+      "application/x-bzip2" = "xarchiver.desktop";
+      "application/x-xz" = "xarchiver.desktop";
+      "application/x-7z-compressed" = "xarchiver.desktop";
+      "application/x-rar" = "xarchiver.desktop";
+    };
+  };
   home.file = lib.mapAttrs' (name: _: {
     name  = ".local/share/applications/${name}";
     value.source = ../../rofi-desktop + "/${name}";

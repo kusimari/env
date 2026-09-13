@@ -63,11 +63,11 @@ Deliberately left: Steam and GNOME System Monitor kept as native APT; XFCE sessi
 
 ## Implementation Plan
 
-- [ ] Add `pkgs.xfce.thunar`, `pkgs.xfce.thunar-archive-plugin`, `pkgs.xarchiver`, and `pkgs.viewnior` to `envKinds/mane/ubuntu.nix`
-- [ ] Configure `xdg.mimeApps` default associations in `envKinds/mane/ubuntu.nix`
-- [ ] Create `layers/layer-3-ubuntu-mane-debloat.sh` with presence check (`dpkg -s`), `--dry-run`, and extensible bloat list
-- [ ] Wire `layers/layer-3-ubuntu-mane.sh` to chain `layer-3-ubuntu-mane-debloat.sh` post-switch
-- [ ] Run `bash layers/test-flake.sh` to verify build integrity for all targets
+- [x] Add `pkgs.thunar`, `pkgs.thunar-archive-plugin`, `pkgs.xarchiver`, and `pkgs.viewnior` to `envKinds/mane/ubuntu.nix`
+- [x] Configure `xdg.mimeApps` default associations in `envKinds/mane/ubuntu.nix`
+- [x] Create `layers/layer-3-ubuntu-mane-debloat.sh` with presence check (`dpkg -s`), `--dry-run`, and extensible bloat list
+- [x] Wire `layers/layer-3-ubuntu-mane.sh` to chain `layer-3-ubuntu-mane-debloat.sh` post-switch
+- [x] Run `bash layers/test-flake.sh` to verify build integrity for all targets
 - [ ] Rebuild Home Manager generation via `bash layers/layer-3-ubuntu-mane.sh` and verify debloat execution
 - [ ] Verify Rofi indexing, Thunar launching, and MIME defaults
 
