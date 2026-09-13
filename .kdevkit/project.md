@@ -277,8 +277,9 @@ Modular structure in `envKinds/`:
     Applied to every Linux target.
 - `envKinds/mane/ubuntu.nix` (`ubuntuManeConfiguration`) — thin host graphical
   userland: chrome, rofi, wrapped DigiKam (with `kimageformats` and `qtimageformats`
-  for HEIC/AVIF/RAW), thunar, xarchiver, viewnior, evince, gnome-calculator, dust,
-  imagemagick, and declarative MIME associations. Applied only to `ubuntu-mane`.
+  for HEIC/AVIF/RAW), wrapped Thunar (with GVFS and `thunar-archive-plugin`), xarchiver,
+  viewnior, evince, gnome-calculator, dust, imagemagick, and declarative MIME associations.
+  Applied only to `ubuntu-mane`.
 - `envKinds/mane/home.nix` — tier-3 user packages for mane (Tailscale, Antigravity).
 - `envKinds/kelasa/al2.nix` (`al2KelasaConfiguration` + `al2KelasaModules`) —
   shared AL2/AL2023 bundle: username, home dir, `sessionPath` for single-user Nix,

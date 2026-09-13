@@ -11,10 +11,7 @@ Restore GVFS and Trash support in Thunar on `ubuntu-mane`. When Thunar is instal
 
 ## Handoff
 
-Phase: review
-Ready for: human review
-Carry forward: Wrapping Thunar with pkgs.gvfs and setting GIO_EXTRA_MODULES enables D-Bus client bindings to host session gvfsd/gvfsd-trash.
-Deliberately left: None.
+Phase: closed
 
 ## Requirements
 
