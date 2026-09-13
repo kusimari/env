@@ -11,9 +11,10 @@ Establish a "Thin Host + Declarative Userland" architecture for `ubuntu-mane`. R
 
 ## Handoff
 
-Phase: planning
-Ready for: user review of spec revisions
-Carry forward: public repo hygiene — no internal markers
+Phase: dev
+Ready for: implementation slices (packages, MIME, debloat script, integration)
+Carry forward: test-flake.sh tests both ubuntu-mane and al2-kelasa; debloat must probe dpkg -s before purge
+Deliberately left: Steam and GNOME System Monitor kept as native APT; XFCE session deferred
 
 ## Requirements
 
