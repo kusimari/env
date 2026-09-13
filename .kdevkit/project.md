@@ -59,7 +59,7 @@ orthogonal axes name it; layer scripts and flake keys derive from them:
 
 | target | envKind | platform | Where defined | Notes |
 |---|---|---|---|---|
-| `ubuntu-mane` | `mane` | `ubuntu` | `flake.nix` `homeConfigurations.ubuntu-mane` | Home Ubuntu, graphical (rofi, chrome, desktop files). |
+| `ubuntu-mane` | `mane` | `ubuntu` | `flake.nix` `homeConfigurations.ubuntu-mane` | Home Ubuntu, graphical (thin host + declarative userland: rofi, thunar, userland apps). |
 | `al2-kelasa` | `kelasa` | `al2` | `flake.nix` `homeConfigurations.al2-kelasa` | Work Amazon Linux 2 (headless SSH). |
 | `al2023-kelasa` | `kelasa` | `al2023` | `flake.nix` `homeConfigurations.al2023-kelasa` | Work Amazon Linux 2023 (headless SSH). |
 | `darwin-kelasa` | `kelasa` | `darwin` | `flake.nix` `darwinConfigurations.darwin-kelasa` | Work macOS. |
@@ -275,9 +275,10 @@ Modular structure in `envKinds/`:
     allowUnfree. Shared by every target.
   - `linuxCommonConfiguration` — nixGL overlay, explicit `nix.package`.
     Applied to every Linux target.
-- `envKinds/mane/ubuntu.nix` (`ubuntuManeConfiguration`) — chrome, rofi,
-  wrapped DigiKam (with `kimageformats` and `qtimageformats` for HEIC/AVIF/RAW),
-  `libheif`, desktop files. Applied only to `ubuntu-mane`.
+- `envKinds/mane/ubuntu.nix` (`ubuntuManeConfiguration`) — thin host graphical
+  userland: chrome, rofi, wrapped DigiKam (with `kimageformats` and `qtimageformats`
+  for HEIC/AVIF/RAW), thunar, xarchiver, viewnior, evince, gnome-calculator, dust,
+  imagemagick, and declarative MIME associations. Applied only to `ubuntu-mane`.
 - `envKinds/mane/home.nix` — tier-3 user packages for mane (Tailscale, Antigravity).
 - `envKinds/kelasa/al2.nix` (`al2KelasaConfiguration` + `al2KelasaModules`) —
   shared AL2/AL2023 bundle: username, home dir, `sessionPath` for single-user Nix,
@@ -338,6 +339,7 @@ env/
 │   ├── layer-1-ubuntu-mane.sh        # L1 for the ubuntu-mane target (public; kelasa L1 is private)
 │   ├── layer-2.sh                    # L2 — clone env
 │   ├── layer-3-ubuntu-mane.sh        # L3 for ubuntu-mane
+│   ├── layer-3-ubuntu-mane-debloat.sh # Sub-script: debloats host Ubuntu bloat post-switch
 │   ├── layer-3-al2-kelasa.sh         # L3 for AL2
 │   ├── layer-3-al2023-kelasa.sh      # L3 for AL2023
 │   ├── layer-3-darwin-kelasa.sh      # L3 for darwin
