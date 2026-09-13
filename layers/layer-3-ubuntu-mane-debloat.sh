@@ -72,6 +72,7 @@ if (( ${#installed[@]} == 0 )); then
 fi
 
 log "Found ${#installed[@]} bloat package(s) installed: ${installed[*]}"
+echo "Approve sudo when prompted to purge host bloatware..."
 
 run sudo apt-get purge -y --auto-remove "${installed[@]}"
 run sudo apt-get clean
