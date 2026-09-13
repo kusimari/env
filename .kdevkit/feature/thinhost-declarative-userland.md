@@ -65,17 +65,19 @@ Deliberately left: Steam and GNOME System Monitor kept as native APT; XFCE sessi
 
 - [x] Add `pkgs.thunar`, `pkgs.thunar-archive-plugin`, `pkgs.xarchiver`, and `pkgs.viewnior` to `envKinds/mane/ubuntu.nix`
 - [x] Configure `xdg.mimeApps` default associations in `envKinds/mane/ubuntu.nix`
-- [x] Create `layers/layer-3-ubuntu-mane-debloat.sh` with presence check (`dpkg -s`), `--dry-run`, and extensible bloat list
+- [x] Create `layers/layer-3-ubuntu-mane-debloat.sh` with presence check (`dpkg -s`), `--dry-run`, extensible bloat list, and userland web-app cleanup
 - [x] Wire `layers/layer-3-ubuntu-mane.sh` to chain `layer-3-ubuntu-mane-debloat.sh` post-switch
 - [x] Run `bash layers/test-flake.sh` to verify build integrity for all targets
 - [x] Rebuild Home Manager generation via `bash layers/layer-3-ubuntu-mane.sh` and verify debloat execution
 - [x] Verify Rofi indexing, Thunar launching, and MIME defaults
+- [x] Clean Rofi clutter by purging Chrome PWA web-links (`chrome-*.desktop`) and broken symlinks in `~/.local/share/applications`
 
 ## Decision Log
 
 - Dropped "Host Preserved Exceptions" section (Steam, GNOME System Monitor) per PR feedback — neither are part of default Ubuntu bloatware, and planning for untouched apps adds unnecessary noise.
 - Moved debloat from Layer 1 to Layer 3 so it runs *after* Nix activation, guaranteeing zero window where the user has no working file manager or utilities.
 - Named the sub-script `layers/layer-3-ubuntu-mane-debloat.sh` using the `-debloat` suffix to clearly denote it as a subordinate sub-script of `layer-3-ubuntu-mane.sh`.
+- Extended `layer-3-ubuntu-mane-debloat.sh` to also clean userland application bloat (`~/.local/share/applications/chrome-*.desktop` and broken symlinks) so Rofi displays only real desktop applications rather than web-links masquerading as apps.
 
 ## Session Log
 
@@ -83,3 +85,4 @@ Deliberately left: Steam and GNOME System Monitor kept as native APT; XFCE sessi
 - 2026-09-13: Addressed PR review feedback on PR #52. Removed redundant preserved exceptions, established sub-script design with graceful degradation and extensible package array.
 - 2026-09-13: Refined naming to `layer-3-ubuntu-mane-debloat.sh` (suffix convention) and moved execution post-nix in Layer 3.
 - 2026-09-13: Implemented packages, MIME associations, and debloat sub-script. Verified with `test-flake.sh` and activated generation via `layer-3-ubuntu-mane.sh --dry-run`. Confirmed binaries on PATH and MIME defaults (`inode/directory -> thunar.desktop`).
+- 2026-09-13: Probed Rofi indexing: identified Chrome web-apps (`chrome-*.desktop` for Docs, Sheets, Slides, Drive, Gmail, YouTube) in `~/.local/share/applications`. Added automated userland cleanup to `layer-3-ubuntu-mane-debloat.sh` and verified Rofi is lean.

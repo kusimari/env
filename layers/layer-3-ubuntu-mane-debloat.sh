@@ -66,15 +66,39 @@ for pkg in "${BLOAT_PACKAGES[@]}"; do
     fi
 done
 
-if (( ${#installed[@]} == 0 )); then
-    log "Host is already lean. No bloatware packages found."
-    exit 0
+if (( ${#installed[@]} > 0 )); then
+    log "Found ${#installed[@]} bloat package(s) installed: ${installed[*]}"
+    echo "Approve sudo when prompted to purge host bloatware..."
+
+    run sudo apt-get purge -y --auto-remove "${installed[@]}"
+    run sudo apt-get clean
+else
+    log "Host packages already lean. No bloatware packages found."
 fi
 
-log "Found ${#installed[@]} bloat package(s) installed: ${installed[*]}"
-echo "Approve sudo when prompted to purge host bloatware..."
+# Clean userland desktop entries bloat (e.g. Chrome PWAs masquerading as apps, broken symlinks)
+user_apps_dir="$HOME/.local/share/applications"
+if [[ -d "$user_apps_dir" ]]; then
+    # Purge Chrome web-app desktop files masquerading as native apps
+    shopt -s nullglob
+    pwa_files=("$user_apps_dir"/chrome-*.desktop)
+    if (( ${#pwa_files[@]} > 0 )); then
+        log "Purging ${#pwa_files[@]} web-app shortcut(s) from $user_apps_dir"
+        for pwa in "${pwa_files[@]}"; do
+            run rm -f "$pwa"
+        done
+    fi
 
-run sudo apt-get purge -y --auto-remove "${installed[@]}"
-run sudo apt-get clean
+    # Remove broken symlinks
+    while IFS= read -r -d '' broken; do
+        log "Removing broken symlink in $user_apps_dir: $(basename "$broken")"
+        run rm -f "$broken"
+    done < <(find -L "$user_apps_dir" -maxdepth 1 -type l -print0)
+    shopt -u nullglob
 
-log "Debloat complete. Host is lean."
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        run update-desktop-database "$user_apps_dir"
+    fi
+fi
+
+log "Debloat complete. Host and userland are lean."
