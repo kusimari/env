@@ -11,10 +11,10 @@ Restore GVFS and Trash support in Thunar on `ubuntu-mane`. When Thunar is instal
 
 ## Handoff
 
-Phase: dev
-Ready for: implementation
-Carry forward: Host Ubuntu already runs gvfsd/gvfsd-trash daemon; wrapping Thunar and exporting GIO_EXTRA_MODULES to pkgs.gvfs/lib/gio/modules enables D-Bus client bindings.
-Deliberately left: Headless kelasa environments do not require graphical GVFS or Thunar.
+Phase: review
+Ready for: human review
+Carry forward: Wrapping Thunar with pkgs.gvfs and setting GIO_EXTRA_MODULES enables D-Bus client bindings to host session gvfsd/gvfsd-trash.
+Deliberately left: None.
 
 ## Requirements
 
@@ -59,10 +59,10 @@ Deliberately left: Headless kelasa environments do not require graphical GVFS or
 
 ## Implementation Plan
 
-- [ ] Define `thunar-wrapped` with `pkgs.gvfs` and `pkgs.thunar-archive-plugin` in `envKinds/mane/ubuntu.nix`
-- [ ] Export `GIO_EXTRA_MODULES` in `home.sessionVariables` in `envKinds/mane/ubuntu.nix`
-- [ ] Run `bash layers/test-flake.sh` to verify build integrity for all targets
-- [ ] Activate generation via `bash layers/layer-3-ubuntu-mane.sh` and verify Thunar sidepane trash functionality
+- [x] Define `thunar-wrapped` with `pkgs.gvfs` and `pkgs.thunar-archive-plugin` in `envKinds/mane/ubuntu.nix`
+- [x] Export `GIO_EXTRA_MODULES` in `home.sessionVariables` in `envKinds/mane/ubuntu.nix`
+- [x] Run `bash layers/test-flake.sh` to verify build integrity for all targets
+- [x] Activate generation via `bash layers/layer-3-ubuntu-mane.sh` and verify Thunar sidepane trash functionality
 
 ## Decision Log
 
@@ -74,3 +74,4 @@ Deliberately left: Headless kelasa environments do not require graphical GVFS or
 
 - 2026-09-13: Investigated Thunar GVFS and Trash issue on `ubuntu-mane`. Identified missing `libgvfsdbus.so` in `GIO_EXTRA_MODULES` causing `thunar_g_vfs_is_uri_scheme_supported("trash")` to return false. Verified that wrapping Thunar with `pkgs.gvfs` exposes all URI schemes (`trash`, `computer`, `recent`, `sftp`, `network`). Authored feature spec.
 - 2026-09-13: User reviewed and approved spec on PR #53 after discussing file manager alternatives. Transitioned to Phase: dev.
+- 2026-09-13: Implemented `thunar-wrapped` with `pkgs.gvfs` and `pkgs.thunar-archive-plugin` in `envKinds/mane/ubuntu.nix`. Exported `GIO_EXTRA_MODULES = "${pkgs.gvfs}/lib/gio/modules"` in `home.sessionVariables`. Tested via `test-flake.sh` and `nix flake check`. Switched generation via `layer-3-ubuntu-mane.sh`. Verified GIO scheme probing recognizes 29 schemes (including `trash`), and `thunar` launches without GVfs warning banners.
