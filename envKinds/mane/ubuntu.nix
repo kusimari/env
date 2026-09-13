@@ -25,6 +25,10 @@ in {
     pkgs.thunar-archive-plugin
     pkgs.xarchiver
     pkgs.viewnior
+    pkgs.evince
+    pkgs.gnome-calculator
+    pkgs.dust
+    pkgs.imagemagick
   ];
 
   # Declarative default applications (MIME associations)
@@ -36,6 +40,9 @@ in {
       "image/png" = "viewnior.desktop";
       "image/webp" = "viewnior.desktop";
       "image/gif" = "viewnior.desktop";
+      "application/pdf" = "org.gnome.Evince.desktop";
+      "application/postscript" = "org.gnome.Evince.desktop";
+      "application/x-dvi" = "org.gnome.Evince.desktop";
       "application/zip" = "xarchiver.desktop";
       "application/x-tar" = "xarchiver.desktop";
       "application/x-gzip" = "xarchiver.desktop";

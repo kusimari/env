@@ -52,9 +52,23 @@ BLOAT_PACKAGES=(
     nautilus
     nautilus-share
     gnome-shell-extension-desktop-icons-ng
-    # Default viewers/editors (replaced by Emacs / Viewnior)
+    # Default viewers/editors (replaced by Emacs / Viewnior / Evince)
     gedit
     eog
+    evince
+    simple-scan
+    # Archive Manager (replaced by Nix Xarchiver)
+    file-roller
+    # Calculator (replaced by Nix GNOME Calculator)
+    gnome-calculator
+    # Disk Usage Analyzer (replaced by Nix dust TUI)
+    baobab
+    # Desktop accessories & personal info managers
+    gnome-calendar
+    gnome-characters
+    gnome-todo
+    deja-dup
+    yelp
 )
 
 log "Checking for default Ubuntu desktop bloatware$( (( DRY_RUN )) && echo ' (dry-run)')"

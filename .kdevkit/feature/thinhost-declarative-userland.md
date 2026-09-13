@@ -52,11 +52,12 @@ Deliberately left: Steam and GNOME System Monitor kept as native APT; XFCE sessi
   - Host OS (Ubuntu / APT): Linux kernel, GPU/Mesa/Vulkan drivers, display server (X11), desktop shell (GNOME), systemd.
   - Userland (Nix Flake): All applications, utilities, launchers, MIME associations, and tools.
 - **Packaging (`envKinds/mane/ubuntu.nix`)**:
-  - Add `pkgs.xfce.thunar`, `pkgs.xfce.thunar-archive-plugin`, `pkgs.xarchiver`, and `pkgs.viewnior` to `home.packages`.
-  - Add `xdg.mimeApps = { enable = true; defaultApplications = { ... }; };`.
+  - Add `pkgs.thunar`, `pkgs.thunar-archive-plugin`, `pkgs.xarchiver`, and `pkgs.viewnior` to `home.packages`.
+  - Add declarative document and utility apps: `pkgs.evince`, `pkgs.gnome-calculator`, `pkgs.dust`, and `pkgs.imagemagick`.
+  - Add `xdg.mimeApps = { enable = true; defaultApplications = { ... }; };` including directories, images, archives, and PDF/PostScript/DVI associations.
 - **Debloat Sub-Script (`layers/layer-3-ubuntu-mane-debloat.sh`)**:
   - Suffix `-debloat` indicates subordinate sub-script status next to `layer-3-ubuntu-mane.sh`.
-  - Uses an extensible bash array of known default Ubuntu desktop bloat packages.
+  - Uses an extensible bash array of known default Ubuntu desktop bloat packages (including `file-roller`, `baobab`, `simple-scan`, `gnome-calculator`, `evince`, `gnome-calendar`, `gnome-characters`, `gnome-todo`, `deja-dup`, `yelp`).
   - Probes installed status via `dpkg -s` so only present packages are targeted.
   - Sourced or invoked at the end of `layer-3-ubuntu-mane.sh` once Nix switch succeeds.
   - When all bloat is already absent, exits cleanly in milliseconds without prompting `sudo`.
@@ -64,6 +65,7 @@ Deliberately left: Steam and GNOME System Monitor kept as native APT; XFCE sessi
 ## Implementation Plan
 
 - [x] Add `pkgs.thunar`, `pkgs.thunar-archive-plugin`, `pkgs.xarchiver`, and `pkgs.viewnior` to `envKinds/mane/ubuntu.nix`
+- [x] Add `pkgs.evince`, `pkgs.gnome-calculator`, `pkgs.dust`, and `pkgs.imagemagick` to `envKinds/mane/ubuntu.nix`
 - [x] Configure `xdg.mimeApps` default associations in `envKinds/mane/ubuntu.nix`
 - [x] Create `layers/layer-3-ubuntu-mane-debloat.sh` with presence check (`dpkg -s`), `--dry-run`, extensible bloat list, and userland web-app cleanup
 - [x] Wire `layers/layer-3-ubuntu-mane.sh` to chain `layer-3-ubuntu-mane-debloat.sh` post-switch
@@ -71,6 +73,7 @@ Deliberately left: Steam and GNOME System Monitor kept as native APT; XFCE sessi
 - [x] Rebuild Home Manager generation via `bash layers/layer-3-ubuntu-mane.sh` and verify debloat execution
 - [x] Verify Rofi indexing, Thunar launching, and MIME defaults
 - [x] Clean Rofi clutter by purging Chrome PWA web-links (`chrome-*.desktop`) and broken symlinks in `~/.local/share/applications`
+- [x] Expand `layer-3-ubuntu-mane-debloat.sh` with 10 standard Ubuntu bloat packages (`file-roller`, `evince`, `gnome-calculator`, `baobab`, `simple-scan`, `gnome-calendar`, `gnome-characters`, `gnome-todo`, `deja-dup`, `yelp`)
 
 ## Decision Log
 
@@ -78,6 +81,7 @@ Deliberately left: Steam and GNOME System Monitor kept as native APT; XFCE sessi
 - Moved debloat from Layer 1 to Layer 3 so it runs *after* Nix activation, guaranteeing zero window where the user has no working file manager or utilities.
 - Named the sub-script `layers/layer-3-ubuntu-mane-debloat.sh` using the `-debloat` suffix to clearly denote it as a subordinate sub-script of `layer-3-ubuntu-mane.sh`.
 - Extended `layer-3-ubuntu-mane-debloat.sh` to also clean userland application bloat (`~/.local/share/applications/chrome-*.desktop` and broken symlinks) so Rofi displays only real desktop applications rather than web-links masquerading as apps.
+- Classified full Rofi application pool into 3 buckets: kept host appliances (e.g. `gnome-terminal`, `vim`, `gnome-system-monitor`, `steam`), default Ubuntu bloatware added to generic debloat script, and host-specific ad-hoc orphans purged via one-time host command to keep repo portable.
 
 ## Session Log
 
@@ -86,3 +90,4 @@ Deliberately left: Steam and GNOME System Monitor kept as native APT; XFCE sessi
 - 2026-09-13: Refined naming to `layer-3-ubuntu-mane-debloat.sh` (suffix convention) and moved execution post-nix in Layer 3.
 - 2026-09-13: Implemented packages, MIME associations, and debloat sub-script. Verified with `test-flake.sh` and activated generation via `layer-3-ubuntu-mane.sh --dry-run`. Confirmed binaries on PATH and MIME defaults (`inode/directory -> thunar.desktop`).
 - 2026-09-13: Probed Rofi indexing: identified Chrome web-apps (`chrome-*.desktop` for Docs, Sheets, Slides, Drive, Gmail, YouTube) in `~/.local/share/applications`. Added automated userland cleanup to `layer-3-ubuntu-mane-debloat.sh` and verified Rofi is lean.
+- 2026-09-13: Performed complete 71-app audit. Added `evince`, `gnome-calculator`, `dust`, and `imagemagick` to Nix userland. Expanded debloat script with 10 standard Ubuntu bloat packages. Verified `test-flake.sh`.
