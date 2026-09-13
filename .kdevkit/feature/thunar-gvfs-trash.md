@@ -11,10 +11,10 @@ Restore GVFS and Trash support in Thunar on `ubuntu-mane`. When Thunar is instal
 
 ## Handoff
 
-Phase: plan
-Ready for: dev
-Carry forward: Host already runs gvfsd/gvfsd-trash; Nix wrapper must point GIO_EXTRA_MODULES to pkgs.gvfs/lib/gio/modules
-Deliberately left: Headless kelasa environments do not require graphical GVFS or Thunar
+Phase: dev
+Ready for: implementation
+Carry forward: Host Ubuntu already runs gvfsd/gvfsd-trash daemon; wrapping Thunar and exporting GIO_EXTRA_MODULES to pkgs.gvfs/lib/gio/modules enables D-Bus client bindings.
+Deliberately left: Headless kelasa environments do not require graphical GVFS or Thunar.
 
 ## Requirements
 
@@ -68,7 +68,9 @@ Deliberately left: Headless kelasa environments do not require graphical GVFS or
 
 - Wrapped Thunar directly via `symlinkJoin` and `makeWrapper` (mirroring the `digikam-wrapped` pattern in `ubuntu.nix`) rather than relying purely on shell environment variables. This guarantees that GUI launchers, desktop shortcuts, and D-Bus invocations always inherit `GIO_EXTRA_MODULES`.
 - Wired `thunar-archive-plugin` into `thunarPlugins` override to ensure plugins are in `THUNARX_DIRS`.
+- Evaluated alternative file managers (Nautilus, Dolphin, PCManFM, Nemo). In Nix on non-NixOS, all GTK file managers share the exact same GVfs dependency for Trash/virtual URI schemes. Retained Thunar for its minimal memory footprint (< 25MB), instant launch, and absence of background indexing daemons.
 
 ## Session Log
 
 - 2026-09-13: Investigated Thunar GVFS and Trash issue on `ubuntu-mane`. Identified missing `libgvfsdbus.so` in `GIO_EXTRA_MODULES` causing `thunar_g_vfs_is_uri_scheme_supported("trash")` to return false. Verified that wrapping Thunar with `pkgs.gvfs` exposes all URI schemes (`trash`, `computer`, `recent`, `sftp`, `network`). Authored feature spec.
+- 2026-09-13: User reviewed and approved spec on PR #53 after discussing file manager alternatives. Transitioned to Phase: dev.
