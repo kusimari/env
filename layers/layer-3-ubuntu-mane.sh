@@ -10,11 +10,15 @@
 
 # Platform-specific configuration for layer-3-common.sh
 # Linux sed uses -i without additional flag (don't export SED_INPLACE_FLAG)
-export NIX_COMMAND='home-manager switch --flake ".#ubuntu-mane"'
+export NIX_COMMAND='home-manager switch -b bak --flake ".#ubuntu-mane"'
 export NIX_ECHO_MESSAGE="Running home-manager switch..."
 
 # Option 1: For initial setup (uncomment if needed)
 # export NIX_COMMAND='nix run home-manager/master -- init --switch ".#ubuntu-mane"'
 
 # Execute common functionality
+# shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/layer-3-common.sh"
+
+# Host debloat sub-script — purges default Ubuntu desktop bloatware post-switch
+bash "$(dirname "${BASH_SOURCE[0]}")/layer-3-ubuntu-mane-debloat.sh" "$@"
