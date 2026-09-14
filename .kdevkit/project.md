@@ -296,7 +296,7 @@ Modular structure in `envKinds/`:
   - `linuxCommonConfiguration` — nixGL overlay, explicit `nix.package`.
     Applied to every Linux target.
 - `envKinds/mane/ubuntu.nix` (`ubuntuManeConfiguration`) — thin host graphical
-  userland: chrome, rofi, wrapped DigiKam (with `kimageformats` and `qtimageformats`
+  userland: chrome, rofi, libreoffice, simple-scan, wrapped DigiKam (with `kimageformats` and `qtimageformats`
   for HEIC/AVIF/RAW), wrapped Thunar (with GVFS and `thunar-archive-plugin`), xarchiver,
   viewnior, evince, gnome-calculator, dust, imagemagick, and declarative MIME associations.
   Applied only to `ubuntu-mane`.
@@ -361,6 +361,7 @@ env/
 │   ├── layer-2.sh                    # L2 — clone env
 │   ├── layer-3-ubuntu-mane.sh        # L3 for ubuntu-mane
 │   ├── layer-3-ubuntu-mane-debloat.sh # Sub-script: debloats host Ubuntu bloat post-switch
+│   ├── layer-ubuntu-mane-host-prep.sh # Sub-script: shared host hardware/OS prep for L1 and L3
 │   ├── layer-3-al2-kelasa.sh         # L3 for AL2
 │   ├── layer-3-al2023-kelasa.sh      # L3 for AL2023
 │   ├── layer-3-darwin-kelasa.sh      # L3 for darwin

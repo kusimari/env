@@ -11,10 +11,7 @@ Add declarative userland applications for office productivity, PDF editing, and 
 
 ## Handoff
 
-- **Phase:** review
-- **Ready for:** Agent-dev Review Gate and human review of PR #54
-- **Carry forward:** Host hardware prep is unified into `layers/layer-ubuntu-mane-host-prep.sh` and shared between L1 and L3; L3 acts as Environment Setup; Nix userland includes `libreoffice` and `simple-scan`.
-- **Deliberately left:** Decimal sub-layers (L3.1/L3.2) were rejected to preserve `layer-run` driver and cross-target conventions.
+Phase: closed
 
 ## Requirements
 
@@ -98,3 +95,4 @@ Add declarative userland applications for office productivity, PDF editing, and 
 - 2026-09-13: Addressed layer architecture feedback: unified host hardware preparation into a shared script across L1 and L3, and framed L3 as "The Environment Setup" with rationale in `project.md`. Consolidated spec for dev.
 - 2026-09-13: Implemented shared host prep script, wired L1 and L3, un-blacklisted simple-scan in debloat, added libreoffice and simple-scan to Nix userland, removed GIO leak, documented architecture in project.md, and verified clean flake build via test-flake.sh.
 - 2026-09-13: Applied unified layer naming convention (Host Genesis, Env Repo Genesis, The Environment Setup, Enterprise Overlays, Stores, Tools, Projects) across `layer-run` (purpose dictionary, usage help text, execution banners), `project.md` (table column), `README.md` (philosophy section), and layer script headers.
+- 2026-09-13: Reconciled in-flight markers, updated Handoff to closed, and verified closure criteria.
