@@ -17,7 +17,7 @@
 #
 # Layers (the naming contract — see env/.kdevkit/project.md):
 #   L1 layer-1-<target>.sh    Host Genesis            public|private
-#   L2 layers/layer-2.sh      Repo Genesis            public
+#   L2 layers/layer-2.sh      Env Repo Genesis        public
 #   L3 layer-3-<target>.sh    The Environment Setup   public
 #   L4 layer-4-<envKind>.sh   Enterprise Overlays     private
 #   L5 layer-5.sh             Stores                  both
@@ -42,7 +42,7 @@ LAYER_NUMS=(0 1 2 3 4 5 6 7)
 declare -A LAYER_PURPOSE=(
     [0]="Curl Bootstrap (pre-clone)"
     [1]="Host Genesis"
-    [2]="Repo Genesis"
+    [2]="Env Repo Genesis"
     [3]="The Environment Setup"
     [4]="Enterprise Overlays"
     [5]="Stores"

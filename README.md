@@ -47,7 +47,7 @@ other entrypoints.
   envKinds) live here. Public envKinds get their L1 from `env`; private
   envKinds get it from their envKind repo.
 
-- **Layer 2 — Repo Genesis.** Pulls the nix-managed environment source.
+- **Layer 2 — Env Repo Genesis.** Pulls the nix-managed environment source.
   Generic across all envKinds: no machine prep, no envKind assumptions.
   Clones `env` into `~/env-workplace/`, confirms GitHub SSH, pins commit
   identity, exits.

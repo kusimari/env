@@ -85,4 +85,4 @@ require_ubuntu
 ensure_apt_prereqs
 ensure_host_prep "$@"
 ensure_nix
-log "Layer 1 (Host Genesis) done. Next: run Layer 2 (Repo Genesis)."
+log "Layer 1 (Host Genesis) done. Next: run Layer 2 (Env Repo Genesis)."

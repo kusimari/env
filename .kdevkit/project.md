@@ -100,7 +100,7 @@ operational summary. Per-machine scripts use the naming contract above
 |---|---|---|---|---|---|
 | 0 | Curl Bootstrap | curl bootstrap (clone-only `env-setup.sh`) | `<kelasa-specific env repo>` | Brand-new machine | Pre-clone: gets the env repos onto the machine; on kelasa runs L1 prep. Not run by `layer-run`. |
 | 1 | Host Genesis | `layer-1-<target>.sh` | `env` (public) or `<kelasa-specific env repo>` | New machine | Native OS prep: auth, certs, sudoers, hardware drivers, package mirrors. Makes machine nix-ready. |
-| 2 | Repo Genesis | `layers/layer-2.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
+| 2 | Env Repo Genesis | `layers/layer-2.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
 | 3 | The Environment Setup | `layers/layer-3-<target>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, flanked by host appliance prep and debloat sidecars on `ubuntu-mane`. |
 | 4 | Enterprise Overlays | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa, or any day-2 change to envKind-specific post-nix content | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
 | 5 | Stores | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | New machine | **Stores, get only.** Runs one inline `{ ... }` block per store: clone/fetch flat under `~/dabba/<repo>/`. Nothing else — never touches `~/tool-workplace/` (Layer 6) or `~/workplace/` (Layer 7). On kelasa run the private `layer-5.sh`; it chains the public one first. |

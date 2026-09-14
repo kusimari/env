@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# env/layers/layer-2.sh — Layer 2 (Repo Genesis).
+# env/layers/layer-2.sh — Layer 2 (Env Repo Genesis).
 #
 # Ensures ~/env-workplace exists, checks GitHub SSH reachability,
 # clones or fetches env. That's it. No chaining — when this script
@@ -174,9 +174,9 @@ ensure_git_identity() {
 
 # ── Flow ─────────────────────────────────────────────────────────────
 
-log "Layer 2: Repo Genesis$( (( DRY_RUN )) && echo ' (dry-run)')"
+log "Layer 2: Env Repo Genesis$( (( DRY_RUN )) && echo ' (dry-run)')"
 ensure_workspace
 ensure_github_ssh
 clone_or_fetch "env"  "$ENV_REPO"  "$ENV_CLONE"  "$ENV_BRANCH"
 ensure_git_identity "$ENV_CLONE"
-log "Layer 2 (Repo Genesis) done."
+log "Layer 2 (Env Repo Genesis) done."

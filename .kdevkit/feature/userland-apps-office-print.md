@@ -88,7 +88,7 @@ Add declarative userland applications for office productivity, PDF editing, and 
 - Preserved the L1–L7 layer numbering contract in `project.md` and `layer-run` rather than creating sub-layers (L3.1, L3.2). Layer 3 acts as "Environment Setup" encapsulating pre-Nix host prep, Nix userland switch, and post-Nix debloat.
 - Extracted host hardware preparation into a shared script (`layer-ubuntu-mane-host-prep.sh`) invoked by both Layer 1 (Day-1 Genesis) and Layer 3 (Day-2 Convergence).
 - Removed global `GIO_EXTRA_MODULES` session variable export to fix host binary GLIBC incompatibility; Thunar is already isolated via wrapper.
-- Elevated official layer naming across the repo (`layer-run`, `project.md`, `README.md`, layer scripts): L0 (Curl Bootstrap), L1 (Host Genesis), L2 (Repo Genesis), L3 (The Environment Setup), L4 (Enterprise Overlays), L5 (Stores), L6 (Tools), L7 (Projects).
+- Elevated official layer naming across the repo (`layer-run`, `project.md`, `README.md`, layer scripts): L0 (Curl Bootstrap), L1 (Host Genesis), L2 (Env Repo Genesis), L3 (The Environment Setup), L4 (Enterprise Overlays), L5 (Stores), L6 (Tools), L7 (Projects).
 
 ## Session Log
 
@@ -97,4 +97,4 @@ Add declarative userland applications for office productivity, PDF editing, and 
 - 2026-09-13: Authored initial feature spec `userland-apps-office-print.md` and opened PR #54.
 - 2026-09-13: Addressed layer architecture feedback: unified host hardware preparation into a shared script across L1 and L3, and framed L3 as "The Environment Setup" with rationale in `project.md`. Consolidated spec for dev.
 - 2026-09-13: Implemented shared host prep script, wired L1 and L3, un-blacklisted simple-scan in debloat, added libreoffice and simple-scan to Nix userland, removed GIO leak, documented architecture in project.md, and verified clean flake build via test-flake.sh.
-- 2026-09-13: Applied unified layer naming convention (Host Genesis, Repo Genesis, The Environment Setup, Enterprise Overlays, Stores, Tools, Projects) across `layer-run` (purpose dictionary, usage help text, execution banners), `project.md` (table column), `README.md` (philosophy section), and layer script headers.
+- 2026-09-13: Applied unified layer naming convention (Host Genesis, Env Repo Genesis, The Environment Setup, Enterprise Overlays, Stores, Tools, Projects) across `layer-run` (purpose dictionary, usage help text, execution banners), `project.md` (table column), `README.md` (philosophy section), and layer script headers.
