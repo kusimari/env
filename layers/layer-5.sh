@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# env/layers/layer-5.sh — Layer 5 (public): get stores.
+# env/layers/layer-5.sh — Layer 5: Stores.
 #
 # Ensures ~/dabba/, then clones/fetches one inline { ... } block per
 # known store into ~/dabba/<repo-basename>/. See project.md for the

@@ -96,16 +96,16 @@ See `README.md` for the full discussion; the table below is the
 operational summary. Per-machine scripts use the naming contract above
 (`<target>` for L1/L3, `<envKind>` for L4).
 
-| Layer | Script | Repo | Runs when | Purpose |
-|---|---|---|---|---|
-| 0 | curl bootstrap (clone-only `env-setup.sh`) | `<kelasa-specific env repo>` | Brand-new machine | Pre-clone: gets the env repos onto the machine; on kelasa runs L1 prep. Not run by `layer-run`. |
-| 1 | `layer-1-<target>.sh` | `env` (public) or `<kelasa-specific env repo>` | New machine | Native OS prep: auth, certs, sudoers, package mirrors. Makes machine nix-ready. |
-| 2 | `layers/layer-2.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
-| 3 | `layers/layer-3-<target>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
-| 4 | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa, or any day-2 change to envKind-specific post-nix content | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
-| 5 | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | New machine | **Stores, get only.** Runs one inline `{ ... }` block per store: clone/fetch flat under `~/dabba/<repo>/`. Nothing else — never touches `~/tool-workplace/` (Layer 6) or `~/workplace/` (Layer 7). On kelasa run the private `layer-5.sh`; it chains the public one first. |
-| 6 | `layers/layer-6.sh` (public) + `desktop-layers/layer-6.sh` (private) | `env` + `<kelasa-specific env repo>` | On demand | **Tools, get + build.** Runs one inline `{ ... }` block per tool workspace: clone/fetch under `~/tool-workplace/<name>/<repo>/`, pin identity, then discover (registry-free `fd` walk) and run each one's own root `install`/`setup` entry-point. **Not part of the base env** — a bare rebuild through L5 leaves `~/tool-workplace/` entirely absent. The normal fast path is running a tool workspace's entry-point from inside it; L6 is the get-them-all-and-build-them-all convenience. On kelasa run the private `layer-6.sh`: it gets its private workspace first, then chains the public one (which gets + builds everything present). |
-| 7 | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | On demand, per project | **Projects, bidirectional.** Owns `~/workplace/` end-to-end — no other layer touches it. *Hydrate:* `mkdir -p ~/workplace/<project>` (creates the root on first use), `cd` in, then replay a project recipe (symlinks, `.envrc`, optional per-project `bootstrap.sh`). *Capture:* start tracking an untracked workspace by writing its recipe back under `projects/<project>/`. **Not** part of bootstrap; never mutates the environment. |
+| Layer | Name | Script | Repo | Runs when | Purpose |
+|---|---|---|---|---|---|
+| 0 | Curl Bootstrap | curl bootstrap (clone-only `env-setup.sh`) | `<kelasa-specific env repo>` | Brand-new machine | Pre-clone: gets the env repos onto the machine; on kelasa runs L1 prep. Not run by `layer-run`. |
+| 1 | Host Genesis | `layer-1-<target>.sh` | `env` (public) or `<kelasa-specific env repo>` | New machine | Native OS prep: auth, certs, sudoers, hardware drivers, package mirrors. Makes machine nix-ready. |
+| 2 | Env Repo Genesis | `layers/layer-2.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
+| 3 | The Environment Setup | `layers/layer-3-<target>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, flanked by host appliance prep and debloat sidecars on `ubuntu-mane`. |
+| 4 | Enterprise Overlays | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa, or any day-2 change to envKind-specific post-nix content | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
+| 5 | Stores | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | New machine | **Stores, get only.** Runs one inline `{ ... }` block per store: clone/fetch flat under `~/dabba/<repo>/`. Nothing else — never touches `~/tool-workplace/` (Layer 6) or `~/workplace/` (Layer 7). On kelasa run the private `layer-5.sh`; it chains the public one first. |
+| 6 | Tools | `layers/layer-6.sh` (public) + `desktop-layers/layer-6.sh` (private) | `env` + `<kelasa-specific env repo>` | On demand | **Tools, get + build.** Runs one inline `{ ... }` block per tool workspace: clone/fetch under `~/tool-workplace/<name>/<repo>/`, pin identity, then discover (registry-free `fd` walk) and run each one's own root `install`/`setup` entry-point. **Not part of the base env** — a bare rebuild through L5 leaves `~/tool-workplace/` entirely absent. The normal fast path is running a tool workspace's entry-point from inside it; L6 is the get-them-all-and-build-them-all convenience. On kelasa run the private `layer-6.sh`: it gets its private workspace first, then chains the public one (which gets + builds everything present). |
+| 7 | Projects | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | On demand, per project | **Projects, bidirectional.** Owns `~/workplace/` end-to-end — no other layer touches it. *Hydrate:* `mkdir -p ~/workplace/<project>` (creates the root on first use), `cd` in, then replay a project recipe (symlinks, `.envrc`, optional per-project `bootstrap.sh`). *Capture:* start tracking an untracked workspace by writing its recipe back under `projects/<project>/`. **Not** part of bootstrap; never mutates the environment. |
 
 **`layer-run` — one-run driver for L1–L6.**
 `layer-run --target <target> [--repo <path>] [--layer 1,2,3] [--dry-run]`
@@ -117,6 +117,26 @@ runnable through it — they appear in `layer-run --help` for orientation
 but are owned by the curl bootstrap (L0) and `workplace-setup.sh` (L7).
 For L5/L6 with `--repo` set it invokes the private half, which chains
 the public half first. Relies on every layer being idempotent.
+
+**L3 as The Environment Setup (and the L3.1 / L3.2 rationale).**
+Layer 3 on graphical Linux (`ubuntu-mane`) acts as "The Environment Setup",
+encapsulating the desktop convergence loop in an atomic three-step cycle:
+1. *Pre-Nix host hardware prep* (`layer-ubuntu-mane-host-prep.sh`): idempotent
+   check and installation of host hardware drivers (HPLIP, CUPS/SANE backend)
+   and host libraries (`python3-gi-cairo`). Shared with Layer 1.
+2. *Nix userland activation* (`home-manager switch` via `layer-3-common.sh`):
+   declarative installation of desktop applications, utilities, and MIME defaults.
+3. *Post-Nix host debloat* (`layer-3-ubuntu-mane-debloat.sh`): graceful
+   purge of displaced host desktop bloatware.
+
+*Why not split L3 into L3.1 / L3.2 or rename the layers?*
+Splitting Layer 3 into decimal sub-layers (L3.1, L3.2) or renumbering the
+layers would break the established `layer-run` driver interface (`--layer 1,2,3`),
+disrupt the uniform L1–L7 naming contract across platforms (`darwin-kelasa`,
+`al2-kelasa`, `al2023-kelasa`), and create artificial layer boundaries for what
+is fundamentally an atomic desktop state transition. Instead, Layer 3 acts as
+"The Environment Setup" orchestrator on `ubuntu-mane`, delegating to explicit
+subordinate sidecar scripts.
 
 **L3 vs L4 post-nix split.** L3's `layer-3-post-nix-common.sh` is
 envKind-agnostic; L4 is envKind-specific. If a post-nix step is
@@ -276,7 +296,7 @@ Modular structure in `envKinds/`:
   - `linuxCommonConfiguration` — nixGL overlay, explicit `nix.package`.
     Applied to every Linux target.
 - `envKinds/mane/ubuntu.nix` (`ubuntuManeConfiguration`) — thin host graphical
-  userland: chrome, rofi, wrapped DigiKam (with `kimageformats` and `qtimageformats`
+  userland: chrome, rofi, libreoffice, simple-scan, wrapped DigiKam (with `kimageformats` and `qtimageformats`
   for HEIC/AVIF/RAW), wrapped Thunar (with GVFS and `thunar-archive-plugin`), xarchiver,
   viewnior, evince, gnome-calculator, dust, imagemagick, and declarative MIME associations.
   Applied only to `ubuntu-mane`.
@@ -341,6 +361,7 @@ env/
 │   ├── layer-2.sh                    # L2 — clone env
 │   ├── layer-3-ubuntu-mane.sh        # L3 for ubuntu-mane
 │   ├── layer-3-ubuntu-mane-debloat.sh # Sub-script: debloats host Ubuntu bloat post-switch
+│   ├── layer-ubuntu-mane-host-prep.sh # Sub-script: shared host hardware/OS prep for L1 and L3
 │   ├── layer-3-al2-kelasa.sh         # L3 for AL2
 │   ├── layer-3-al2023-kelasa.sh      # L3 for AL2023
 │   ├── layer-3-darwin-kelasa.sh      # L3 for darwin

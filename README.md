@@ -39,68 +39,68 @@ other entrypoints.
 
 ### The philosophy
 
-- **Layer 1 — make the machine nix-ready, and clone non-nixable
-  envKind repos.** Runs before nix exists, so everything here is
-  bash + the OS's native package manager. Site-specific auth,
-  sudoers, cert installs, and clones of the envKind-specific repos
-  (for kelasa envKinds) live here. Public envKinds get their L1
-  from `env`; private envKinds get it from their envKind repo.
+- **Layer 1 — Host Genesis.** Bare-metal bootstrap: makes the machine
+  nix-ready, prepares host hardware drivers and packages, and clones
+  non-nixable envKind repos. Runs before nix exists, so everything here is
+  bash + the OS's native package manager. Site-specific auth, sudoers,
+  cert installs, and clones of the envKind-specific repos (for kelasa
+  envKinds) live here. Public envKinds get their L1 from `env`; private
+  envKinds get it from their envKind repo.
 
-- **Layer 2 — pull the nix-managed environment source.** Generic
-  across all envKinds: no machine prep, no envKind assumptions.
-  Clones `env` into `~/env-workplace/`, confirms GitHub SSH, pins
-  commit identity, exits.
+- **Layer 2 — Env Repo Genesis.** Pulls the nix-managed environment source.
+  Generic across all envKinds: no machine prep, no envKind assumptions.
+  Clones `env` into `~/env-workplace/`, confirms GitHub SSH, pins commit
+  identity, exits.
 
-- **Layer 3 — build the nix environment, then run universal
-  post-nix tail.** `home-manager switch` or `nix-darwin switch`
-  from the cloned source, followed by `layers/layer-3-post-nix-common.sh`.
-  The tail is envKind-agnostic; anything envKind-specific belongs
-  in Layer 4. Layer 3 also exposes two extension points —
-  `~/.pre-nix-rc` and `~/.post-nix-rc` — so Layer 1 and Layer 4 can
-  inject shell state that doesn't belong in the flake. See
+- **Layer 3 — The Environment Setup.** Builds the nix environment and
+  manages host desktop state. On `ubuntu-mane`, encapsulates the atomic
+  three-step convergence cycle: host hardware prep, `home-manager switch`,
+  and host debloat, followed by `layers/layer-3-post-nix-common.sh`.
+  The tail is envKind-agnostic; anything envKind-specific belongs in
+  Layer 4. Layer 3 also exposes two extension points — `~/.pre-nix-rc`
+  and `~/.post-nix-rc` — so Layer 1 and Layer 4 can inject shell state
+  that doesn't belong in the flake. See
   [Shell-hook extension points](#shell-hook-extension-points--how-layer-3-hooks-layer-1-and-layer-4)
   below.
 
-- **Layer 4 — envKind-specific non-nixable post-install.**
-  Site-specific tool installs (via whatever vendor tooling the
-  site requires, not nix), one-time setup commands, shell aliases
-  keyed to non-nix binaries. Lives in the envKind's own repo.
-  Writes `~/.post-nix-rc`; never builds nix artifacts.
+- **Layer 4 — Enterprise Overlays.** envKind-specific non-nixable
+  post-install for workplace machines (`kelasa`). Site-specific tool
+  installs (via whatever vendor tooling the site requires, not nix),
+  one-time setup commands, shell aliases keyed to non-nix binaries.
+  Lives in the envKind's own repo. Writes `~/.post-nix-rc`; never builds
+  nix artifacts.
 
-- **Layer 5 — get the stores.** One root and a small set of inline
-  `{ ... }` blocks, one per known store. L5 drivers
-  (`layers/layer-5.sh` in `env`, `desktop-layers/layer-5.sh` in the
-  envKind repo) clone flat into `~/dabba/<repo>/` (cross-machine,
-  backed-up content) and pin git identity. Nothing else.
-  Stores are knowledge-persistence repos (notes vaults, etc.) — they
-  never have a build step, so **L5 is their entire lifecycle**: it
-  never touches `~/tool-workplace/` (Layer 6's root) or `~/workplace/`
-  (Layer 7's root) — each root has exactly one owning layer.
-  Adding a store: copy an existing `{ ... }` block in the relevant
+- **Layer 5 — Stores.** Get the stores. One root and a small set of inline
+  `{ ... }` blocks, one per known store. L5 drivers (`layers/layer-5.sh`
+  in `env`, `desktop-layers/layer-5.sh` in the envKind repo) clone flat
+  into `~/dabba/<repo>/` (cross-machine, backed-up content) and pin git
+  identity. Nothing else. Stores are knowledge-persistence repos (notes
+  vaults, etc.) — they never have a build step, so **L5 is their entire
+  lifecycle**: it never touches `~/tool-workplace/` (Layer 6's root) or
+  `~/workplace/` (Layer 7's root) — each root has exactly one owning
+  layer. Adding a store: copy an existing `{ ... }` block in the relevant
   driver and edit the name/url.
 
-- **Layer 6 — get and build the tools, separable.** Owns tool
-  workspaces end-to-end. A driver (`layers/layer-6.sh`) with a small
-  set of inline `{ ... }` blocks, one per known workspace (same shape
-  as L5's store blocks): clones/fetches into
-  `~/tool-workplace/<name>/<repo>/` (env-tooling under active churn)
-  and pins git identity, then discovers and runs each workspace's own
-  root `install`/`setup` entry-point (preferring `setup` when both
-  exist) — build discovery stays a registry-free walk of whatever is
-  actually present under `~/tool-workplace/`, so a workspace placed
-  there by hand is still found and built. The content repo owns its
+- **Layer 6 — Tools.** Get and build the tools. Owns tool workspaces
+  end-to-end. A driver (`layers/layer-6.sh`) with a small set of inline
+  `{ ... }` blocks, one per known workspace (same shape as L5's store
+  blocks): clones/fetches into `~/tool-workplace/<name>/<repo>/` (env-tooling
+  under active churn) and pins git identity, then discovers and runs
+  each workspace's own root `install`/`setup` entry-point (preferring
+  `setup` when both exist) — build discovery stays a registry-free walk
+  of whatever is actually present under `~/tool-workplace/`, so a workspace
+  placed there by hand is still found and built. The content repo owns its
   install; L6 only clones it and invokes it.
-  L6 is **not part of the base env** — a bare rebuild through L5
-  leaves `~/tool-workplace/` entirely absent, not just unbuilt. The
-  normal fast path is running a tool workspace's entry-point from
-  inside it (the fast iteration loop); L6 is the run-them-all
-  convenience and the layer the rebuild driver targets when tooling
-  should be fetched and rebuilt.
+  L6 is **not part of the base env** — a bare rebuild through L5 leaves
+  `~/tool-workplace/` entirely absent, not just unbuilt. The normal fast
+  path is running a tool workspace's entry-point from inside it (the fast
+  iteration loop); L6 is the run-them-all convenience and the layer the
+  rebuild driver targets when tooling should be fetched and rebuilt.
   Adding a tool workspace: copy an existing `{ ... }` block in the
   relevant driver and edit the name/url.
 
-- **Layer 7 — per-project workplace recreation, on demand.** L7 owns
-  the `~/workplace/` root and `~/workplace/<project>/` tree
+- **Layer 7 — Projects.** Per-project workplace recreation, on demand.
+  L7 owns the `~/workplace/` root and `~/workplace/<project>/` tree
   end-to-end — no other layer creates or touches `~/workplace/`.
   Project workspaces are **not** bulk-installed during machine
   bootstrap. Each project owns a recipe (a `workspace.md` plus

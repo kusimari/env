@@ -45,17 +45,12 @@ in {
     pkgs.xarchiver
     pkgs.viewnior
     pkgs.evince
+    pkgs.libreoffice
+    pkgs.simple-scan
     pkgs.gnome-calculator
     pkgs.dust
     pkgs.imagemagick
   ];
-
-  # Provide GIO extension modules (GVfs) across the desktop session so D-Bus-activated
-  # services (e.g. org.xfce.FileManager.service) and other GUI apps (Evince, file pickers)
-  # inherit virtual URI schemes (trash://, etc.). Direct binary invocations are also wrapped above.
-  home.sessionVariables = {
-    GIO_EXTRA_MODULES = "${pkgs.gvfs}/lib/gio/modules";
-  };
 
   # Declarative default applications (MIME associations)
   xdg.mimeApps = {
