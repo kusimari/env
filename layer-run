@@ -16,12 +16,12 @@
 #                       reported skipped (not an error).
 #
 # Layers (the naming contract — see env/.kdevkit/project.md):
-#   L1 layer-1-<target>.sh    make nix-ready          public|private
-#   L2 layers/layer-2.sh      clone env gits          public
-#   L3 layer-3-<target>.sh    setup nix               public
-#   L4 layer-4-<envKind>.sh   setup non-nix           private
-#   L5 layer-5.sh             get stores              both
-#   L6 layer-6.sh             get + build tools       both
+#   L1 layer-1-<target>.sh    Host Genesis            public|private
+#   L2 layers/layer-2.sh      Repo Genesis            public
+#   L3 layer-3-<target>.sh    The Environment Setup   public
+#   L4 layer-4-<envKind>.sh   Enterprise Overlays     private
+#   L5 layer-5.sh             Stores                  both
+#   L6 layer-6.sh             Tools                   both
 #
 # L0 (curl bootstrap) and L7 (per-project, via workplace-setup.sh) are
 # NOT run by this driver — they are owned by other entrypoints. They
@@ -40,14 +40,14 @@ set -uo pipefail
 # carry an empty scope and a pointer — present for --help, not runnable.
 LAYER_NUMS=(0 1 2 3 4 5 6 7)
 declare -A LAYER_PURPOSE=(
-    [0]="curl bootstrap (pre-clone)"
-    [1]="make nix-ready"
-    [2]="clone env gits"
-    [3]="setup nix"
-    [4]="setup non-nix"
-    [5]="get stores"
-    [6]="get + build tools"
-    [7]="project workspaces"
+    [0]="Curl Bootstrap (pre-clone)"
+    [1]="Host Genesis"
+    [2]="Repo Genesis"
+    [3]="The Environment Setup"
+    [4]="Enterprise Overlays"
+    [5]="Stores"
+    [6]="Tools"
+    [7]="Projects"
 )
 declare -A LAYER_SCOPE=(
     [0]="" [1]="both" [2]="public" [3]="public"
@@ -122,7 +122,7 @@ usage() {
         else
             note="${LAYER_SCOPE[$n]}"
         fi
-        printf '                        L%s  %-16s %s\n' "$n" "${LAYER_PURPOSE[$n]}" "$note"
+        printf '                        L%s  %-27s %s\n' "$n" "${LAYER_PURPOSE[$n]}" "$note"
     done
 
     printf '  --dry-run           Preview without changing anything.\n'

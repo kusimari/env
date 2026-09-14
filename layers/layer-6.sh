@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# env/layers/layer-6.sh — Layer 6 (public): get + build tools.
+# env/layers/layer-6.sh — Layer 6: Tools.
 #
 # Clones/fetches one inline { ... } block per known tool workspace
 # into ~/tool-workplace/<name>/<repo-basename>/, then discovers and
