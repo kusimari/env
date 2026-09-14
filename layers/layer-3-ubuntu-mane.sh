@@ -16,6 +16,9 @@ export NIX_ECHO_MESSAGE="Running home-manager switch..."
 # Option 1: For initial setup (uncomment if needed)
 # export NIX_COMMAND='nix run home-manager/master -- init --switch ".#ubuntu-mane"'
 
+# Host OS hardware & driver prep sub-script — ensures host printing/scanning backend is ready
+bash "$(dirname "${BASH_SOURCE[0]}")/layer-ubuntu-mane-host-prep.sh" "$@"
+
 # Execute common functionality
 # shellcheck disable=SC1091
 source "$(dirname "${BASH_SOURCE[0]}")/layer-3-common.sh"

@@ -56,7 +56,6 @@ BLOAT_PACKAGES=(
     gedit
     eog
     evince
-    simple-scan
     # Archive Manager (replaced by Nix Xarchiver)
     file-roller
     # Calculator (replaced by Nix GNOME Calculator)

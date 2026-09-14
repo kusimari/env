@@ -101,7 +101,7 @@ operational summary. Per-machine scripts use the naming contract above
 | 0 | curl bootstrap (clone-only `env-setup.sh`) | `<kelasa-specific env repo>` | Brand-new machine | Pre-clone: gets the env repos onto the machine; on kelasa runs L1 prep. Not run by `layer-run`. |
 | 1 | `layer-1-<target>.sh` | `env` (public) or `<kelasa-specific env repo>` | New machine | Native OS prep: auth, certs, sudoers, package mirrors. Makes machine nix-ready. |
 | 2 | `layers/layer-2.sh` | `env` | New machine | Clones `env` into `~/env-workplace/`, pins git identity. |
-| 3 | `layers/layer-3-<target>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, then envKind-agnostic post-nix tail. |
+| 3 | `layers/layer-3-<target>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | **The Environment Setup.** `home-manager switch` / `nix-darwin switch`, flanked by host appliance prep and debloat sidecars on `ubuntu-mane`. |
 | 4 | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa, or any day-2 change to envKind-specific post-nix content | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
 | 5 | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | New machine | **Stores, get only.** Runs one inline `{ ... }` block per store: clone/fetch flat under `~/dabba/<repo>/`. Nothing else — never touches `~/tool-workplace/` (Layer 6) or `~/workplace/` (Layer 7). On kelasa run the private `layer-5.sh`; it chains the public one first. |
 | 6 | `layers/layer-6.sh` (public) + `desktop-layers/layer-6.sh` (private) | `env` + `<kelasa-specific env repo>` | On demand | **Tools, get + build.** Runs one inline `{ ... }` block per tool workspace: clone/fetch under `~/tool-workplace/<name>/<repo>/`, pin identity, then discover (registry-free `fd` walk) and run each one's own root `install`/`setup` entry-point. **Not part of the base env** — a bare rebuild through L5 leaves `~/tool-workplace/` entirely absent. The normal fast path is running a tool workspace's entry-point from inside it; L6 is the get-them-all-and-build-them-all convenience. On kelasa run the private `layer-6.sh`: it gets its private workspace first, then chains the public one (which gets + builds everything present). |
@@ -117,6 +117,26 @@ runnable through it — they appear in `layer-run --help` for orientation
 but are owned by the curl bootstrap (L0) and `workplace-setup.sh` (L7).
 For L5/L6 with `--repo` set it invokes the private half, which chains
 the public half first. Relies on every layer being idempotent.
+
+**L3 as The Environment Setup (and the L3.1 / L3.2 rationale).**
+Layer 3 on graphical Linux (`ubuntu-mane`) acts as "The Environment Setup",
+encapsulating the desktop convergence loop in an atomic three-step cycle:
+1. *Pre-Nix host hardware prep* (`layer-ubuntu-mane-host-prep.sh`): idempotent
+   check and installation of host hardware drivers (HPLIP, CUPS/SANE backend)
+   and host libraries (`python3-gi-cairo`). Shared with Layer 1.
+2. *Nix userland activation* (`home-manager switch` via `layer-3-common.sh`):
+   declarative installation of desktop applications, utilities, and MIME defaults.
+3. *Post-Nix host debloat* (`layer-3-ubuntu-mane-debloat.sh`): graceful
+   purge of displaced host desktop bloatware.
+
+*Why not split L3 into L3.1 / L3.2 or rename the layers?*
+Splitting Layer 3 into decimal sub-layers (L3.1, L3.2) or renumbering the
+layers would break the established `layer-run` driver interface (`--layer 1,2,3`),
+disrupt the uniform L1–L7 naming contract across platforms (`darwin-kelasa`,
+`al2-kelasa`, `al2023-kelasa`), and create artificial layer boundaries for what
+is fundamentally an atomic desktop state transition. Instead, Layer 3 acts as
+"The Environment Setup" orchestrator on `ubuntu-mane`, delegating to explicit
+subordinate sidecar scripts.
 
 **L3 vs L4 post-nix split.** L3's `layer-3-post-nix-common.sh` is
 envKind-agnostic; L4 is envKind-specific. If a post-nix step is

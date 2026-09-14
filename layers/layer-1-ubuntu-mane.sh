@@ -71,8 +71,18 @@ ensure_nix() {
     [[ -f /etc/profile.d/nix.sh ]] && . /etc/profile.d/nix.sh || true
 }
 
+ensure_host_prep() {
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local prep_script="$script_dir/layer-ubuntu-mane-host-prep.sh"
+    if [[ -x "$prep_script" ]]; then
+        "$prep_script" "$@"
+    fi
+}
+
 log "Layer 1 (ubuntu-mane): machine prep$( (( DRY_RUN )) && echo ' (dry-run)')"
 require_ubuntu
 ensure_apt_prereqs
+ensure_host_prep "$@"
 ensure_nix
 log "Layer 1 done. Next: run Layer 2 (layer-2.sh)."

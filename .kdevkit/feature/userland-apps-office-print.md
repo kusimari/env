@@ -11,10 +11,10 @@ Add declarative userland applications for office productivity, PDF editing, and 
 
 ## Handoff
 
-- **Phase:** dev
-- **Ready for:** implementation slices (shared host prep script, L1/L3 integration, debloat adjustment, nix packages, project.md documentation)
-- **Carry forward:** Host prep script is shared between L1 (genesis) and L3 (environment setup); L3 encapsulates the 3-step cycle (host prep -> nix switch -> host debloat) without breaking the stable L1–L7 layer contract.
-- **Deliberately left:** Splitting L3 into L3.1/L3.2 or renaming layers across the repo (rejected to preserve `layer-run` CLI and multi-target contracts).
+- **Phase:** review
+- **Ready for:** Agent-dev Review Gate and human review of PR #54
+- **Carry forward:** Host hardware prep is unified into `layers/layer-ubuntu-mane-host-prep.sh` and shared between L1 and L3; L3 acts as Environment Setup; Nix userland includes `libreoffice` and `simple-scan`.
+- **Deliberately left:** Decimal sub-layers (L3.1/L3.2) were rejected to preserve `layer-run` driver and cross-target conventions.
 
 ## Requirements
 
@@ -72,14 +72,14 @@ Add declarative userland applications for office productivity, PDF editing, and 
 
 ## Implementation Plan
 
-- [ ] Create `layers/layer-ubuntu-mane-host-prep.sh` with `dpkg -s` check, `--dry-run`, and package installation for `python3-gi-cairo`, `hplip`, and `hplip-gui`.
-- [ ] Wire `layers/layer-1-ubuntu-mane.sh` to invoke `layer-ubuntu-mane-host-prep.sh`.
-- [ ] Wire `layers/layer-3-ubuntu-mane.sh` to invoke `layer-ubuntu-mane-host-prep.sh` before `layer-3-common.sh`.
-- [ ] Remove `simple-scan` from `BLOAT_PACKAGES` in `layers/layer-3-ubuntu-mane-debloat.sh`.
-- [ ] Update `envKinds/mane/ubuntu.nix`: add `pkgs.libreoffice` and `pkgs.simple-scan`, and remove `GIO_EXTRA_MODULES` export.
-- [ ] Document Layer 3 "Environment Setup" architecture and L3.1/L3.2 rationale in `.kdevkit/project.md`.
-- [ ] Run `bash layers/test-flake.sh` to verify build integrity across targets.
-- [ ] Verify `layers/layer-ubuntu-mane-host-prep.sh --dry-run` and `layers/layer-3-ubuntu-mane-debloat.sh --dry-run`.
+- [x] Create `layers/layer-ubuntu-mane-host-prep.sh` with `dpkg -s` check, `--dry-run`, and package installation for `python3-gi-cairo`, `hplip`, and `hplip-gui`.
+- [x] Wire `layers/layer-1-ubuntu-mane.sh` to invoke `layer-ubuntu-mane-host-prep.sh`.
+- [x] Wire `layers/layer-3-ubuntu-mane.sh` to invoke `layer-ubuntu-mane-host-prep.sh` before `layer-3-common.sh`.
+- [x] Remove `simple-scan` from `BLOAT_PACKAGES` in `layers/layer-3-ubuntu-mane-debloat.sh`.
+- [x] Update `envKinds/mane/ubuntu.nix`: add `pkgs.libreoffice` and `pkgs.simple-scan`, and remove `GIO_EXTRA_MODULES` export.
+- [x] Document Layer 3 "Environment Setup" architecture and L3.1/L3.2 rationale in `.kdevkit/project.md`.
+- [x] Run `bash layers/test-flake.sh` to verify build integrity across targets.
+- [x] Verify `layers/layer-ubuntu-mane-host-prep.sh --dry-run` and `layers/layer-3-ubuntu-mane-debloat.sh --dry-run`.
 
 ## Decision Log
 
@@ -95,3 +95,4 @@ Add declarative userland applications for office productivity, PDF editing, and 
 - 2026-09-13: Clarified relationship between HP Device Manager (`hp-toolbox`) and Document Scanner (`simple-scan`).
 - 2026-09-13: Authored initial feature spec `userland-apps-office-print.md` and opened PR #54.
 - 2026-09-13: Addressed layer architecture feedback: unified host hardware preparation into a shared script across L1 and L3, and framed L3 as "The Environment Setup" with rationale in `project.md`. Consolidated spec for dev.
+- 2026-09-13: Implemented shared host prep script, wired L1 and L3, un-blacklisted simple-scan in debloat, added libreoffice and simple-scan to Nix userland, removed GIO leak, documented architecture in project.md, and verified clean flake build via test-flake.sh.
