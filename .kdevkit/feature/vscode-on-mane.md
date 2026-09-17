@@ -11,9 +11,9 @@ Enable declarative Visual Studio Code installation and configuration for persona
 
 ## Handoff
 
-- **Phase:** planning
-- **Ready for:** dev, gated by planning review approval ("spec looks good" / "start build" / "plan approved")
-- **Carry forward:** VS Code must be configured as Tier 3 scoped to `mane` (in `envKinds/mane/ubuntu.nix` or an imported module) so `code` does not leak into `env-verify.nix` invariants on headless kelasa machines.
+- **Phase:** dev
+- **Ready for:** implementation, gated by Quality -> Test -> Code Review -> Push
+- **Carry forward:** VS Code must live in `envKinds/mane/ubuntu.nix` (Tier 3) with dead block removed from `home/home.nix` to prevent module option conflict and keep `env-verify` invariants clean.
 - **Deliberately left:** Remote development server installation on headless kelasa machines is deliberately omitted; those targets are lightweight remote development machines intended to be accessed via SSH.
 
 ## Requirements
@@ -43,7 +43,7 @@ Enable declarative Visual Studio Code installation and configuration for persona
   - In Home Manager, `programs.vscode` declaratively manages the application binary (`pkgs.vscode`), desktop entry file, extensions (`profiles.default.extensions`), and user settings (`profiles.default.userSettings`).
   - Home Manager 25.05 uses `profiles.default` for extension and settings declarations.
   - Overlays: `nix-vscode-extensions` overlay is already wired into `commonConfiguration` (`envKinds/common.nix`) and provides `pkgs.open-vsx` and `pkgs.vscode-marketplace`.
-  - Migration from `home/home.nix`: Currently `home/home.nix` defines `programs.vscode` with `enable = false`. To prevent module collision errors (`conflicting definition values: false vs true`), relocate the entire `programs.vscode` definition from `home/home.nix` into `envKinds/mane/ubuntu.nix` (or `envKinds/mane/vscode.nix` imported by `ubuntu.nix`) with `enable = true`.
+  - Migration from `home/home.nix`: Relocate the entire `programs.vscode` definition from `home/home.nix` into `envKinds/mane/ubuntu.nix` with `enable = true`.
   - Keeping VS Code in `envKinds/mane/ubuntu.nix` mirrors all other desktop applications (`google-chrome`, `libreoffice`, `simple-scan`, `thunar`), eliminates dead code from the universal `home/home.nix`, and guarantees `env-verify.nix` does not treat `code` as an invariant for headless servers.
 - **Extensions & Settings**:
   - `open-vsx`: `rust-lang.rust-analyzer`, `ms-python.python`, `jnoortheen.nix-ide`
@@ -63,7 +63,8 @@ Enable declarative Visual Studio Code installation and configuration for persona
 - 2026-09-16: Received request to install Visual Studio Code on mane machines through Nix setup.
 - 2026-09-16: Grounded codebase: inspected `flake.nix`, `home/home.nix`, `envKinds/mane/ubuntu.nix`, `envKinds/mane/home.nix`, and `env-verify.nix`.
 - 2026-09-16: Analyzed invariant implications in `env-verify.nix`, identifying that enabling vscode in `home/home.nix` leaks `code` as an invariant to headless kelasa machines, whereas placing it in `envKinds/mane/ubuntu.nix` maintains clean Tier 3 isolation.
-- 2026-09-16: Verified extension availability from `open-vsx` and `vscode-marketplace`. Authored initial feature spec `vscode-on-mane.md`.
+- 2026-09-16: Verified extension availability from `open-vsx` and `vscode-marketplace`. Authored initial feature spec `vscode-on-mane.md` and opened PR #55.
+- 2026-09-16: User gave planning approval to proceed with build. Consolidated spec and advanced handoff to dev phase.
 
 ## Decision Log
 
