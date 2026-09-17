@@ -93,4 +93,26 @@ in {
       }
     '');
   };
+
+  # Visual Studio Code: thin host declarative editor with curated extensions
+  programs.vscode = {
+    enable = true;
+    enableUpdateCheck = false;
+    enableExtensionUpdateCheck = false;
+    profiles.default = {
+      extensions = with pkgs.open-vsx; [
+        rust-lang.rust-analyzer
+        ms-python.python
+        jnoortheen.nix-ide
+      ] ++ (with pkgs.vscode-marketplace; [
+        ryanolsonx.zenburn
+        saoudrizwan.claude-dev
+      ]);
+      userSettings = {
+        "editor.minimap.autohide" = true;
+        "editor.inlayHints.enabled" = "offUnlessPressed";
+        "workbench.colorTheme" = "Zenburn";
+      };
+    };
+  };
 }

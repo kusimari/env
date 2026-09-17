@@ -296,7 +296,7 @@ Modular structure in `envKinds/`:
   - `linuxCommonConfiguration` — nixGL overlay, explicit `nix.package`.
     Applied to every Linux target.
 - `envKinds/mane/ubuntu.nix` (`ubuntuManeConfiguration`) — thin host graphical
-  userland: chrome, rofi, libreoffice, simple-scan, wrapped DigiKam (with `kimageformats` and `qtimageformats`
+  userland: chrome, rofi, vscode (with curated extensions), libreoffice, simple-scan, wrapped DigiKam (with `kimageformats` and `qtimageformats`
   for HEIC/AVIF/RAW), wrapped Thunar (with GVFS and `thunar-archive-plugin`), xarchiver,
   viewnior, evince, gnome-calculator, dust, imagemagick, and declarative MIME associations.
   Applied only to `ubuntu-mane`.
@@ -330,8 +330,8 @@ One file, all envKinds. Order of top-to-bottom concerns:
 4. `programs.zsh` — oh-my-zsh + plugins, `envExtra` hook that sources
    `~/.pre-nix-rc` and `~/.post-nix-rc`. This is the bridge to
    non-nixable layers.
-5. `programs.{direnv,fzf,bat,eza,zoxide,atuin,vscode,git,gittree}` —
-   home-manager modules. `vscode.enable = false` today.
+5. `programs.{direnv,fzf,bat,eza,zoxide,atuin,git,gittree}` —
+   home-manager modules. (VS Code is configured under `ubuntuManeConfiguration`).
 6. `home.file.".zfunc/*"` — generated zsh completions placed in the
    fpath that `initContent` sets up.
 
