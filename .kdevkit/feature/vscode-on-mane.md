@@ -72,6 +72,7 @@ Enable declarative Visual Studio Code installation and configuration for persona
 - 2026-09-16: Verified `env-verify` invariant purity — confirmed `code` is not in invariants and does not leak to `kelasa`.
 - 2026-09-16: Dispatched fresh-context Code Review Gate subagent — received PASS WITH NOTES; applied update suppression (`enableUpdateCheck = false`, `enableExtensionUpdateCheck = false`).
 - 2026-09-16: Re-ran `nix flake check` and test suites — clean pass.
+- 2026-09-16: Relocated `enableUpdateCheck = false` and `enableExtensionUpdateCheck = false` into `programs.vscode.profiles.default` to conform to Home Manager 25.05 option schema and eliminate deprecation warnings.
 
 ## Decision Log
 

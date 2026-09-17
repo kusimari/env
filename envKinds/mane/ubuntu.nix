@@ -97,9 +97,9 @@ in {
   # Visual Studio Code: thin host declarative editor with curated extensions
   programs.vscode = {
     enable = true;
-    enableUpdateCheck = false;
-    enableExtensionUpdateCheck = false;
     profiles.default = {
+      enableUpdateCheck = false;
+      enableExtensionUpdateCheck = false;
       extensions = with pkgs.open-vsx; [
         rust-lang.rust-analyzer
         ms-python.python
