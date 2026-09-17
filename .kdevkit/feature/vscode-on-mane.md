@@ -7,14 +7,14 @@
 
 ## Feature Brief
 
-Enable declarative Visual Studio Code installation and configuration for personal workstation (`mane`) environments via Nix and Home Manager. Provide the `code` binary, desktop application entry (accessible via application launcher/Rofi), and curated default extensions and user settings on `ubuntu-mane`, while maintaining Tier 3 isolation so headless work environments (`al2-kelasa`, `al2023-kelasa`) and darwin configurations remain lean and unaffected.
+Enable declarative Visual Studio Code installation and configuration for personal workstation (`mane`) environments via Nix and Home Manager. Provide the `code` binary and desktop application entry (accessible via application launcher/Rofi) on `ubuntu-mane`, in a pristine state without declarative extensions or opinionated settings, while maintaining Tier 3 isolation so headless work environments (`al2-kelasa`, `al2023-kelasa`) and darwin configurations remain lean and unaffected.
 
 ## Handoff
 
 - **Phase:** review
 - **Ready for:** human review (Agent-dev Review Gate)
-- **Carry forward:** VS Code is successfully installed and verified under Tier 3 in `envKinds/mane/ubuntu.nix`. Spurious background update notifications are suppressed with `enableUpdateCheck = false` and `enableExtensionUpdateCheck = false`.
-- **Deliberately left:** Headless kelasa environments remain free of VS Code and GUI packages; workspaces supply language servers via scoped direnv/mise.
+- **Carry forward:** VS Code is successfully installed and verified under Tier 3 in `envKinds/mane/ubuntu.nix` in a pristine state (`extensions = []`, `userSettings = {}`). Spurious background update notifications are suppressed with `enableUpdateCheck = false` and `enableExtensionUpdateCheck = false`.
+- **Deliberately left:** Headless kelasa environments remain free of VS Code and GUI packages; extensions are not configured declaratively to maintain a pristine baseline.
 
 ## Requirements
 
@@ -22,9 +22,9 @@ Enable declarative Visual Studio Code installation and configuration for persona
   - The `code` binary is installed in the Nix user profile and available on PATH in all interactive terminal sessions on `mane` machines.
   - Visual Studio Code appears in desktop application menus and is indexed by Rofi (`rofi -show drun`) for launch via application shortcut.
   - Visual Studio Code launches cleanly in the graphical desktop environment.
-- **Preconfigured Editor Environment**:
-  - Essential language and tooling extensions are installed declaratively: Rust Analyzer (`rust-lang.rust-analyzer`), Python (`ms-python.python`), Nix IDE (`jnoortheen.nix-ide`), Zenburn color theme (`ryanolsonx.zenburn`), and Cline / Claude Dev (`saoudrizwan.claude-dev`).
-  - Pre-configured user settings are applied automatically: Zenburn color theme active by default, minimap auto-hidden, and inlay hints configured to `offUnlessPressed`.
+- **Pristine Editor Baseline**:
+  - Pristine installation without extensions (`extensions = []`).
+  - Home-level settings managed through Nix with no opinionated theme or layout overrides (`userSettings = {}`).
   - Spurious update notifications on read-only Nix store derivations are suppressed (`enableUpdateCheck = false`, `enableExtensionUpdateCheck = false`).
 - **Target Isolation & Invariant Cleanliness**:
   - Headless kelasa environments (`al2-kelasa`, `al2023-kelasa`) and darwin configurations remain completely free of VS Code and GUI dependencies.
@@ -35,7 +35,7 @@ Enable declarative Visual Studio Code installation and configuration for persona
 - Flake evaluation: `bash layers/test-flake.sh` verifies flake evaluation and activation package builds for both `ubuntu-mane` and `al2-kelasa`.
 - Flake schema check: `nix flake check` passes cleanly without warnings or errors.
 - Invariant isolation: Verify `env-verify` derivation does not list `code` under `invariants`, ensuring headless `kelasa` targets remain green.
-- Package output verification: Verify `homeConfigurations.ubuntu-mane` exposes `programs.vscode` with `enable = true`, package `pkgs.vscode`, and the declared extension derivations.
+- Package output verification: Verify `homeConfigurations.ubuntu-mane` exposes `programs.vscode` with `enable = true`, package `pkgs.vscode`, and zero extensions.
 
 ## Design
 
@@ -43,13 +43,11 @@ Enable declarative Visual Studio Code installation and configuration for persona
   - Scoped to Tier 3 (machine-class differences). Graphical desktop applications for `mane` live in `envKinds/mane/ubuntu.nix`.
   - In Home Manager, `programs.vscode` declaratively manages the application binary (`pkgs.vscode`), desktop entry file, extensions (`profiles.default.extensions`), and user settings (`profiles.default.userSettings`).
   - Home Manager 25.05 uses `profiles.default` for extension and settings declarations.
-  - Overlays: `nix-vscode-extensions` overlay is already wired into `commonConfiguration` (`envKinds/common.nix`) and provides `pkgs.open-vsx` and `pkgs.vscode-marketplace`.
   - Migration from `home/home.nix`: Relocated `programs.vscode` definition from `home/home.nix` into `envKinds/mane/ubuntu.nix` with `enable = true`.
   - Keeping VS Code in `envKinds/mane/ubuntu.nix` mirrors all other desktop applications (`google-chrome`, `libreoffice`, `simple-scan`, `thunar`), eliminates dead code from the universal `home/home.nix`, and guarantees `env-verify.nix` does not treat `code` as an invariant for headless servers.
 - **Extensions & Settings**:
-  - `open-vsx`: `rust-lang.rust-analyzer`, `ms-python.python`, `jnoortheen.nix-ide`
-  - `vscode-marketplace`: `ryanolsonx.zenburn`, `saoudrizwan.claude-dev`
-  - User Settings: `editor.minimap.autohide: true`, `editor.inlayHints.enabled: "offUnlessPressed"`, `workbench.colorTheme: "Zenburn"`.
+  - `extensions = []`: Pristine installation with no extensions configured.
+  - `userSettings = {}`: No opinionated editor defaults; user-level configs at home managed cleanly through Nix.
   - Update suppression: `enableUpdateCheck = false`, `enableExtensionUpdateCheck = false`.
 
 ## Implementation Plan
@@ -73,8 +71,10 @@ Enable declarative Visual Studio Code installation and configuration for persona
 - 2026-09-16: Dispatched fresh-context Code Review Gate subagent — received PASS WITH NOTES; applied update suppression (`enableUpdateCheck = false`, `enableExtensionUpdateCheck = false`).
 - 2026-09-16: Re-ran `nix flake check` and test suites — clean pass.
 - 2026-09-16: Relocated `enableUpdateCheck = false` and `enableExtensionUpdateCheck = false` into `programs.vscode.profiles.default` to conform to Home Manager 25.05 option schema and eliminate deprecation warnings.
+- 2026-09-16: Stripped declarative extensions (`extensions = []`) and custom `userSettings` per user clarification to maintain a pristine, unopinionated VS Code installation where home configs are purely managed by Nix and no extensions are bundled.
 
 ## Decision Log
 
 - Decided to treat Visual Studio Code as a Tier 3 application scoped to `ubuntu-mane` in `envKinds/mane/ubuntu.nix` rather than enabling it conditionally in `home/home.nix`. Rationale: Defining `programs.vscode` in `home/home.nix` causes `env-verify.nix` to evaluate `code` as an invariant binary that must exist across all targets (including headless AL2/AL2023), causing verification failures on remote servers. Keeping it in `envKinds/mane/ubuntu.nix` mirrors all other desktop applications (`google-chrome`, `libreoffice`, `simple-scan`).
 - Suppressed background update checks (`enableUpdateCheck = false`, `enableExtensionUpdateCheck = false`) to avoid spurious notification popups on immutable Nix store installations.
+- Decided to ship a pristine VS Code installation with `extensions = []` and `userSettings = {}` rather than porting legacy extensions and themes, keeping the host install clean and unopinionated while allowing project-level configurations to be managed per project.

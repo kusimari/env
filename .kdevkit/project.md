@@ -296,7 +296,7 @@ Modular structure in `envKinds/`:
   - `linuxCommonConfiguration` — nixGL overlay, explicit `nix.package`.
     Applied to every Linux target.
 - `envKinds/mane/ubuntu.nix` (`ubuntuManeConfiguration`) — thin host graphical
-  userland: chrome, rofi, vscode (with curated extensions), libreoffice, simple-scan, wrapped DigiKam (with `kimageformats` and `qtimageformats`
+  userland: chrome, rofi, vscode, libreoffice, simple-scan, wrapped DigiKam (with `kimageformats` and `qtimageformats`
   for HEIC/AVIF/RAW), wrapped Thunar (with GVFS and `thunar-archive-plugin`), xarchiver,
   viewnior, evince, gnome-calculator, dust, imagemagick, and declarative MIME associations.
   Applied only to `ubuntu-mane`.
