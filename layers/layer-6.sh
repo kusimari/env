@@ -75,7 +75,8 @@ fi
 
 # Workspace: ai-workspace/mAId — hosts mAId (and private siblings on
 # the kelasa side, handled by the private L6). Get + build: cloned or
-# fetched here, then discovered and built by the walk below.
+# fetched here, then the walk below runs mAId's root ./install (which
+# runs its `just install`).
 (
     name="ai-workspace"
     url="git@github.com:kusimari/mAId.git"
@@ -100,6 +101,10 @@ fi
 # then per-dir let ENTRY_PREFERENCE pick which to run (so a dir with
 # both setup+install runs setup only, never twice).
 #
+# Sibling `<repo>-worktrees/` dirs are skipped: a worktree is a branch
+# in progress, and its entry-point would install that branch over the
+# main checkout's install.
+#
 # Under --dry-run on a fresh machine the root's `mkdir -p` above is
 # itself a no-op, so the root may still not exist here — guard the fd
 # call rather than let it print "not a directory" to stderr.
@@ -114,6 +119,7 @@ if [[ -d "$TOOL_WORKPLACE_ROOT" ]]; then
         fi
     done < <(
         fd --absolute-path --type file --type executable --max-depth "$MAX_DEPTH" \
+           --exclude '*-worktrees' \
            '^(setup|install)$' "$TOOL_WORKPLACE_ROOT" --print0
     )
 fi

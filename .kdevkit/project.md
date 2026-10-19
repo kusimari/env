@@ -172,8 +172,13 @@ discovers and runs each one's own root `install`/`setup` entry-point
 list (you can't discover what to clone by walking a directory that
 doesn't exist yet); the build step stays a registry-free `fd` walk of
 whatever is actually present under `~/tool-workplace/`, so a workspace
-placed there by hand is still discovered and built. The content repo
-owns its install; L6 only clones it and invokes it. Graduation (into
+placed there by hand is still discovered and built. The walk skips
+sibling `<repo>-worktrees/` dirs: a worktree is a branch in progress,
+and running its entry-point would install that branch over the main
+checkout's. The content repo owns its install; L6 only clones it and
+invokes it — so every tool repo L6 gets must ship a root
+`install`/`setup` (mAId's `./install` runs its `just install`), or L6
+clones it and builds nothing. Graduation (into
 L3 or L4) is a deliberate decision once a workspace stabilizes.
 
 L6 is **not part of the base env.** A bare rebuild through L5 leaves
@@ -451,7 +456,8 @@ here. From `env/`:
   inline tool-workspace blocks without cloning or fetching, then
   lists the entry-points `fd` discovers under `~/tool-workplace/`
   without running them; verifies both the get blocks and the
-  `setup`-over-`install` discovery pick.
+  `setup`-over-`install` discovery pick, and that nothing under a
+  `*-worktrees/` dir is listed.
 - `bash rclone-env/test-rclone-env.sh` — mock tests for the
   `rclone-env` mount surface. Mocks `rclone`/`mount`/`uname`/
   `fusermount` on a throwaway PATH, so both the macOS (`nfsmount`)
