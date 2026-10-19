@@ -2,8 +2,8 @@
 # env/layers/layer-6.sh — Layer 6: Tools.
 #
 # Clones/fetches one inline { ... } block per known tool workspace
-# into ~/tool-workplace/<name>/<repo-basename>/, puts each on its
-# default branch fast-forwarded to origin (main or mainline), then discovers and
+# into ~/tool-workplace/<name>/<repo-basename>/ (fast-forwarded to
+# upstream where it can be), then discovers and
 # runs each workspace's own setup/install entry-point. See project.md
 # for the layer design.
 #
@@ -76,8 +76,8 @@ fi
 
 # Workspace: ai-workspace/mAId — hosts mAId (and private siblings on
 # the kelasa side, handled by the private L6). Get + build: cloned or
-# fetched here, then the walk below runs mAId's root ./install (which
-# runs its `just install`).
+# fetched and fast-forwarded here, then the walk below runs mAId's root
+# ./install.
 (
     name="ai-workspace"
     url="git@github.com:kusimari/mAId.git"
@@ -91,7 +91,7 @@ fi
         run mkdir -p "$ws_dir"
     fi
     clone_or_fetch "$name/$clone_base" "$url" "$clone_dir" || exit 1
-    update_default_branch "$name/$clone_base" "$clone_dir" || exit 1
+    fast_forward "$name/$clone_base" "$clone_dir"
     ensure_git_identity "$clone_dir" "$PUBLIC_USER_NAME" "$PUBLIC_USER_EMAIL"
 ) || { warn "ai-workspace/mAId: get failed (continuing)"; FAILED=1; }
 
@@ -102,10 +102,6 @@ fi
 # MAX_DEPTH under the root. Collect the dirs that hold at least one,
 # then per-dir let ENTRY_PREFERENCE pick which to run (so a dir with
 # both setup+install runs setup only, never twice).
-#
-# Sibling `<repo>-worktrees/` dirs are skipped: a worktree is a branch
-# in progress, and its entry-point would install that branch over the
-# main checkout's install.
 #
 # Under --dry-run on a fresh machine the root's `mkdir -p` above is
 # itself a no-op, so the root may still not exist here — guard the fd
@@ -121,7 +117,6 @@ if [[ -d "$TOOL_WORKPLACE_ROOT" ]]; then
         fi
     done < <(
         fd --absolute-path --type file --type executable --max-depth "$MAX_DEPTH" \
-           --exclude '*-worktrees' \
            '^(setup|install)$' "$TOOL_WORKPLACE_ROOT" --print0
     )
 fi

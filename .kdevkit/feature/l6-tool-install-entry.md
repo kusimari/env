@@ -5,50 +5,40 @@
 its install to `just install` and no longer shipped a root
 `install`/`setup`, so the L6 walk found nothing and said nothing.
 mAId now ships `./install` (runs `just install`); L6 picks it up as is.
-This side records that contract and keeps the walk off worktrees.
+This side records that contract, and L6 now fast-forwards what it
+fetched so a rerun builds the latest upstream.
 
 ## Requirements
 - [x] R1 L6 runs mAId's root `./install`, with no mAId-specific code here.
-- [x] R2 The walk never runs an entry-point under a `<repo>-worktrees/`
-  dir (a branch in progress would install over the main checkout).
+- [x] R2 After the fetch, L6 fast-forwards the checked-out branch to its
+  upstream; when it can't (local commits, no upstream), it builds the
+  checkout as is. Never fails the layer.
 - [x] R3 `project.md` states that every L6 tool repo must ship a root
   `install`/`setup`.
-- [x] R4 L6 builds the latest default branch: after the fetch, switch
-  the checkout to `origin/HEAD`'s branch (`main`/`mainline`) and
-  fast-forward it; a dirty checkout fails that workspace's get instead.
-  L5 stores stay fetch-only.
 
 ## Design
-`fd --exclude '*-worktrees'` on the discovery walk. At today's
-`ai-workspace/<repo>-worktrees/<wt>/install` nesting the entry-point
-is depth 4, already past `MAX_DEPTH=3`; the exclude covers a workspace
-placed directly under `~/tool-workplace/` (depth 3) and any later
-depth bump.
-
-`update_default_branch` lives in `layer-common.sh` (L6-only caller);
-the private L6 carries a copy, like its other helpers.
+`fast_forward` in `layer-common.sh`: `git merge --ff-only @{u}`, warn on
+failure, return 0. Env knows only the declared clone; how that repo is
+worked on (branches, worktrees) stays out of env. The private L6 carries
+a copy, like its other helpers. L5 does not call it.
 
 ## Test Strategy
+- `fast_forward` on temp repos: behind → fast-forwarded; local commit →
+  warn, rc 0, left as is; feature branch with no upstream → warn, rc 0;
+  `DRY_RUN=1` → prints, changes nothing.
 - `bash layers/layer-6.sh --dry-run` lists mAId's `./install`.
-- fd against a temp tree with `repo/install` and
-  `repo-worktrees/wt/install` at depth 3: only `repo/install` listed.
-- `update_default_branch` on temp repos: feature branch behind origin →
-  on `main`, 0 behind; `mainline` remote → `mainline`; dirty → rc 1,
-  branch untouched; `DRY_RUN=1` → prints, changes nothing.
 
 ## Implementation Plan
-- [x] Exclude `*-worktrees` in `layers/layer-6.sh`.
+- [x] `fast_forward` in `layer-common.sh`, called from the L6 mAId block.
 - [x] Update the mAId block comment.
-- [x] Update `project.md` (L6 framework, Testing).
-- [x] `update_default_branch` in `layer-common.sh`, called from L6.
+- [x] Update `project.md` (L6 row, L6 framework, directory map, Testing).
 
 ## Handoff
 
 - **Stage:** review
 - **Ready for:** merge, after the mAId `./install` change lands
-- **Carry forward:** a real L6 run switches mAId's checkout to `main`;
-  until the mAId `./install` change is on `main` there is nothing to run.
-- **Deliberately left:** L5 stores stay fetch-only (local work).
+- **Carry forward:** none
+- **Deliberately left:** L5 stores stay fetch-only — not asked for.
 
 ### Crossings
 <!-- Append one line per crossing. Never edit or delete a line. -->
@@ -57,4 +47,9 @@ the private L6 carries a copy, like its other helpers.
 - review → dev · RETURN · fault: requirements · issue: L6 must build
   only the latest main/mainline · fix: add R4, fast-forward the default
   branch after fetch · done when: the temp-repo tests pass
+- dev → review
+- review → dev · RETURN · fault: design · issue: worktree exclude and
+  branch switching put repo workflow into env · fix: drop both; plain
+  fast-forward to upstream, else use as is · done when: temp-repo tests
+  pass
 - dev → review
