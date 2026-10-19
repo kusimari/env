@@ -2,7 +2,8 @@
 # env/layers/layer-6.sh — Layer 6: Tools.
 #
 # Clones/fetches one inline { ... } block per known tool workspace
-# into ~/tool-workplace/<name>/<repo-basename>/, then discovers and
+# into ~/tool-workplace/<name>/<repo-basename>/, puts each on its
+# default branch fast-forwarded to origin (main or mainline), then discovers and
 # runs each workspace's own setup/install entry-point. See project.md
 # for the layer design.
 #
@@ -89,7 +90,8 @@ fi
         log "Creating workspace dir: $ws_dir"
         run mkdir -p "$ws_dir"
     fi
-    clone_or_fetch "$name/$clone_base" "$url" "$clone_dir"
+    clone_or_fetch "$name/$clone_base" "$url" "$clone_dir" || exit 1
+    update_default_branch "$name/$clone_base" "$clone_dir" || exit 1
     ensure_git_identity "$clone_dir" "$PUBLIC_USER_NAME" "$PUBLIC_USER_EMAIL"
 ) || { warn "ai-workspace/mAId: get failed (continuing)"; FAILED=1; }
 
