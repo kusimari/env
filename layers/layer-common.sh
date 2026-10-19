@@ -45,6 +45,19 @@ clone_or_fetch() {
     fi
 }
 
+# Fast-forward $dest's checked-out branch to its upstream (the fetched
+# tip). When that can't be done (local commits, conflicting edits, no
+# upstream) the checkout is used as is. Never fails.
+fast_forward() {
+    local name="$1" dest="$2"
+    [[ -d "$dest/.git" ]] || return 0
+    if run git -C "$dest" merge --ff-only --quiet '@{u}' 2>/dev/null; then
+        log "$name: fast-forwarded to upstream"
+    else
+        warn "$name: can't fast-forward; using the checkout as is"
+    fi
+}
+
 # Pin a local commit identity on $dest. Idempotent; diff-checks
 # before writing.
 ensure_git_identity() {

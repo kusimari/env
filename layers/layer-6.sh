@@ -2,7 +2,8 @@
 # env/layers/layer-6.sh — Layer 6: Tools.
 #
 # Clones/fetches one inline { ... } block per known tool workspace
-# into ~/tool-workplace/<name>/<repo-basename>/, then discovers and
+# into ~/tool-workplace/<name>/<repo-basename>/ (fast-forwarded to
+# upstream where it can be), then discovers and
 # runs each workspace's own setup/install entry-point. See project.md
 # for the layer design.
 #
@@ -75,7 +76,8 @@ fi
 
 # Workspace: ai-workspace/mAId — hosts mAId (and private siblings on
 # the kelasa side, handled by the private L6). Get + build: cloned or
-# fetched here, then discovered and built by the walk below.
+# fetched and fast-forwarded here, then the walk below runs mAId's root
+# ./install.
 (
     name="ai-workspace"
     url="git@github.com:kusimari/mAId.git"
@@ -88,7 +90,8 @@ fi
         log "Creating workspace dir: $ws_dir"
         run mkdir -p "$ws_dir"
     fi
-    clone_or_fetch "$name/$clone_base" "$url" "$clone_dir"
+    clone_or_fetch "$name/$clone_base" "$url" "$clone_dir" || exit 1
+    fast_forward "$name/$clone_base" "$clone_dir"
     ensure_git_identity "$clone_dir" "$PUBLIC_USER_NAME" "$PUBLIC_USER_EMAIL"
 ) || { warn "ai-workspace/mAId: get failed (continuing)"; FAILED=1; }
 

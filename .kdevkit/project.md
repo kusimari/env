@@ -104,7 +104,7 @@ operational summary. Per-machine scripts use the naming contract above
 | 3 | The Environment Setup | `layers/layer-3-<target>.sh` → sources `layers/layer-3-common.sh`, which tails `layers/layer-3-post-nix-common.sh` | `env` | Every rebuild | `home-manager switch` / `nix-darwin switch`, flanked by host appliance prep and debloat sidecars on `ubuntu-mane`. |
 | 4 | Enterprise Overlays | `layer-4-kelasa.sh` | `<kelasa-specific env repo>` | After L3 on kelasa, or any day-2 change to envKind-specific post-nix content | envKind-specific non-nixable post-install. Writes `~/.post-nix-rc`. |
 | 5 | Stores | `layers/layer-5.sh` (public) + `desktop-layers/layer-5.sh` (private) | `env` + `<kelasa-specific env repo>` | New machine | **Stores, get only.** Runs one inline `{ ... }` block per store: clone/fetch flat under `~/dabba/<repo>/`. Nothing else — never touches `~/tool-workplace/` (Layer 6) or `~/workplace/` (Layer 7). On kelasa run the private `layer-5.sh`; it chains the public one first. |
-| 6 | Tools | `layers/layer-6.sh` (public) + `desktop-layers/layer-6.sh` (private) | `env` + `<kelasa-specific env repo>` | On demand | **Tools, get + build.** Runs one inline `{ ... }` block per tool workspace: clone/fetch under `~/tool-workplace/<name>/<repo>/`, pin identity, then discover (registry-free `fd` walk) and run each one's own root `install`/`setup` entry-point. **Not part of the base env** — a bare rebuild through L5 leaves `~/tool-workplace/` entirely absent. The normal fast path is running a tool workspace's entry-point from inside it; L6 is the get-them-all-and-build-them-all convenience. On kelasa run the private `layer-6.sh`: it gets its private workspace first, then chains the public one (which gets + builds everything present). |
+| 6 | Tools | `layers/layer-6.sh` (public) + `desktop-layers/layer-6.sh` (private) | `env` + `<kelasa-specific env repo>` | On demand | **Tools, get + build.** Runs one inline `{ ... }` block per tool workspace: clone/fetch under `~/tool-workplace/<name>/<repo>/`, fast-forward to upstream, pin identity, then discover (registry-free `fd` walk) and run each one's own root `install`/`setup` entry-point. **Not part of the base env** — a bare rebuild through L5 leaves `~/tool-workplace/` entirely absent. The normal fast path is running a tool workspace's entry-point from inside it; L6 is the get-them-all-and-build-them-all convenience. On kelasa run the private `layer-6.sh`: it gets its private workspace first, then chains the public one (which gets + builds everything present). |
 | 7 | Projects | `projects/workplace-setup.sh` (driver) + `projects/<project>/` (recipes) | `<envKind repo with project recipes>` | On demand, per project | **Projects, bidirectional.** Owns `~/workplace/` end-to-end — no other layer touches it. *Hydrate:* `mkdir -p ~/workplace/<project>` (creates the root on first use), `cd` in, then replay a project recipe (symlinks, `.envrc`, optional per-project `bootstrap.sh`). *Capture:* start tracking an untracked workspace by writing its recipe back under `projects/<project>/`. **Not** part of bootstrap; never mutates the environment. |
 
 **`layer-run` — one-run driver for L1–L6.**
@@ -166,14 +166,18 @@ so the reminder surfaces regardless of which layers ran.
 **L6 framework — get and build the tools, separable.** L6 owns tool
 workspaces end-to-end: it clones/fetches each declared workspace
 under `~/tool-workplace/<name>/<repo>/` (an inline `{ ... }` block per
-workspace, same shape as L5's store blocks) and pins identity, then
+workspace, same shape as L5's store blocks), fast-forwards the
+checked-out branch to its upstream (or, when it can't, uses the
+checkout as is), and pins identity, then
 discovers and runs each one's own root `install`/`setup` entry-point
 (preferring `setup` when both exist). The get step needs a declared
 list (you can't discover what to clone by walking a directory that
 doesn't exist yet); the build step stays a registry-free `fd` walk of
 whatever is actually present under `~/tool-workplace/`, so a workspace
 placed there by hand is still discovered and built. The content repo
-owns its install; L6 only clones it and invokes it. Graduation (into
+owns its install; L6 only clones it and invokes it — so every tool
+repo L6 gets must ship a root `install`/`setup` (mAId's `./install`
+runs its `just install`), or L6 clones it and builds nothing. Graduation (into
 L3 or L4) is a deliberate decision once a workspace stabilizes.
 
 L6 is **not part of the base env.** A bare rebuild through L5 leaves
@@ -369,7 +373,7 @@ env/
 │   ├── layer-3-post-nix-common.sh    # L3 tail — universal non-nixable post-nix nudges
 │   ├── layer-5.sh                    # L5 (public): stores, get-only — inline store clone/fetch blocks
 │   ├── layer-6.sh                    # L6 (public): tools, get + build — inline workspace blocks + fd-discovered setup/install
-│   ├── layer-common.sh               # shared log/warn/die/run/clone_or_fetch/ensure_git_identity/repo_basename, sourced by layer-5.sh + layer-6.sh
+│   ├── layer-common.sh               # shared log/warn/die/run/clone_or_fetch/fast_forward/ensure_git_identity/repo_basename, sourced by layer-5.sh + layer-6.sh
 │   └── test-flake.sh                 # flake eval without building (tooling, not a layer)
 │
 ├── home/                  # home-manager user-level config
@@ -483,8 +487,9 @@ validation requires an activated machine, so it stays manual:
   clones into `~/dabba/` (stores, get-only). Verified by inspecting
   that tree; `~/tool-workplace/` should be untouched.
 - L6 real get + build (`bash layers/layer-6.sh` without `--dry-run`)
-  creates `~/tool-workplace/` if absent, clones/fetches each declared
-  tool workspace, then runs its discovered `setup`/`install`.
+  creates `~/tool-workplace/` if absent, clones/fetches and
+  fast-forwards each declared tool workspace, then runs its discovered
+  `setup`/`install`.
   Separable from the base env. Verified by inspecting
   `~/tool-workplace/` and each tool's own post-install state.
 - `~/.pre-nix-rc` / `~/.post-nix-rc` shell behaviour requires an
