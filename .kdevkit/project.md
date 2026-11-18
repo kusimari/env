@@ -243,6 +243,20 @@ shell state; the active toolbox PATH wiring lives in `~/.post-nix-rc`,
 which is owned by the kelasa env repo's L4 (a private, envKind-specific
 companion to this public repo).
 
+**tmux drop-in bridge.** The tmux config is nix-managed
+(`tmux/tmux.conf`, read by `tmux/tmux.nix`), so a later layer cannot
+edit it. Its last line sources `~/.config/tmux/local.d/*.conf`, with
+`-q` so a machine with no drop-ins is unchanged. That is the contract:
+a layer that sets up something tmux should run writes its own file
+there, one file per owner, desired-state like the shell rc writers.
+This repo never names what goes in. On kelasa, the private companion's
+L6 writes one that starts a tool it builds; its `project.md` says
+which. The line sits after the plugin `run-shell` lines that
+home-manager emits first, so a drop-in can rely on resurrect and
+continuum being loaded. A drop-in that starts a background job should
+gate on the server (`%if` on `#{socket_path}`), because test harnesses
+start extra servers with this same config.
+
 ## Tiered package model
 
 Three tiers, documented at the top of `flake.nix` and enforced by
@@ -518,6 +532,9 @@ layer that owns what changed rather than re-running everything.
   See "Workspace runtimes — global or scoped."
 - **`~/.pre-nix-rc` and `~/.post-nix-rc` are the only non-nix → nix
   shell bridge.** Any other shell-init hack will drift.
+- **`~/.config/tmux/local.d/` is the only way a layer adds tmux
+  config.** See "tmux drop-in bridge"; editing `tmux/tmux.conf` for
+  one machine's tool leaks it into every machine.
 - **`layers/test-flake.sh`** evaluates the flake without building — use
   it as the first check after any flake edit.
 - **Layers never set up cloud file storage.** No layer creates a
